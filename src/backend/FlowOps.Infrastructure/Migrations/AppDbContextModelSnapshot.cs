@@ -22,6 +22,75 @@ namespace FlowOps.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("request_number_seq");
+
+            modelBuilder.Entity("FlowOps.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_id");
+
+                    b.Property<Guid?>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("RecipientId")
+                        .HasDatabaseName("ix_notifications_unread_recipient_id")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_notifications_request_id");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_notifications_task_id");
+
+                    b.HasIndex("RecipientId", "CreatedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_notifications_recipient_id_created_at");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'RequestApproved', 'RequestRejected', 'RequestCompleted', 'StepApproved', 'CommentAdded')");
+                        });
+                });
+
             modelBuilder.Entity("FlowOps.Domain.Organization.Department", b =>
                 {
                     b.Property<Guid>("Id")
@@ -56,6 +125,248 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasDatabaseName("ux_departments_code");
 
                     b.ToTable("departments", (string)null);
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.Request", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<Guid>("RequesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requester_id");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("stage");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_requests");
+
+                    b.HasIndex("DepartmentId")
+                        .HasDatabaseName("ix_requests_department_id");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_requests_number");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_requests_status");
+
+                    b.HasIndex("RequesterId", "SubmittedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_requests_requester_id_submitted_at");
+
+                    b.ToTable("requests", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_requests_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
+
+                            t.HasCheckConstraint("ck_requests_status", "status IN ('InReview', 'Approved', 'Completed', 'Rejected')");
+
+                            t.HasCheckConstraint("ck_requests_type", "type IN ('EquipmentPurchase', 'Leave')");
+                        });
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.RequestActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("Body")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Stage")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("stage");
+
+                    b.Property<Guid?>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_request_activities");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_request_activities_actor_id");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_request_activities_task_id");
+
+                    b.HasIndex("RequestId", "OccurredAt")
+                        .HasDatabaseName("ix_request_activities_request_id_occurred_at");
+
+                    b.ToTable("request_activities", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_request_activities_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
+
+                            t.HasCheckConstraint("ck_request_activities_type", "type IN ('Submitted', 'TaskAssigned', 'Approved', 'Rejected', 'Fulfilled', 'Completed', 'CommentAdded')");
+                        });
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.WorkTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AssigneeRole")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("assignee_role");
+
+                    b.Property<Guid?>("AssigneeUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignee_user_id");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("comment");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("stage");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_work_tasks");
+
+                    b.HasIndex("DecidedById")
+                        .HasDatabaseName("ix_work_tasks_decided_by_id");
+
+                    b.HasIndex(new[] { "AssigneeRole" }, "ix_work_tasks_open_assignee_role")
+                        .HasDatabaseName("ix_work_tasks_open_assignee_role")
+                        .HasFilter("status = 'Open'");
+
+                    b.HasIndex(new[] { "AssigneeUserId" }, "ix_work_tasks_open_assignee_user_id")
+                        .HasDatabaseName("ix_work_tasks_open_assignee_user_id")
+                        .HasFilter("status = 'Open'");
+
+                    b.HasIndex(new[] { "RequestId" }, "ix_work_tasks_request_id")
+                        .HasDatabaseName("ix_work_tasks_request_id");
+
+                    b.HasIndex(new[] { "RequestId" }, "ux_work_tasks_open_per_request")
+                        .IsUnique()
+                        .HasDatabaseName("ux_work_tasks_open_per_request")
+                        .HasFilter("status = 'Open'");
+
+                    b.ToTable("work_tasks", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_work_tasks_assignee_role", "assignee_role IN ('Administrator', 'Employee', 'FinanceOfficer', 'HrOfficer', 'ProcurementOfficer')");
+
+                            t.HasCheckConstraint("ck_work_tasks_decision_iff_done", "(status = 'Open') = (outcome IS NULL AND decided_by_id IS NULL AND decided_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_work_tasks_kind", "kind IN ('Approval', 'Fulfillment')");
+
+                            t.HasCheckConstraint("ck_work_tasks_one_assignee", "num_nonnulls(assignee_user_id, assignee_role) = 1");
+
+                            t.HasCheckConstraint("ck_work_tasks_outcome", "outcome IN ('Approved', 'Rejected', 'Fulfilled')");
+
+                            t.HasCheckConstraint("ck_work_tasks_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
+
+                            t.HasCheckConstraint("ck_work_tasks_status", "status IN ('Open', 'Done')");
+                        });
                 });
 
             modelBuilder.Entity("FlowOps.Infrastructure.Identity.ApplicationUser", b =>
@@ -375,6 +686,200 @@ namespace FlowOps.Infrastructure.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("FlowOps.Domain.Notifications.Notification", b =>
+                {
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_recipient_id");
+
+                    b.HasOne("FlowOps.Domain.Requests.Request", null)
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_notifications_requests_request_id");
+
+                    b.HasOne("FlowOps.Domain.Requests.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_notifications_work_task_task_id");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.Request", b =>
+                {
+                    b.HasOne("FlowOps.Domain.Organization.Department", null)
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_requests_departments_department_id");
+
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_requests_users_requester_id");
+
+                    b.OwnsOne("FlowOps.Domain.Requests.LeaveDetails", "Leave", b1 =>
+                        {
+                            b1.Property<Guid>("RequestId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("request_id");
+
+                            b1.Property<DateOnly>("EndDate")
+                                .HasColumnType("date")
+                                .HasColumnName("end_date");
+
+                            b1.Property<string>("LeaveType")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("leave_type");
+
+                            b1.Property<string>("Reason")
+                                .HasMaxLength(1000)
+                                .HasColumnType("character varying(1000)")
+                                .HasColumnName("reason");
+
+                            b1.Property<DateOnly>("StartDate")
+                                .HasColumnType("date")
+                                .HasColumnName("start_date");
+
+                            b1.HasKey("RequestId")
+                                .HasName("pk_leave_request_details");
+
+                            b1.ToTable("leave_request_details", null, t =>
+                                {
+                                    t.HasCheckConstraint("ck_leave_request_details_dates", "end_date >= start_date");
+
+                                    t.HasCheckConstraint("ck_leave_request_details_leave_type", "leave_type IN ('Annual', 'Sick', 'Unpaid', 'Other')");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("RequestId")
+                                .HasConstraintName("fk_leave_request_details_requests_id");
+                        });
+
+                    b.OwnsOne("FlowOps.Domain.Requests.PurchaseDetails", "Purchase", b1 =>
+                        {
+                            b1.Property<Guid>("RequestId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("request_id");
+
+                            b1.Property<string>("Description")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)")
+                                .HasColumnName("description");
+
+                            b1.Property<string>("ItemName")
+                                .IsRequired()
+                                .HasMaxLength(150)
+                                .HasColumnType("character varying(150)")
+                                .HasColumnName("item_name");
+
+                            b1.Property<string>("Justification")
+                                .IsRequired()
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)")
+                                .HasColumnName("justification");
+
+                            b1.HasKey("RequestId")
+                                .HasName("pk_purchase_request_details");
+
+                            b1.ToTable("purchase_request_details", null, t =>
+                                {
+                                    t.HasCheckConstraint("ck_purchase_request_details_amount", "estimated_cost_amount > 0 AND estimated_cost_amount <= 1000000.000");
+
+                                    t.HasCheckConstraint("ck_purchase_request_details_currency", "estimated_cost_currency IN ('JOD')");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("RequestId")
+                                .HasConstraintName("fk_purchase_request_details_requests_id");
+
+                            b1.OwnsOne("FlowOps.Domain.Common.Money", "EstimatedCost", b2 =>
+                                {
+                                    b2.Property<Guid>("PurchaseDetailsRequestId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("request_id");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 3)
+                                        .HasColumnType("numeric(18,3)")
+                                        .HasColumnName("estimated_cost_amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired()
+                                        .HasColumnType("char(3)")
+                                        .HasColumnName("estimated_cost_currency");
+
+                                    b2.HasKey("PurchaseDetailsRequestId");
+
+                                    b2.ToTable("purchase_request_details");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("PurchaseDetailsRequestId")
+                                        .HasConstraintName("fk_purchase_request_details_purchase_request_details_request_id");
+                                });
+
+                            b1.Navigation("EstimatedCost")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Leave");
+
+                    b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.RequestActivity", b =>
+                {
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_request_activities_users_actor_id");
+
+                    b.HasOne("FlowOps.Domain.Requests.Request", null)
+                        .WithMany("Activities")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_request_activities_requests_request_id");
+
+                    b.HasOne("FlowOps.Domain.Requests.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_request_activities_work_task_task_id");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.WorkTask", b =>
+                {
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AssigneeUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_tasks_users_assignee_user_id");
+
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_work_tasks_users_decided_by_id");
+
+                    b.HasOne("FlowOps.Domain.Requests.Request", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_work_tasks_requests_request_id");
+                });
+
             modelBuilder.Entity("FlowOps.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.HasOne("FlowOps.Domain.Organization.Department", null)
@@ -445,6 +950,13 @@ namespace FlowOps.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Requests.Request", b =>
+                {
+                    b.Navigation("Activities");
+
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

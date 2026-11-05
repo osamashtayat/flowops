@@ -11,6 +11,13 @@ public sealed class Notification
     public const int TitleMaxLength = 150;
     public const int BodyMaxLength = 500;
 
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private Notification()
+    {
+        Title = "";
+        Body = "";
+    }
+
     private Notification(
         Guid recipientId, NotificationType type, string title, string body, Guid? requestId, Guid? taskId, DateTimeOffset now)
     {

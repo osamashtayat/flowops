@@ -95,7 +95,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** all of `TESTING.md` §3.1.
 - **Parallel:** BE-02…BE-05 (no shared files).
 
-### BE-07 — Domain persistence mapping · `Todo`
+### BE-07 — Domain persistence mapping · `Done`
 - **Objective:** EF configurations for Request/details/WorkTask/Activity/Notification (Department and the user profile columns landed early in BE-05, which `/api/auth/me` needed); `xmin` tokens; constraints and indexes from `DOMAIN_MODEL.md` §6; request-number sequence; migration.
 - **Deps:** BE-02, BE-06. **AC:** migration applies cleanly; partial unique index and check constraints exist (assert via `information_schema`/`pg_indexes` in a test).
 - **Tests:** round-trip persistence of a full purchase aggregate; inserting a second open task fails at DB level.

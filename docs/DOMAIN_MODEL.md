@@ -276,3 +276,11 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 - Partial unique index `ux_work_tasks_open_per_request on work_tasks(request_id) where status='Open'` (I4).
 - Check: `num_nonnulls(assignee_user_id, assignee_role) = 1`; `manager_id <> id` on users.
 - `request_number_seq` sequence for `Request.Number`.
+
+**As built (BE-05 users/departments, BE-07 the rest; configurations in `Infrastructure/Persistence/Configurations`):**
+- Enum and currency checks are generated from code (`CheckConstraints.InEnum<T>`, `CheckConstraints.In(column, SupportedCurrencies.All)`), so a new value lands in the next migration. Enum columns are `varchar(32)`.
+- Extra checks beyond the list above: `ck_work_tasks_decision_iff_done` (outcome, decider and time are set exactly when Done), `ck_work_tasks_assignee_role` (a known role), `ck_purchase_request_details_amount` (0 < amount ≤ 1,000,000.000), `ck_leave_request_details_dates` (end ≥ start); department names unique case-insensitively (`ux_departments_name_ci` on `lower(name)`).
+- Details tables are keyed by `request_id` (PK = FK to `requests`, cascade). Tasks and activities cascade with their request; everything referencing users, departments or tasks is `RESTRICT` (users and departments are deactivated, never deleted).
+- `xmin` is mapped with `IsRowVersion()` on `Request.Version` and `WorkTask.Version`; it is a system column, so it doesn't appear in the DDL.
+- Every FK has an index except `work_tasks.assignee_user_id`, which only has the open-task partial index, because users are never deleted.
+- Domain types have a private parameterless constructor for materialization only; `RequestNumber.Parse` rebuilds the stored value.

@@ -5,6 +5,15 @@ namespace FlowOps.Domain.Requests;
 /// <summary>Equipment purchase specifics (DOMAIN_MODEL.md §2.3).</summary>
 public sealed class PurchaseDetails
 {
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private PurchaseDetails()
+    {
+        ItemName = "";
+        Description = "";
+        EstimatedCost = null!;
+        Justification = "";
+    }
+
     private PurchaseDetails(string itemName, string description, Money estimatedCost, string justification)
     {
         ItemName = itemName;

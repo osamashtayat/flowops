@@ -3,6 +3,11 @@ namespace FlowOps.Domain.Requests;
 /// <summary>Append-only audit entry on a request (I9). Never updated or deleted.</summary>
 public sealed class RequestActivity
 {
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private RequestActivity()
+    {
+    }
+
     private RequestActivity(
         Guid requestId, ActivityType type, Guid? actorId, Guid? taskId, RequestStage? stage, string? body, DateTimeOffset now)
     {
