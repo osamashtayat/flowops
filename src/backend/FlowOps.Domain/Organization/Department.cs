@@ -21,6 +21,13 @@ public sealed class Department
         CreatedAt = now;
     }
 
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private Department()
+    {
+        Name = "";
+        Code = "";
+    }
+
     public Guid Id { get; private set; }
 
     public string Name { get; private set; }

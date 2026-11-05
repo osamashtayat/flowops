@@ -22,6 +22,9 @@ docker compose up -d db                    # PostgreSQL on 127.0.0.1:5432
 # Backend (available after task BE-01/BE-02)
 dotnet dev-certs https --trust
 dotnet ef database update --project src/backend/FlowOps.Infrastructure --startup-project src/backend/FlowOps.Api
+# First administrator (created once, must change password on first login; values from your .env)
+dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Email" "admin@flowops.local"
+dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Password" "<12+ chars, upper, lower, digit, symbol>"
 dotnet run --project src/backend/FlowOps.Api        # https://localhost:7180
 
 # Frontend

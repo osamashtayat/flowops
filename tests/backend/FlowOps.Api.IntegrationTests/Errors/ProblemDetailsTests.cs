@@ -125,6 +125,15 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
     }
 
     [Fact]
+    public async Task ValidationFailedException_Returns400WithFieldErrors()
+    {
+        using var response = await GetAsync("/test/errors/validation-failed");
+
+        var problem = await ShouldBeProblemAsync(response, 400, ErrorCodes.Validation);
+        problem.GetProperty("errors").GetProperty("newPassword")[0].GetString().ShouldBe("Passwords must have at least one digit.");
+    }
+
+    [Fact]
     public async Task UnknownRoute_Anonymous_Returns401Problem()
     {
         // Authenticated-by-default fallback policy: anonymous callers learn nothing about which routes exist.

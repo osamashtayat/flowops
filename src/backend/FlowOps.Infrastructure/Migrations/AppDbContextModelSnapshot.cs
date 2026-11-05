@@ -22,6 +22,42 @@ namespace FlowOps.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FlowOps.Domain.Organization.Department", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_departments");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ux_departments_code");
+
+                    b.ToTable("departments", (string)null);
+                });
+
             modelBuilder.Entity("FlowOps.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -38,6 +74,20 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("concurrency_stamp");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -47,6 +97,12 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_confirmed");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("lockout_enabled");
@@ -54,6 +110,14 @@ namespace FlowOps.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end");
+
+                    b.Property<Guid?>("ManagerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("manager_id");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -93,6 +157,12 @@ namespace FlowOps.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_users");
 
+                    b.HasIndex("DepartmentId")
+                        .HasDatabaseName("ix_users_department_id");
+
+                    b.HasIndex("ManagerId")
+                        .HasDatabaseName("ix_users_manager_id");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("ix_users_normalized_email");
 
@@ -100,7 +170,10 @@ namespace FlowOps.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ux_users_normalized_user_name");
 
-                    b.ToTable("users", (string)null);
+                    b.ToTable("users", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_users_manager_not_self", "manager_id <> id");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -133,6 +206,43 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasDatabaseName("ux_roles_normalized_name");
 
                     b.ToTable("roles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0193a000-0000-7000-8000-000000000001"),
+                            ConcurrencyStamp = "0193a000-0000-7000-8000-000000000001",
+                            Name = "Administrator",
+                            NormalizedName = "ADMINISTRATOR"
+                        },
+                        new
+                        {
+                            Id = new Guid("0193a000-0000-7000-8000-000000000002"),
+                            ConcurrencyStamp = "0193a000-0000-7000-8000-000000000002",
+                            Name = "Employee",
+                            NormalizedName = "EMPLOYEE"
+                        },
+                        new
+                        {
+                            Id = new Guid("0193a000-0000-7000-8000-000000000003"),
+                            ConcurrencyStamp = "0193a000-0000-7000-8000-000000000003",
+                            Name = "FinanceOfficer",
+                            NormalizedName = "FINANCEOFFICER"
+                        },
+                        new
+                        {
+                            Id = new Guid("0193a000-0000-7000-8000-000000000004"),
+                            ConcurrencyStamp = "0193a000-0000-7000-8000-000000000004",
+                            Name = "HrOfficer",
+                            NormalizedName = "HROFFICER"
+                        },
+                        new
+                        {
+                            Id = new Guid("0193a000-0000-7000-8000-000000000005"),
+                            ConcurrencyStamp = "0193a000-0000-7000-8000-000000000005",
+                            Name = "ProcurementOfficer",
+                            NormalizedName = "PROCUREMENTOFFICER"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -263,6 +373,21 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasName("pk_user_tokens");
 
                     b.ToTable("user_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("FlowOps.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.HasOne("FlowOps.Domain.Organization.Department", null)
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_users_departments_department_id");
+
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ManagerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_users_users_manager_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

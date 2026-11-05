@@ -31,7 +31,12 @@ public sealed class ThrowingController : ControllerBase
     [HttpGet("unhandled")]
     public IActionResult Unhandled() => throw new InvalidOperationException(SecretInternals);
 
+    [HttpGet("validation-failed")]
+    public IActionResult ValidationFailed() => throw ValidationFailedException.For("newPassword", "Passwords must have at least one digit.");
+
+    // Antiforgery is exercised in Auth tests; here only the model-validation pipeline is under test.
     [HttpPost("validation")]
+    [IgnoreAntiforgeryToken]
     public IActionResult Validation(SampleRequest body) => Ok(body);
 
     // Input DTOs use init properties, not positional parameters: MVC reports positional-record

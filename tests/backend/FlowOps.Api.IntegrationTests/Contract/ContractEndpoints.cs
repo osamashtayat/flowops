@@ -14,10 +14,11 @@ internal static class ContractEndpoints
     public static readonly ContractEndpoint[] All =
     [
         // §3 Auth
-        new("POST", "/api/auth/login", "/api/auth/login", """{"email":"lina@flowops.local","password":"secret"}""", Anonymous: true),
-        new("POST", "/api/auth/logout", "/api/auth/logout", null, Employee),
-        new("GET", "/api/auth/me", "/api/auth/me", null, Employee),
-        new("POST", "/api/auth/change-password", "/api/auth/change-password", """{"currentPassword":"old","newPassword":"a-long-new-password"}""", Employee),
+        // §3 is implemented (BE-05) and needs a database: behaviour is covered by Auth/AuthTests.
+        new("POST", "/api/auth/login", "/api/auth/login", """{"email":"lina@flowops.local","password":"secret"}""", Anonymous: true) { Implemented = true },
+        new("POST", "/api/auth/logout", "/api/auth/logout", null, Employee) { Implemented = true },
+        new("GET", "/api/auth/me", "/api/auth/me", null, Employee) { Implemented = true },
+        new("POST", "/api/auth/change-password", "/api/auth/change-password", """{"currentPassword":"old","newPassword":"a-long-new-password"}""", Employee) { Implemented = true },
 
         // §4 Requests
         new("POST", "/api/requests/purchase", "/api/requests/purchase",
@@ -62,6 +63,9 @@ internal static class ContractEndpoints
 internal sealed record ContractEndpoint(string Method, string Template, string Url, string? Body, params string[] Roles)
 {
     public bool Anonymous { get; init; }
+
+    /// <summary>Its feature task has landed: it no longer answers 501 and may need a database.</summary>
+    public bool Implemented { get; init; }
 
     public ContractEndpoint(string method, string template, string url, string? body, bool Anonymous)
         : this(method, template, url, body) => this.Anonymous = Anonymous;

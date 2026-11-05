@@ -112,8 +112,9 @@ FlowOps.Application/
 │                  TaskAssigneeResolver, RequestNumberGenerator (port), DTOs
 ├── Tasks/         TaskDecisionService, TaskQueryService, DTOs
 ├── Notifications/ NotificationFactory, NotificationService (read/mark), DTOs
-├── Organization/  DepartmentService, UserAdministrationService, ManagerAssignmentRules,
-│                  IIdentityAdmin (port), DTOs
+├── Organization/  AuthService, CapabilityRules, ManagerRelationship, DepartmentService,
+│                  UserAdministrationService, ManagerAssignmentRules,
+│                  IIdentitySignIn + IIdentityAdmin (ports), DTOs
 ├── Dashboard/     DashboardQueryService, DTOs
 └── DependencyInjection.cs
 ```
@@ -135,9 +136,9 @@ FlowOps.Application/
 
 ### 4.4 Infrastructure (technical adapters)
 
-`AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IAppDbContext`, entity configurations (`IEntityTypeConfiguration<T>` one per aggregate), migrations, `RequestNumberGenerator` (PostgreSQL sequence), `IdentityAdmin` (wraps `UserManager`/`RoleManager`), `SignalRRealtimePublisher`, bootstrap-admin seeding.
+`AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IAppDbContext`, entity configurations (`IEntityTypeConfiguration<T>` one per aggregate), migrations, `RequestNumberGenerator` (PostgreSQL sequence), `IdentityAdmin` (wraps `UserManager`/`RoleManager`), `IdentitySignIn` (wraps `SignInManager`), `SignalRRealtimePublisher`, bootstrap-admin seeding.
 
-Where does `ApplicationUser` live? In **Domain** (`FlowOps.Domain.Organization`) as a plain class *without* Identity base types would require duplication; pragmatic decision: `ApplicationUser : IdentityUser<Guid>` lives in **Infrastructure**, and Application/Domain refer to users through `Guid` ids and small read models (`UserRef`). `IAppDbContext` exposes `IQueryable<UserReadModel> Users` (a keyless projection) for queries. See ADR-0002.
+Where does `ApplicationUser` live? In **Domain** (`FlowOps.Domain.Organization`) as a plain class *without* Identity base types would require duplication; pragmatic decision: `ApplicationUser : IdentityUser<Guid>` lives in **Infrastructure**, and Application/Domain refer to users through `Guid` ids and small read models (`UserRef`). `IAppDbContext` exposes `IQueryable<UserReadModel> Users` and `IQueryable<UserRoleReadModel> UserRoles` (LINQ projections over the Identity tables, composable and translated to SQL) for queries. See ADR-0002.
 
 ---
 
