@@ -23,6 +23,7 @@ builder.Services
     .AddControllers(options =>
     {
         options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
+        options.ModelMetadataDetailsProviders.Add(new CamelCaseQueryNames());
         options.Filters.Add<ValidateAntiforgeryFilter>();
     })
     .AddJsonOptions(options => JsonSetup.Configure(options.JsonSerializerOptions));

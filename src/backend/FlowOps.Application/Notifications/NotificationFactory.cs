@@ -23,6 +23,22 @@ public static class NotificationFactory
             Notification.Create(recipient, NotificationType.TaskAssigned, title, body, request.Id, task.Id, now));
     }
 
+    /// <summary>
+    /// A comment on a request. Recipients are chosen by the caller (WORKFLOWS.md §1.4). The text itself is not repeated:
+    /// recipients read it on the request, where visibility rules apply.
+    /// </summary>
+    public static IEnumerable<Notification> CommentAdded(
+        Request request, RequestActivity comment, string authorName, IEnumerable<Guid> recipients, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(comment);
+        ArgumentNullException.ThrowIfNull(recipients);
+        var title = $"New comment on {request.Number}";
+        var body = $"{authorName} commented on {Title(request)}.";
+        return recipients.Where(r => r != comment.ActorId).Distinct().Select(recipient =>
+            Notification.Create(recipient, NotificationType.CommentAdded, title, body, request.Id, taskId: null, now));
+    }
+
     private static string TypeLabel(Request request) => request.Type == RequestType.Leave ? "leave request" : "purchase request";
 
     private static string Title(Request request) => request.Leave is { } leave

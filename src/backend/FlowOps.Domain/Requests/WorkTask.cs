@@ -1,3 +1,4 @@
+using FlowOps.Domain.Common;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using FlowOps.Domain.Errors;
@@ -17,7 +18,7 @@ public sealed class WorkTask
 
     private WorkTask(Guid requestId, ProcessStep step, Assignee assignee, DateTimeOffset now)
     {
-        Id = Guid.CreateVersion7(now);
+        Id = SequentialGuid.NewV7(now);
         RequestId = requestId;
         Kind = step.Kind;
         Stage = step.Stage;

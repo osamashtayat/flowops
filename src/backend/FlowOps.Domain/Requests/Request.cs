@@ -30,7 +30,7 @@ public sealed class Request
             throw new ArgumentException("A request needs a department.", nameof(departmentId));
         }
 
-        Id = Guid.CreateVersion7(now);
+        Id = SequentialGuid.NewV7(now);
         Number = number;
         Type = type;
         RequesterId = requesterId;

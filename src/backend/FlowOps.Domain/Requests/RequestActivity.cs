@@ -1,3 +1,4 @@
+using FlowOps.Domain.Common;
 namespace FlowOps.Domain.Requests;
 
 /// <summary>Append-only audit entry on a request (I9). Never updated or deleted.</summary>
@@ -11,7 +12,7 @@ public sealed class RequestActivity
     private RequestActivity(
         Guid requestId, ActivityType type, Guid? actorId, Guid? taskId, RequestStage? stage, string? body, DateTimeOffset now)
     {
-        Id = Guid.CreateVersion7(now);
+        Id = SequentialGuid.NewV7(now);
         RequestId = requestId;
         Type = type;
         ActorId = actorId;

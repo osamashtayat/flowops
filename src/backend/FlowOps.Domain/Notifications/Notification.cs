@@ -21,7 +21,7 @@ public sealed class Notification
     private Notification(
         Guid recipientId, NotificationType type, string title, string body, Guid? requestId, Guid? taskId, DateTimeOffset now)
     {
-        Id = Guid.CreateVersion7(now);
+        Id = SequentialGuid.NewV7(now);
         RecipientId = recipientId;
         Type = type;
         Title = title;

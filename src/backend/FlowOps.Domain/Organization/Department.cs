@@ -14,7 +14,7 @@ public sealed class Department
 
     private Department(string name, string code, DateTimeOffset now)
     {
-        Id = Guid.CreateVersion7(now);
+        Id = SequentialGuid.NewV7(now);
         Name = name;
         Code = code;
         IsActive = true;

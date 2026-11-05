@@ -41,6 +41,20 @@ public static class TaskEligibility
                 (r, t) => new DecidableTask { Request = r, Task = t });
     }
 
+    /// <summary>
+    /// The users who may decide a task assigned to <paramref name="assigneeUserId"/> or <paramref name="assigneeRole"/> on a
+    /// request by <paramref name="requesterId"/>: active, assigned (the user, or a holder of the role), not the requester.
+    /// Used to address notifications (WORKFLOWS.md §1.4); the same three conditions as <see cref="FailureCode"/>.
+    /// </summary>
+    public static IQueryable<Guid> EligibleDeciders(IAppDbContext db, Guid? assigneeUserId, string? assigneeRole, Guid requesterId)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        return db.Users
+            .Where(u => u.IsActive && u.Id != requesterId)
+            .Where(u => u.Id == assigneeUserId || (assigneeRole != null && db.UserRoles.Any(r => r.UserId == u.Id && r.RoleName == assigneeRole)))
+            .Select(u => u.Id);
+    }
+
     /// <summary>Why <paramref name="me"/> may not decide <paramref name="task"/> of a request by <paramref name="requesterId"/>, or <c>null</c>.</summary>
     public static string? FailureCode(Guid requesterId, WorkTask task, AccessContext me)
     {

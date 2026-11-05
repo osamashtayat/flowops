@@ -119,7 +119,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-08, BE-09. **AC:** server-side requester/department; 422s for missing manager/department; one transaction; returns `RequestDetailsDto` 201 with `Location`.
 - **Tests:** `TESTING.md` §3.2 submission rows; validation limits (boundary values); company-TZ "today".
 
-### BE-11 — Request queries & comments · `Todo`
+### BE-11 — Request queries & comments · `Done`
 - **Objective:** `GET /requests`, `/requests/{id}`, `/activity`, `POST /comments`; `availableActions` via `TaskEligibility`; leave-reason masking.
 - **Deps:** BE-10. **AC:** projections only (no entity graphs to DTO in memory); filters/search/paging; 404 for invisible.
 - **Tests:** `TESTING.md` §3.3 visibility rows; reason masking; comment notifications.
