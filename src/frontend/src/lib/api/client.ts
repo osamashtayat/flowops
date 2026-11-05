@@ -5,8 +5,7 @@ import type { paths } from './schema'
 /**
  * Antiforgery: the server sets this cookie (and refreshes it on GET /api/auth/me); unsafe requests
  * must echo it in the header (docs/API_CONTRACT.md, ADR-0003).
- * NOTE: the cookie name is the ASP.NET Core convention. The contract does not name it; confirm it
- * when BE-05 lands and change this one constant if it differs.
+ * The names match the backend's AuthorizationSetup (BE-05).
  */
 export const XSRF_COOKIE_NAME = 'XSRF-TOKEN'
 export const XSRF_HEADER_NAME = 'X-XSRF-TOKEN'

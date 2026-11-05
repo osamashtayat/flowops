@@ -9,6 +9,7 @@ import type {
   UnreadCountDto,
   ValidationProblemDetails,
 } from '@/lib/api/types'
+import { currentActor } from './actor'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
   MOCK_LOCKED_OUT_EMAIL,
@@ -61,18 +62,14 @@ function currentUser(key: MockUserKey): CurrentUserDto {
   return { ...user, mustChangePassword: user.mustChangePassword && !hasChangedMockPassword(key) }
 }
 
-const OPEN_TASKS: Partial<Record<MockUserKey, { count: number; stage: InboxItemDto['stage'] }>> = {
-  manager: { count: 3, stage: 'ManagerApproval' },
-  finance: { count: 5, stage: 'FinanceApproval' },
-}
-
-function inboxItems(key: MockUserKey): InboxItemDto[] {
-  const open = OPEN_TASKS[key]
-  if (!open) return []
-  return Array.from({ length: open.count }, (_, index) => ({
+function inboxItems(user: CurrentUserDto): InboxItemDto[] {
+  const finance = user.roles.includes('FinanceOfficer')
+  const count = finance ? 5 : 3
+  const stage: InboxItemDto['stage'] = finance ? 'FinanceApproval' : 'ManagerApproval'
+  return Array.from({ length: count }, (_, index) => ({
     taskId: `7a1e0000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
     kind: 'Approval',
-    stage: open.stage,
+    stage,
     createdAt: new Date(Date.UTC(2026, 10, 2 + index)).toISOString(),
     version: `v${index + 1}`,
     status: 'Open',
@@ -86,7 +83,7 @@ function inboxItems(key: MockUserKey): InboxItemDto[] {
       requester: { id: MOCK_USERS.employee.id, displayName: MOCK_USERS.employee.displayName },
       department: { id: '3f0c5a2e-0000-4000-8000-000000000001', name: 'Engineering' },
       status: 'InReview',
-      stage: open.stage,
+      stage,
       submittedAt: new Date(Date.UTC(2026, 10, 2 + index)).toISOString(),
       closedAt: null,
       keyDetail: '1,250.500 JOD',
@@ -97,7 +94,8 @@ function inboxItems(key: MockUserKey): InboxItemDto[] {
 /** Every handler may answer with its success body or a problem; the generics keep both typed. */
 type Failure = ProblemDetails | ValidationProblemDetails
 
-export const handlers = [
+/** Sign-in endpoints. Tests use these; the dev browser talks to the real API for them instead. */
+export const authHandlers = [
   http.get<never, never, CurrentUserDto | Failure>('/api/auth/me', () => {
     const key = getMockUserKey()
     if (!key) return problem(401, 'auth.unauthenticated')
@@ -139,10 +137,14 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get<never, never, PagedInboxItems | Failure>('/api/tasks', ({ request }) => {
-    const key = getMockUserKey()
-    if (!key) return problem(401, 'auth.unauthenticated')
-    if (!MOCK_USERS[key].capabilities.includes('tasks.view')) return problem(403, 'auth.forbidden')
+]
+
+/** Endpoints whose backend task isn't merged yet. They stay mocked in dev. */
+export const dataHandlers = [
+  http.get<never, never, PagedInboxItems | Failure>('/api/tasks', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    if (!user.capabilities.includes('tasks.view')) return problem(403, 'auth.forbidden')
     const url = new URL(request.url)
     // The generated client sends the names as openapi.json spells them (`Page`, `PageSize`,
     // `Status`); ASP.NET binds case-insensitively, so the mock does too.
@@ -150,7 +152,7 @@ export const handlers = [
       [...url.searchParams].find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? null
     const page = Number(query('page') ?? 1)
     const pageSize = Number(query('pageSize') ?? 20)
-    const open = query('status') === 'Done' ? [] : inboxItems(key)
+    const open = query('status') === 'Done' ? [] : inboxItems(user)
     const body: PagedInboxItems = {
       items: open.slice((page - 1) * pageSize, page * pageSize),
       page,
@@ -160,9 +162,11 @@ export const handlers = [
     return HttpResponse.json(body)
   }),
 
-  http.get<never, never, UnreadCountDto | Failure>('/api/notifications/unread-count', () => {
-    const key = getMockUserKey()
-    if (!key) return problem(401, 'auth.unauthenticated')
-    return HttpResponse.json({ count: key === 'employee' ? 2 : 0 })
+  http.get<never, never, UnreadCountDto | Failure>('/api/notifications/unread-count', async () => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    return HttpResponse.json({ count: user.roles.includes('Employee') && !user.capabilities.includes('tasks.view') ? 2 : 0 })
   }),
 ]
+
+export const handlers = [...authHandlers, ...dataHandlers]
