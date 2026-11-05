@@ -163,7 +163,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §2, §4.1, §4.9; `useSession`, `useCapability`, `RequireCapability`.
 - **Deps:** FE-01, FE-02. **Tests:** `TESTING.md` §3.6 session rows.
 
-### FE-04 — App shell & capability navigation · `Todo`
+### FE-04 — App shell & capability navigation · `Done`
 - **Objective:** real `AppShell`, `Sidebar` (+ drawer < 1024 px), `TopBar` (bell placeholder, user menu, logout), skip link.
 - **Deps:** FE-03. **Tests:** nav items per capability set; keyboard navigation of drawer.
 

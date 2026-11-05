@@ -16,8 +16,13 @@ const root = createRoot(rootElement)
  */
 async function enableMocking() {
   if (!import.meta.env.DEV || import.meta.env.VITE_API_MOCKS === 'off') return
-  const { startMockApi } = await import('@/mocks/browser')
-  await startMockApi()
+  try {
+    const { startMockApi } = await import('@/mocks/browser')
+    await startMockApi()
+  } catch (error) {
+    // e.g. a browser that blocks service workers: show the app anyway (it will reach the real API).
+    console.error('Could not start the mock API; continuing without it.', error)
+  }
 }
 
 void enableMocking().then(() => {

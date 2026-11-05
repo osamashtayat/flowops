@@ -13,6 +13,11 @@ export interface DialogProps {
   description?: ReactNode
   /** 480 px "confirm" or 640 px "form" panel; both become a full-screen sheet below 640 px. */
   size?: 'confirm' | 'form'
+  /**
+   * `center` (default) is a modal in the middle of the screen. `start` is a full-height panel on
+   * the leading edge — the mobile navigation drawer — with the same focus handling.
+   */
+  placement?: 'center' | 'start'
   /** Set false while a request is running, so the dialog cannot vanish mid-action. */
   dismissible?: boolean
   /** Buttons row, right-aligned. */
@@ -34,6 +39,7 @@ export function Dialog({
   title,
   description,
   size = 'confirm',
+  placement = 'center',
   dismissible = true,
   footer,
   children,
@@ -88,7 +94,10 @@ export function Dialog({
   return createPortal(
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- backdrop click is a pointer convenience; the keyboard paths are Esc and the Close button.
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 p-4 max-sm:p-0"
+      className={cn(
+        'fixed inset-0 z-40 flex bg-ink/40',
+        placement === 'center' ? 'items-center justify-center p-4 max-sm:p-0' : 'items-stretch justify-start',
+      )}
       onMouseDown={(event) => {
         if (dismissible && event.target === event.currentTarget) onClose()
       }}
@@ -104,9 +113,14 @@ export function Dialog({
         className={cn(
           // <dialog> is opened with the `open` attribute (not showModal) so we own focus and layering;
           // reset the UA's absolute positioning, border and padding.
-          'static m-0 flex max-h-full w-full flex-col rounded-lg border-0 bg-surface p-0 text-ink shadow-overlay',
-          size === 'confirm' ? 'max-w-120' : 'max-w-160',
-          'max-sm:h-full max-sm:max-w-none max-sm:rounded-none',
+          'static m-0 flex w-full flex-col border-0 p-0 text-ink shadow-overlay',
+          placement === 'center'
+            ? [
+                'max-h-full rounded-lg bg-surface',
+                size === 'confirm' ? 'max-w-120' : 'max-w-160',
+                'max-sm:h-full max-sm:max-w-none max-sm:rounded-none',
+              ].join(' ')
+            : 'h-full max-w-72 rounded-none bg-sidebar',
         )}
       >
         <header className="flex items-start justify-between gap-4 px-5 pt-5">
