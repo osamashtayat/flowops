@@ -73,14 +73,25 @@ public sealed class WorkTask
         }
     }
 
-    /// <summary>Valid (Kind, action) pairs: Approval → Approve/Reject; Fulfillment → Fulfill.</summary>
-    internal WorkTaskOutcome OutcomeFor(TaskDecisionAction action) => (Kind, action) switch
+    private static readonly TaskDecisionAction[] ApprovalActions = [TaskDecisionAction.Approve, TaskDecisionAction.Reject];
+    private static readonly TaskDecisionAction[] FulfillmentActions = [TaskDecisionAction.Fulfill];
+
+    /// <summary>The actions valid for this task's kind: Approval → Approve/Reject; Fulfillment → Fulfill.</summary>
+    public IReadOnlyList<TaskDecisionAction> AllowedActions => Kind switch
     {
-        (WorkTaskKind.Approval, TaskDecisionAction.Approve) => WorkTaskOutcome.Approved,
-        (WorkTaskKind.Approval, TaskDecisionAction.Reject) => WorkTaskOutcome.Rejected,
-        (WorkTaskKind.Fulfillment, TaskDecisionAction.Fulfill) => WorkTaskOutcome.Fulfilled,
-        _ => throw DomainErrors.TaskInvalidAction(Kind, action),
+        WorkTaskKind.Approval => ApprovalActions,
+        WorkTaskKind.Fulfillment => FulfillmentActions,
+        _ => [],
     };
+
+    internal WorkTaskOutcome OutcomeFor(TaskDecisionAction action) => AllowedActions.Contains(action)
+        ? action switch
+        {
+            TaskDecisionAction.Approve => WorkTaskOutcome.Approved,
+            TaskDecisionAction.Reject => WorkTaskOutcome.Rejected,
+            _ => WorkTaskOutcome.Fulfilled,
+        }
+        : throw DomainErrors.TaskInvalidAction(Kind, action);
 
     internal void Complete(WorkTaskOutcome outcome, string? comment, Guid actorId, DateTimeOffset now)
     {

@@ -128,6 +128,18 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 - U is active
 - U is not the requester (I2)
 
+**As built (BE-09)** — `Application/Access/`:
+- **`AccessRules`** (scoped):
+  - `ContextForAsync(userId)` builds `AccessContext { UserId, Roles, IsActive }` **from the database**, so resource checks are never as stale as session claims (§6).
+  - `VisibleTo(requests, me)` is one SQL statement (`EXISTS` subqueries for R2/R3) and works on tracked or untracked queries, with or without includes. An inactive or unknown user sees nothing.
+  - `CanViewAsync(id, me)` is `VisibleTo(...).AnyAsync(id)`.
+- **`TaskEligibility`** (static):
+  - `AssignedTo(me)` is the T1/T2 expression. The in-memory check compiles the same expression, so SQL and memory cannot drift.
+  - `DecidableBy(requests, me)` lists open tasks the caller may decide now (inbox "Open"), excluding their own requests.
+  - `FailureCode` / `EnsureCanDecide` check in this order: not assigned or inactive → `task.not_eligible`; then the requester → `task.self_decision`.
+  - `AvailableActions(request, me)` returns the open task's `WorkTask.AllowedActions` plus its `version`, or `null`.
+  - Open/current/already-decided stay the domain's 409s: a late decider gets `task.already_decided`, not 403.
+
 **Response codes**
 - Request not visible → **404** (do not reveal existence).
 - Visible but action not permitted → **403** with a `code`.

@@ -1,3 +1,4 @@
+using FlowOps.Application.Access;
 using FlowOps.Application.Organization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +12,7 @@ public static class DependencyInjection
     {
         // All time comes from TimeProvider so tests can substitute FakeTimeProvider (TESTING.md §2).
         services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<AccessRules>();
         services.AddScoped<AuthService>();
         services.AddScoped<DepartmentService>();
         services.AddScoped<UserAdministrationService>();

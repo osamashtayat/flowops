@@ -62,6 +62,19 @@ public sealed class DecisionGuardTests
     }
 
     [Fact]
+    public void AllowedActions_FollowTheTaskKind()
+    {
+        var request = SubmitPurchase();
+        request.OpenTask!.AllowedActions.ShouldBe([TaskDecisionAction.Approve, TaskDecisionAction.Reject]);
+
+        request.ApproveCurrent(Manager);
+        request.ApproveCurrent(FinanceOfficer);
+
+        request.OpenTask!.Kind.ShouldBe(WorkTaskKind.Fulfillment);
+        request.OpenTask!.AllowedActions.ShouldBe([TaskDecisionAction.Fulfill]);
+    }
+
+    [Fact]
     public void Reject_FulfillmentTask_ThrowsInvalidAction()
     {
         var request = SubmitPurchase();
