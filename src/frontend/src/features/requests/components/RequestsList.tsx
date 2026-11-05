@@ -68,7 +68,10 @@ export function RequestsList({ scope, caption }: RequestsListProps) {
   const clear = useCallback(() => setUrl({ status: '', type: '', search: '' }), [setUrl])
   const change = useCallback((patch: Partial<RequestFilterValues>) => setUrl(patch), [setUrl])
 
-  const empty = hasFilters ? (
+  const pastTheEnd = (query.data?.totalCount ?? 0) > 0 && url.page > 1
+  const empty = pastTheEnd ? (
+    <EmptyState message="This page is past the end of the list." action={<Button variant="secondary" onClick={() => setUrl({ page: 1 })}>Go to the first page</Button>} />
+  ) : hasFilters ? (
     <EmptyState message="No requests match these filters." action={<Button variant="secondary" onClick={clear}>Clear filters</Button>} />
   ) : scope === 'mine' ? (
     <EmptyState

@@ -138,6 +138,14 @@ describe('My requests', () => {
     await waitFor(() => expect(router.state.location.search).toBe('?status=InReview'))
   })
 
+  it('says so when the page is past the end, instead of "no requests"', async () => {
+    const { router } = renderRoutes(routes, '/requests?page=99')
+    expect(await screen.findByText('This page is past the end of the list.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Go to the first page' }))
+    await waitFor(() => expect(router.state.location.search).toBe(''))
+    expect(await table('My requests')).toBeInTheDocument()
+  })
+
   it('finds a request by a number prefix', async () => {
     renderRoutes(routes, '/requests?search=FO-2026-000800')
     const grid = await table('My requests')
