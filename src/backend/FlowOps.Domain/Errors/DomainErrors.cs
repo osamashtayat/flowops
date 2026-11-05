@@ -1,0 +1,30 @@
+using FlowOps.Domain.Requests;
+
+namespace FlowOps.Domain.Errors;
+
+/// <summary>The one place each domain error's code and message are defined.</summary>
+public static class DomainErrors
+{
+    public static DomainException Validation(string message) => new(ErrorCodes.Validation, message);
+
+    public static DomainException TaskNotFound() =>
+        new(ErrorCodes.NotFound, "The task does not belong to this request.");
+
+    public static DomainException RequestClosed() =>
+        new(ErrorCodes.RequestClosed, "The request is closed and can no longer change.");
+
+    public static DomainException TaskAlreadyDecided() =>
+        new(ErrorCodes.TaskAlreadyDecided, "This task was already handled.");
+
+    public static DomainException TaskNotCurrent() =>
+        new(ErrorCodes.TaskNotCurrent, "This task is not the current step of the request.");
+
+    public static DomainException TaskInvalidAction(WorkTaskKind kind, TaskDecisionAction action) =>
+        new(ErrorCodes.TaskInvalidAction, $"'{action}' is not a valid action for a {kind} task.");
+
+    public static DomainException SelfDecision() =>
+        new(ErrorCodes.TaskSelfDecision, "You cannot decide a task on your own request.");
+
+    public static DomainException ManagerNotAssigned() =>
+        new(ErrorCodes.RequestManagerNotAssigned, "The requester has no manager who can approve this request.");
+}

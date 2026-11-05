@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/FlowOps.Api/FlowOps.Api.csproj" />
+    <Project Path="src/backend/FlowOps.Application/FlowOps.Application.csproj" />
+    <Project Path="src/backend/FlowOps.Domain/FlowOps.Domain.csproj" />
+    <Project Path="src/backend/FlowOps.Infrastructure/FlowOps.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/backend/">
+    <Project Path="tests/backend/FlowOps.Api.IntegrationTests/FlowOps.Api.IntegrationTests.csproj" />
+    <Project Path="tests/backend/FlowOps.Domain.Tests/FlowOps.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

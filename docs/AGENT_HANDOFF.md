@@ -70,7 +70,6 @@ Use this list for cross-lane requests that can't be resolved inside one task. Re
 
 | Date | From | Item | Status |
 |---|---|---|---|
-| 2026-11-05 | Architecture | Backend scaffold not built in the architecture session: .NET SDK/NuGet were unreachable in that environment. BE-01 must create and verify it. | Open |
 
 ## 7. Ready-to-use prompts for the first sessions
 

@@ -63,14 +63,14 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** architecture test asserting the dependency table (can use reflection over referenced assemblies).
 - **Parallel:** with BE-06 once projects exist.
 
-### BE-02 — Persistence foundation and error pipeline · `Todo`
+### BE-02 — Persistence foundation and error pipeline · `Done`
 - **Objective:** `AppDbContext` (Identity), Npgsql, snake_case naming, migrations workflow, `IAppDbContext`, global exception→ProblemDetails handler, `ICurrentUser`, `TimeProvider`.
 - **Deps:** BE-01. **Modules:** Infrastructure/Persistence, Application/Common, Api/Errors, Api/Auth.
 - **AC:** `docker compose up -d db` + `dotnet ef database update` creates schema; exception types map to the statuses in `API_CONTRACT.md` §2 with `code` and `traceId`; unhandled → 500 without internals; connection string from env/user-secrets only.
 - **Tests:** unit tests for the exception→status mapping table.
 - **Parallel:** BE-06.
 
-### BE-03 — API contract skeleton + OpenAPI export · `Todo`
+### BE-03 — API contract skeleton + OpenAPI export · `Done`
 - **Objective:** make `API_CONTRACT.md` executable: every request/response DTO and every controller action with correct routes, `[ProducesResponseType]`s, and policies, each action returning `501 Not Implemented` until its feature task lands. Export `contracts/openapi.json` via build-time generation (`Microsoft.Extensions.ApiDescription.Server`) and a `scripts/export-openapi.sh` wrapper.
 - **Deps:** BE-02. **Modules:** Api/Controllers, Application/*/Dtos.
 - **AC:** `contracts/openapi.json` contains all endpoints in `API_CONTRACT.md` §3–8 with enums as strings and `version`/money amount as strings; script is deterministic (re-run gives identical file).
@@ -88,7 +88,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **AC:** 401 JSON (no redirects); lockout 5/15 min; XSRF cookie issued + enforced on unsafe methods; bootstrap admin created once from config; roles seeded.
 - **Tests:** login success/failure/lockout; 401 shape; XSRF missing → rejected; must-change-password gate; capabilities per role combo (incl. derived `isManager`→`tasks.view`).
 
-### BE-06 — Domain core: Request aggregate & fixed processes · `Todo`
+### BE-06 — Domain core: Request aggregate & fixed processes · `Done`
 - **Objective:** everything in `DOMAIN_MODEL.md` §2–5 as pure C# (no EF attributes).
 - **Deps:** BE-01. **Modules:** FlowOps.Domain only.
 - **AC:** all invariants I2–I9 enforced in the aggregate; no public setters on state; `FixedProcesses` is the only place step order exists.

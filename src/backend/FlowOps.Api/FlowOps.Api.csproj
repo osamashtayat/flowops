@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Local secrets (connection string, bootstrap admin) live in dotnet user-secrets, never in appsettings. -->
+    <UserSecretsId>flowops-api</UserSecretsId>
+  </PropertyGroup>
+
+  <!--
+    Build-time OpenAPI export, off by default so ordinary builds never touch contracts/.
+    scripts/export-openapi.sh turns it on and writes contracts/openapi.json.
+  -->
+  <PropertyGroup>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../../contracts</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Infrastructure is referenced only for composition-root DI registration (ARCHITECTURE.md §3). -->
+  <ItemGroup>
+    <ProjectReference Include="..\FlowOps.Application\FlowOps.Application.csproj" />
+    <ProjectReference Include="..\FlowOps.Infrastructure\FlowOps.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+using FlowOps.Domain.Errors;
+using FlowOps.Domain.Organization;
+using static FlowOps.Domain.Tests.TestOrg;
+
+namespace FlowOps.Domain.Tests.Organization;
+
+public sealed class DepartmentTests
+{
+    [Fact]
+    public void Create_NormalizesCodeAndStartsActive()
+    {
+        var department = Department.Create(" Sales ", " sales-01 ", T0);
+
+        department.Name.ShouldBe("Sales");
+        department.Code.ShouldBe("SALES-01");
+        department.IsActive.ShouldBeTrue();
+        department.CreatedAt.ShouldBe(T0);
+    }
+
+    [Theory]
+    [InlineData("Sales", "SA LES")]
+    [InlineData("Sales", "SALES_1")]
+    [InlineData("Sales", "")]
+    [InlineData("", "SALES")]
+    [InlineData("Sales", "ABCDEFGHIJKLMNOPQ")]
+    public void Create_Invalid_ThrowsValidation(string name, string code) =>
+        ShouldFailWith(() => Department.Create(name, code, T0), ErrorCodes.Validation);
+}
