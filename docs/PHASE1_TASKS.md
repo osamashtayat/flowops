@@ -179,7 +179,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.4. **Deps:** FE-04, FE-02, FE-06 (+ BE-10 for real integration).
 - **Tests:** `TESTING.md` §3.6 form rows.
 
-### FE-08 — My requests & Team requests · `Todo`
+### FE-08 — My requests & Team requests · `Done` (against MSW mocks; real integration waits for BE-11)
 - **Objective:** `UI_SPEC.md` §4.3. **Deps:** FE-04, FE-05 (+ BE-11).
 
 ### FE-09 — Request details · `Todo`

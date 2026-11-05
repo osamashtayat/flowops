@@ -6,7 +6,7 @@ import { createQueryClient, shouldRetryQuery } from './queryClient'
 const apiError = (status: number) => new ApiError({ status, code: 'x' })
 
 describe('query retry rule', () => {
-  it.each([400, 401, 403, 404, 409, 422, 423])('never retries a %i', (status) => {
+  it.each([400, 401, 403, 404, 409, 422, 429])('never retries a %i', (status) => {
     expect(shouldRetryQuery(0, apiError(status))).toBe(false)
   })
 

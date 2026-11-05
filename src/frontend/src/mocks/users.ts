@@ -7,7 +7,7 @@ import type { CurrentUserDto } from '@/lib/api/types'
  * an administrator has `admin.manage` and no process authority.
  */
 export const MOCK_PASSWORD = 'mock-password-1234'
-export const MOCK_LOCKED_OUT_EMAIL = 'locked@flowops.test'
+export const MOCK_RATE_LIMITED_EMAIL = 'ratelimited@flowops.test'
 
 export type MockUserKey = 'employee' | 'manager' | 'finance' | 'admin' | 'newHire'
 

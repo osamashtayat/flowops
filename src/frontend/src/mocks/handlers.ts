@@ -5,6 +5,7 @@ import type {
   InboxItemDto,
   LoginRequest,
   PagedInboxItems,
+  PagedRequestSummaries,
   RequestDetailsDto,
   SubmitLeaveRequest,
   SubmitPurchaseRequest,
@@ -13,10 +14,10 @@ import type {
   ValidationProblemDetails,
 } from '@/lib/api/types'
 import { currentActor } from './actor'
-import { addMockLeave, addMockPurchase } from './requestStore'
+import { addMockLeave, addMockPurchase, listMockRequests } from './requestStore'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
-  MOCK_LOCKED_OUT_EMAIL,
+  MOCK_RATE_LIMITED_EMAIL,
   MOCK_PASSWORD,
   MOCK_USERS,
   mockUserByEmail,
@@ -113,7 +114,7 @@ export const authHandlers = [
     if (!email || !body.password) {
       return validationProblem({ [email ? 'password' : 'email']: ['This field is required.'] })
     }
-    if (email.trim().toLowerCase() === MOCK_LOCKED_OUT_EMAIL) return problem(423, 'auth.locked_out')
+    if (email.trim().toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return problem(429, 'auth.rate_limited')
     const key = mockUserByEmail(email)
     if (!key || body.password !== MOCK_PASSWORD) return problem(401, 'auth.invalid_credentials')
     setMockUser(key)
@@ -144,6 +145,15 @@ export const authHandlers = [
 ]
 
 /** Endpoints whose backend task isn't merged yet. They stay mocked in dev. */
+/**
+ * A query parameter by name, ignoring case: the generated client sends the names as openapi.json
+ * spells them (`Page`, `PageSize`, `Status`) and ASP.NET binds case-insensitively, so the mock does too.
+ */
+function queryParam(request: Request) {
+  const params = [...new URL(request.url).searchParams]
+  return (name: string) => params.find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? null
+}
+
 /** Submitting needs a department and a manager (API_CONTRACT §4: 422 otherwise). */
 function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | null {
   if (!user.capabilities.includes('requests.submit')) return problem(403, 'auth.forbidden')
@@ -153,6 +163,25 @@ function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | n
 }
 
 export const dataHandlers = [
+  http.get<never, never, PagedRequestSummaries | Failure>('/api/requests', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const query = queryParam(request)
+    const scope = query('scope') === 'visible' ? 'visible' : 'mine'
+    // `visible` is for managers and officers (the Team requests page); everyone else sees their own.
+    if (scope === 'visible' && !user.capabilities.includes('tasks.view')) return problem(403, 'auth.forbidden')
+    return HttpResponse.json(
+      listMockRequests(user, {
+        scope,
+        status: query('status'),
+        type: query('type'),
+        search: query('search'),
+        page: Number(query('page') ?? 1),
+        pageSize: Number(query('pageSize') ?? 20),
+      }),
+    )
+  }),
+
   http.post<never, SubmitPurchaseRequest, RequestDetailsDto | Failure>('/api/requests/purchase', async ({ request }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
@@ -173,11 +202,7 @@ export const dataHandlers = [
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
     if (!user.capabilities.includes('tasks.view')) return problem(403, 'auth.forbidden')
-    const url = new URL(request.url)
-    // The generated client sends the names as openapi.json spells them (`Page`, `PageSize`,
-    // `Status`); ASP.NET binds case-insensitively, so the mock does too.
-    const query = (name: string) =>
-      [...url.searchParams].find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? null
+    const query = queryParam(request)
     const page = Number(query('page') ?? 1)
     const pageSize = Number(query('pageSize') ?? 20)
     const open = query('status') === 'Done' ? [] : inboxItems(user)

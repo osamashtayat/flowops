@@ -70,7 +70,6 @@ Use this list for cross-lane requests that can't be resolved inside one task. Re
 
 | Date | From | Item | Status |
 |---|---|---|---|
-| 2026-11-06 | Backend (BE-05 follow-up) | **Login: 423 is gone; 429 is new.** A locked-out account now gets `401 auth.invalid_credentials`, same as a wrong password. Frontend: remove the 423 / `auth.locked_out` handling (`lib/api/problem.ts`, mocks, `session.test.tsx`, `queryClient.test.ts`, UI_SPEC §login). Change the 401 login message so it mentions the pause, e.g. "Email or password is incorrect. After 5 failed attempts, sign-in is paused for 15 minutes." Add `auth.rate_limited` (429, with `Retry-After`) to `problem.ts`, e.g. "Too many sign-in attempts. Please wait a few minutes and try again." Then run `npm run api:types`. | Open |
 
 ## 7. Ready-to-use prompts for the first sessions
 

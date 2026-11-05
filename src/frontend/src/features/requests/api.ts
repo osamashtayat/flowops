@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
-import type { RequestDetailsDto } from '@/lib/api/types'
+import type { RequestDetailsDto, RequestScope, RequestStatus, RequestType } from '@/lib/api/types'
 import type { LeaveValues, PurchaseValues } from './schemas'
 
 /** A submitted request changes the lists, the dashboard counts and (for the manager) their inbox. */
@@ -55,5 +55,38 @@ export function useSubmitLeave() {
         }),
       ),
     onSuccess: refresh,
+  })
+}
+
+export type RequestListParams = {
+  scope: RequestScope
+  status: RequestStatus | ''
+  type: RequestType | ''
+  search: string
+  page: number
+  pageSize: number
+}
+
+/** `GET /api/requests`. Empty filters are left out of the query; the previous page stays visible while the next loads. */
+export function useRequests(params: RequestListParams) {
+  return useQuery({
+    queryKey: queryKeys.requests.list(params),
+    queryFn: async () => {
+      const { data } = await api.GET('/api/requests', {
+        params: {
+          query: {
+            Scope: params.scope,
+            Status: params.status || undefined,
+            Type: params.type || undefined,
+            Search: params.search || undefined,
+            Page: params.page,
+            PageSize: params.pageSize,
+          },
+        },
+      })
+      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
+      return data
+    },
+    placeholderData: keepPreviousData,
   })
 }
