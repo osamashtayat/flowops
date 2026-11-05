@@ -12,6 +12,7 @@ import { MoneyInput } from '@/components/ui/MoneyInput'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Textarea } from '@/components/ui/Textarea'
+import { REQUEST_LIMITS, upToCharacters } from '@/features/requests/limits'
 import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
 import { moneyAmountSchema } from '@/lib/forms/money'
 import { requestStatusPresentation, type RequestStatus } from '@/lib/format/status'
@@ -20,7 +21,7 @@ const statuses: RequestStatus[] = ['InReview', 'Approved', 'Completed', 'Rejecte
 
 /** Demo-only schema; real limits live in each feature's schemas.ts and mirror docs/API_CONTRACT.md. */
 const demoSchema = z.object({
-  itemName: z.string().trim().min(1, 'Enter the item name.').max(120, 'Use 120 characters or fewer.'),
+  itemName: z.string().trim().min(1, 'Enter the item name.').max(REQUEST_LIMITS.itemNameMax, `Use ${REQUEST_LIMITS.itemNameMax} characters or fewer.`),
   leaveType: z.enum(['Annual', 'Sick', 'Unpaid', 'Other'], { error: 'Choose a leave type.' }),
   startDate: z.string().min(1, 'Choose a start date.'),
   cost: moneyAmountSchema,
@@ -76,7 +77,7 @@ export function FoundationPage() {
           onSubmit={(event) => void handleSubmit(() => undefined)(event)}
           className="grid max-w-2xl gap-5"
         >
-          <FormField label="Item name" required helperText="Up to 120 characters." error={fieldError(errors, 'itemName')}>
+          <FormField label="Item name" required helperText={upToCharacters(REQUEST_LIMITS.itemNameMax)} error={fieldError(errors, 'itemName')}>
             {(c) => <Input {...c} {...register('itemName')} />}
           </FormField>
 

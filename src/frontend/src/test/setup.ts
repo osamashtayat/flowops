@@ -1,9 +1,16 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { server } from '@/mocks/server'
+import { resetMockState } from '@/mocks/state'
+
+// Unhandled requests fail the test: a component must never reach the network unexpectedly.
+beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 
 afterEach(() => {
   cleanup()
+  server.resetHandlers()
+  resetMockState()
 })
 
-// FE-01 adds the MSW server (typed handlers from schema.d.ts) here.
+afterAll(() => server.close())

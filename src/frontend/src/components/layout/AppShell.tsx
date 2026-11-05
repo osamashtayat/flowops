@@ -1,31 +1,44 @@
-import type { ReactNode } from 'react'
-import { Outlet } from 'react-router'
+import { useState } from 'react'
+import { Outlet, useLocation } from 'react-router'
+import { Dialog } from '@/components/ui/Dialog'
+import { Sidebar } from './Sidebar'
+import { TopBar } from './TopBar'
 
 /**
- * Application frame: sand sidebar + ivory canvas.
- * FE-04 replaces the placeholder navigation with capability-driven items, the
- * < 1024 px drawer and the TopBar (see docs/UI_SPEC.md §3 and DESIGN_SYSTEM.md §4).
+ * Application frame (docs/DESIGN_SYSTEM.md §4): sand sidebar (fixed ≥ 1024 px, off-canvas drawer
+ * below), top bar, ivory canvas with the page content (max 1200 px).
  */
-export function AppShell({ navigation }: { navigation?: ReactNode }) {
+export function AppShell() {
+  const { pathname } = useLocation()
+  // The drawer is open only on the page where it was opened, so any navigation (a link, the back
+  // button) closes it without an effect.
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
+  const drawerOpen = openedAt === pathname
+  const setDrawerOpen = (open: boolean) => setOpenedAt(open ? pathname : null)
+
   return (
     <div className="flex min-h-dvh bg-canvas text-ink">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2"
       >
         Skip to content
       </a>
-      <aside className="hidden w-62 shrink-0 border-r border-border bg-sidebar lg:block">
-        <div className="px-5 py-5 text-lg font-semibold">FlowOps</div>
-        <nav aria-label="Main" className="px-3">
-          {navigation}
-        </nav>
+      <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 overflow-y-auto border-r border-border bg-sidebar lg:block">
+        <div className="px-6 py-5 text-lg font-semibold">FlowOps</div>
+        <Sidebar label="Main" />
       </aside>
-      <main id="main" className="min-w-0 flex-1 px-4 py-8 sm:px-8">
-        <div className="mx-auto max-w-300">
-          <Outlet />
-        </div>
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopBar onOpenMenu={() => setDrawerOpen(true)} />
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-8 sm:px-8">
+          <div className="mx-auto max-w-300">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+      <Dialog open={drawerOpen} onClose={() => setDrawerOpen(false)} title="FlowOps" placement="start">
+        <Sidebar label="Menu" onNavigate={() => setDrawerOpen(false)} />
+      </Dialog>
     </div>
   )
 }

@@ -19,9 +19,9 @@ describe('normalizeMoneyInput', () => {
 })
 
 describe('moneyAmountSchema', () => {
-  it.each(['1', '1.5', '1250.500', '0.001'])('accepts %s', (v) => expect(moneyAmountSchema.safeParse(v).success).toBe(true))
+  it.each(['0', '1', '1.5', '1250.500', '0.001', '9999999.999'])('accepts %s', (v) => expect(moneyAmountSchema.safeParse(v).success).toBe(true))
 
-  it.each(['', '.', '12.', '.5', '1.2345', 'x'])('rejects %j', (v) => {
+  it.each(['', '.', '12.', '.5', '1.2345', 'x', '012', '00', '12345678'])('rejects %j', (v) => {
     expect(isCompleteMoneyAmount(v)).toBe(false)
     expect(moneyAmountSchema.safeParse(v).success).toBe(false)
   })

@@ -1,10 +1,11 @@
+import type { RequestStatus, WorkTaskOutcome } from '@/lib/api/types'
+
 /**
  * Single source for how request/task statuses are presented (label + tone + icon).
- * Values mirror docs/API_CONTRACT.md §1. Once FE-01 generates schema.d.ts, replace these
- * local unions with the generated types — do not add values that aren't in the contract.
+ * The status values come from the generated contract types; the exhaustive switches below
+ * stop compiling if the contract gains a value that has no presentation.
  */
-export type RequestStatus = 'InReview' | 'Approved' | 'Completed' | 'Rejected'
-export type WorkTaskOutcome = 'Approved' | 'Rejected' | 'Fulfilled'
+export type { RequestStatus, WorkTaskOutcome }
 
 export type StatusTone = 'info' | 'success' | 'warning' | 'danger' | 'neutral'
 export type StatusIcon = 'clock' | 'check' | 'check-circle' | 'x-circle'

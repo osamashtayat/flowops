@@ -8,12 +8,15 @@ import { defineConfig } from 'vite'
 // so no CORS is needed. Override the target with FLOWOPS_API_URL if your port differs.
 const apiTarget = process.env.FLOWOPS_API_URL ?? 'https://localhost:7180'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
+    // Tests read two repo-level contract files (contracts/openapi.json and the backend's
+    // ErrorCodes.cs) to catch drift; the dev server keeps Vite's default of serving only this app.
+    fs: mode === 'test' ? { allow: ['../..'] } : {},
     port: 5173,
     proxy: {
       '/api': { target: apiTarget, changeOrigin: false, secure: false },
@@ -25,4 +28,4 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
   },
-})
+}))

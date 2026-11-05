@@ -149,7 +149,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ## Frontend
 
-### FE-01 — Typed API client & problem handling · `Todo`
+### FE-01 — Typed API client & problem handling · `Done`
 - **Objective:** `openapi-typescript` generation from `contracts/openapi.json` (`npm run api:types`), `lib/api/client.ts` (`openapi-fetch`, credentials, XSRF header, `ApiError`), `problem.ts` (code→message), `queryKeys.ts`, QueryClient defaults, MSW setup with typed handlers.
 - **Deps:** BE-03. **AC:** no hand-written API types (replace the local unions in `lib/format/status.ts` with generated ones); the existing oxlint rule forbidding `fetch` outside `lib/api` stays green; add a 4xx-never-retry rule to `lib/queryClient.ts`.
 - **Tests:** client attaches XSRF on unsafe methods only; ApiError parsing; `toUserMessage` for every known code.
@@ -159,11 +159,11 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** FE-00. **Tests:** label/error association (`aria-describedby`, `aria-invalid`); MoneyInput 3-decimal handling.
 - **Parallel:** FE-05, FE-06, any backend task.
 
-### FE-03 — Session, login, change password, guards, 401/403 · `Todo`
+### FE-03 — Session, login, change password, guards, 401/403 · `Done`
 - **Objective:** `UI_SPEC.md` §2, §4.1, §4.9; `useSession`, `useCapability`, `RequireCapability`.
 - **Deps:** FE-01, FE-02. **Tests:** `TESTING.md` §3.6 session rows.
 
-### FE-04 — App shell & capability navigation · `Todo`
+### FE-04 — App shell & capability navigation · `Done`
 - **Objective:** real `AppShell`, `Sidebar` (+ drawer < 1024 px), `TopBar` (bell placeholder, user menu, logout), skip link.
 - **Deps:** FE-03. **Tests:** nav items per capability set; keyboard navigation of drawer.
 

@@ -32,15 +32,15 @@ describe('FormField', () => {
   })
 
   it('links helper text through aria-describedby', () => {
-    renderField({ helperText: 'Up to 120 characters.' })
-    expect(screen.getByLabelText('Item name')).toHaveAccessibleDescription('Up to 120 characters.')
+    renderField({ helperText: 'Shown under the field.' })
+    expect(screen.getByLabelText('Item name')).toHaveAccessibleDescription('Shown under the field.')
   })
 
   it('links the error, sets aria-invalid, and keeps the helper in the description', () => {
-    renderField({ helperText: 'Up to 120 characters.', error: 'Enter the item name.' })
+    renderField({ helperText: 'Shown under the field.', error: 'Enter the item name.' })
     const input = screen.getByLabelText('Item name')
     expect(input).toHaveAttribute('aria-invalid', 'true')
-    expect(input).toHaveAccessibleDescription('Up to 120 characters. Enter the item name.')
+    expect(input).toHaveAccessibleDescription('Shown under the field. Enter the item name.')
     expect(screen.getByText('Enter the item name.')).toHaveClass('text-danger')
   })
 

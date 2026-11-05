@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --noEmit",
     "lint": "oxlint --deny-warnings && npm run lint:tokens",
     "lint:tokens": "node scripts/check-design-tokens.mjs",
+    "api:types": "npx --yes --package=typescript@5.9.3 --package=openapi-typescript@7.13.0 -- openapi-typescript ../../contracts/openapi.json -o src/lib/api/schema.d.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -18,6 +19,7 @@
     "@hookform/resolvers": "^7.0.3",
     "@tanstack/react-query": "^5.106.0",
     "lucide-react": "^1.69.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
@@ -34,11 +36,17 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "jsdom": "^30.1.3",
+    "msw": "^3.0.3",
     "oxlint": "^1.90.0",
     "tailwindcss": "^4.3.4",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "vitest": "^5.1.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   },
   "engines": {
     "node": ">=22"
