@@ -154,7 +154,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-03. **AC:** no hand-written API types (replace the local unions in `lib/format/status.ts` with generated ones); the existing oxlint rule forbidding `fetch` outside `lib/api` stays green; add a 4xx-never-retry rule to `lib/queryClient.ts`.
 - **Tests:** client attaches XSRF on unsafe methods only; ApiError parsing; `toUserMessage` for every known code.
 
-### FE-02 — Form primitives · `Todo`
+### FE-02 — Form primitives · `Done`
 - **Objective:** `Input`, `Textarea`, `Select`, `DateInput`, `MoneyInput`, `FormField`, `Card`, `PageHeader` per `DESIGN_SYSTEM.md` §5; react-hook-form + zod wiring helper.
 - **Deps:** FE-00. **Tests:** label/error association (`aria-describedby`, `aria-invalid`); MoneyInput 3-decimal handling.
 - **Parallel:** FE-05, FE-06, any backend task.
@@ -167,11 +167,11 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** real `AppShell`, `Sidebar` (+ drawer < 1024 px), `TopBar` (bell placeholder, user menu, logout), skip link.
 - **Deps:** FE-03. **Tests:** nav items per capability set; keyboard navigation of drawer.
 
-### FE-05 — Data display components · `Todo`
+### FE-05 — Data display components · `Done`
 - **Objective:** `DataTable` (loading/empty/error, stacked < 640 px), `Pagination`, `FilterBar`, `useUrlState`, `EmptyState`, `ErrorState`, `Skeleton`, `lib/format/{date,money}`.
 - **Deps:** FE-00. **Tests:** states; URL round trip; money/date formatting in Asia/Amman.
 
-### FE-06 — Dialogs & toasts · `Todo`
+### FE-06 — Dialogs & toasts · `Done`
 - **Objective:** `Dialog`, `ConfirmDialog`, `Toast` provider (accessible, focus management).
 - **Deps:** FE-00. **Tests:** focus trap/return, Esc, roles for toasts.
 
