@@ -175,7 +175,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `Dialog`, `ConfirmDialog`, `Toast` provider (accessible, focus management).
 - **Deps:** FE-00. **Tests:** focus trap/return, Esc, roles for toasts.
 
-### FE-07 — New request flow · `Todo`
+### FE-07 — New request flow · `Done` (against MSW mocks; real integration waits for BE-10)
 - **Objective:** `UI_SPEC.md` §4.4. **Deps:** FE-04, FE-02, FE-06 (+ BE-10 for real integration).
 - **Tests:** `TESTING.md` §3.6 form rows.
 

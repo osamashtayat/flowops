@@ -5,11 +5,15 @@ import type {
   InboxItemDto,
   LoginRequest,
   PagedInboxItems,
+  RequestDetailsDto,
+  SubmitLeaveRequest,
+  SubmitPurchaseRequest,
   ProblemDetails,
   UnreadCountDto,
   ValidationProblemDetails,
 } from '@/lib/api/types'
 import { currentActor } from './actor'
+import { addMockLeave, addMockPurchase } from './requestStore'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
   MOCK_LOCKED_OUT_EMAIL,
@@ -140,7 +144,31 @@ export const authHandlers = [
 ]
 
 /** Endpoints whose backend task isn't merged yet. They stay mocked in dev. */
+/** Submitting needs a department and a manager (API_CONTRACT §4: 422 otherwise). */
+function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | null {
+  if (!user.capabilities.includes('requests.submit')) return problem(403, 'auth.forbidden')
+  if (!user.department) return problem(422, 'request.department_not_assigned')
+  if (!user.manager) return problem(422, 'request.manager_not_assigned')
+  return null
+}
+
 export const dataHandlers = [
+  http.post<never, SubmitPurchaseRequest, RequestDetailsDto | Failure>('/api/requests/purchase', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const blocked = submitBlockedBy(user)
+    if (blocked) return blocked
+    return HttpResponse.json(addMockPurchase(user, await request.json()), { status: 201 })
+  }),
+
+  http.post<never, SubmitLeaveRequest, RequestDetailsDto | Failure>('/api/requests/leave', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const blocked = submitBlockedBy(user)
+    if (blocked) return blocked
+    return HttpResponse.json(addMockLeave(user, await request.json()), { status: 201 })
+  }),
+
   http.get<never, never, PagedInboxItems | Failure>('/api/tasks', async ({ request }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')

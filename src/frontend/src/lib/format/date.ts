@@ -53,3 +53,26 @@ export function formatDateOnly(value: string): string {
   const p = pick(utcDateParts, date)
   return `${p.day} ${p.month} ${p.year}`
 }
+
+const calendarDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: DISPLAY_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/** Today's calendar date in Amman as `yyyy-MM-dd` — the company day the API checks "start ≥ today" against. */
+export function todayInCompanyZone(now: Date = new Date()): string {
+  const p = pick(calendarDay, now)
+  return `${p.year}-${p.month}-${p.day}`
+}
+
+/** Calendar days from `start` to `end`, both included ("2026-11-12".."2026-11-14" → 3); null if either is not a date or end < start. */
+export function calendarDaysInclusive(start: string, end: string): number | null {
+  const parse = (value: string) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+    return match ? Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : Number.NaN
+  }
+  const days = (parse(end) - parse(start)) / 86_400_000 + 1
+  return Number.isInteger(days) && days >= 1 ? days : null
+}
