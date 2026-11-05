@@ -159,7 +159,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** FE-00. **Tests:** label/error association (`aria-describedby`, `aria-invalid`); MoneyInput 3-decimal handling.
 - **Parallel:** FE-05, FE-06, any backend task.
 
-### FE-03 — Session, login, change password, guards, 401/403 · `Todo`
+### FE-03 — Session, login, change password, guards, 401/403 · `Done`
 - **Objective:** `UI_SPEC.md` §2, §4.1, §4.9; `useSession`, `useCapability`, `RequireCapability`.
 - **Deps:** FE-01, FE-02. **Tests:** `TESTING.md` §3.6 session rows.
 
