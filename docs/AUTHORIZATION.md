@@ -77,7 +77,7 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 |---|---|
 | `isManager` | user has ≥ 1 active direct report |
 
-Users may hold several roles. **Administrator grants no request visibility and no process authority.**
+Users may hold several roles. **Administrator grants no request visibility and no process authority.** Admin powers can't be used to get it either (decided 2026-11-06): an admin can't change their own roles or manager link, or make themselves anyone's manager (422 `user.self_administration`). Another administrator has to make those changes, and every admin change is logged with the actor's id.
 
 The server returns the capability set from `GET /api/auth/me` (`capabilities: string[]`). The frontend uses that list to show navigation and buttons; it never derives permissions from role names itself.
 

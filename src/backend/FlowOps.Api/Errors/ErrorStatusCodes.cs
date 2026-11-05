@@ -34,6 +34,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.RequestDepartmentNotAssigned] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.UserManagerCycle] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.UserLastAdmin] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.UserSelfAdministration] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.DepartmentInactive] = StatusCodes.Status422UnprocessableEntity,
 
         [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,

@@ -61,6 +61,7 @@ public sealed partial class UserAdministrationService(
         await EnsureDepartmentCanReceiveAsync(body.DepartmentId, ct);
         if (body.ManagerId is { } managerId)
         {
+            EnsureNotSelfManagerAssignment(Guid.Empty, managerId);
             // A brand-new user has no reports, so only an unknown or inactive manager can be wrong here.
             await EnsureActiveManagerAsync(managerId, ct);
         }
@@ -84,6 +85,11 @@ public sealed partial class UserAdministrationService(
         if (body.DepartmentId != current.DepartmentId)
         {
             await EnsureDepartmentCanReceiveAsync(body.DepartmentId, ct);
+        }
+
+        if (body.ManagerId != current.ManagerId)
+        {
+            EnsureNotSelfManagerAssignment(id, body.ManagerId);
         }
 
         if (body.ManagerId is { } managerId && managerId != current.ManagerId)
@@ -111,6 +117,11 @@ public sealed partial class UserAdministrationService(
         if (!roles.Contains(Roles.Administrator))
         {
             await EnsureNotLastAdministratorAsync(id, ct);
+        }
+
+        if (id == currentUser.Id)
+        {
+            throw SelfAdministration("You cannot change your own roles. Ask another administrator.");
         }
 
         await identity.StageRolesAsync(id, roles, ct);
@@ -141,6 +152,25 @@ public sealed partial class UserAdministrationService(
             throw new ConflictException(ErrorCodes.ConcurrencyConflict, "The user was changed by someone else. Reload and try again.");
         }
     }
+
+    /// <summary>
+    /// Administrator grants no process authority (AUTHORIZATION.md §2), so an admin may not use admin powers to get it:
+    /// no changing their own manager link and no making themselves anyone's manager (decided 2026-11-06).
+    /// </summary>
+    private void EnsureNotSelfManagerAssignment(Guid userId, Guid? newManagerId)
+    {
+        if (userId == currentUser.Id)
+        {
+            throw SelfAdministration("You cannot change your own manager. Ask another administrator.");
+        }
+
+        if (newManagerId == currentUser.Id)
+        {
+            throw SelfAdministration("You cannot make yourself someone's manager. Ask another administrator.");
+        }
+    }
+
+    private static BusinessRuleException SelfAdministration(string message) => new(ErrorCodes.UserSelfAdministration, message);
 
     private async Task EnsureExistsAsync(Guid id, CancellationToken ct)
     {
