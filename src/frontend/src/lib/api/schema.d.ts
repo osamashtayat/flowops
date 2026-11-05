@@ -1954,6 +1954,17 @@ export interface paths {
                         "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Unprocessable Entity */
                 422: {
                     headers: {
@@ -2054,6 +2065,17 @@ export interface paths {
                         "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
+                /** @description Conflict */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Unprocessable Entity */
                 422: {
                     headers: {
@@ -2142,6 +2164,17 @@ export interface paths {
                 };
                 /** @description Not Found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Conflict */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2511,7 +2544,7 @@ export interface components {
         UpdateDepartmentRequest: {
             name: string;
             code: string;
-            isActive?: boolean;
+            isActive: boolean;
         };
         UpdateUserRequest: {
             displayName: string;
@@ -2519,7 +2552,7 @@ export interface components {
             departmentId?: null | string;
             /** Format: uuid */
             managerId?: null | string;
-            isActive?: boolean;
+            isActive: boolean;
         };
         UpdateUserRolesRequest: {
             roles: components["schemas"]["Role"][];
