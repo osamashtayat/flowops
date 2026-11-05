@@ -37,6 +37,7 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
         { ErrorCodes.RequestDepartmentNotAssigned, 422 },
         { ErrorCodes.UserManagerCycle, 422 },
         { ErrorCodes.UserLastAdmin, 422 },
+        { ErrorCodes.UserSelfAdministration, 422 },
         { ErrorCodes.DepartmentInactive, 422 },
         { ErrorCodes.AuthRateLimited, 429 },
         { ErrorCodes.ServerError, 500 },
