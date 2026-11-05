@@ -134,7 +134,7 @@ type RequestDetailsDto = RequestSummaryDto & {
 };
 type WorkTaskDto = {
   id: string; kind: WorkTaskKind; stage: RequestStage; status: WorkTaskStatus;
-  assignee: { user: UserRef } | { role: Role };
+  assignee: { user: UserRef | null; role: Role | null };   // exactly one is non-null
   outcome: WorkTaskOutcome | null; decidedBy: UserRef | null; decidedAt: string | null;
   comment: string | null; createdAt: string;
 };
@@ -234,7 +234,7 @@ type UpdateUserRequest = { displayName; departmentId: string | null; managerId: 
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
-`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef } | { role: Role }; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
+`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
 No request details (privacy): admins see metadata only.
 
 ## 9. Real-time (SignalR)

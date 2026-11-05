@@ -70,7 +70,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** unit tests for the exception→status mapping table.
 - **Parallel:** BE-06.
 
-### BE-03 — API contract skeleton + OpenAPI export · `Todo`
+### BE-03 — API contract skeleton + OpenAPI export · `Done`
 - **Objective:** make `API_CONTRACT.md` executable: every request/response DTO and every controller action with correct routes, `[ProducesResponseType]`s, and policies, each action returning `501 Not Implemented` until its feature task lands. Export `contracts/openapi.json` via build-time generation (`Microsoft.Extensions.ApiDescription.Server`) and a `scripts/export-openapi.sh` wrapper.
 - **Deps:** BE-02. **Modules:** Api/Controllers, Application/*/Dtos.
 - **AC:** `contracts/openapi.json` contains all endpoints in `API_CONTRACT.md` §3–8 with enums as strings and `version`/money amount as strings; script is deterministic (re-run gives identical file).

@@ -40,7 +40,7 @@ public sealed class LayerDependencyTests
     public void EveryBackendProject_IsCoveredByTheDependencyTable()
     {
         var projects = Directory
-            .GetFiles(Path.Combine(RepositoryRoot.Value, "src", "backend"), "*.csproj", SearchOption.AllDirectories)
+            .GetFiles(Path.Combine(TestPaths.RepositoryRoot, "src", "backend"), "*.csproj", SearchOption.AllDirectories)
             .Select(Path.GetFileNameWithoutExtension)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -119,20 +119,7 @@ public sealed class LayerDependencyTests
         [.. ReadProject(project).Descendants("PackageReference").Select(e => e.Attribute("Include")!.Value)];
 
     private static XDocument ReadProject(string project) =>
-        XDocument.Load(Path.Combine(RepositoryRoot.Value, "src", "backend", project, project + ".csproj"));
+        XDocument.Load(Path.Combine(TestPaths.RepositoryRoot, "src", "backend", project, project + ".csproj"));
 
     private static string NormalizePath(string path) => path.Replace('\\', Path.DirectorySeparatorChar);
-
-    private static readonly Lazy<string> RepositoryRoot = new(() =>
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "FlowOps.slnx")))
-            {
-                return dir.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("FlowOps.slnx not found above " + AppContext.BaseDirectory);
-    });
 }

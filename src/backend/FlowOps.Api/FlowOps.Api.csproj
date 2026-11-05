@@ -5,8 +5,19 @@
     <UserSecretsId>flowops-api</UserSecretsId>
   </PropertyGroup>
 
+  <!--
+    Build-time OpenAPI export, off by default so ordinary builds never touch contracts/.
+    scripts/export-openapi.sh turns it on and writes contracts/openapi.json.
+  -->
+  <PropertyGroup>
+    <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../../contracts</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name openapi</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Infrastructure is referenced only for composition-root DI registration (ARCHITECTURE.md §3). -->

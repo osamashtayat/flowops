@@ -1,0 +1,70 @@
+namespace FlowOps.Api.IntegrationTests.Contract;
+
+/// <summary>
+/// Every endpoint of docs/API_CONTRACT.md §3–8, with a body that passes input validation and the
+/// roles that satisfy its policy. Kept by hand on purpose: it is the check that code matches the design doc.
+/// </summary>
+internal static class ContractEndpoints
+{
+    private const string Id = "01900000-0000-7000-8000-000000000001";
+    private const string Employee = "Employee";
+    private const string Admin = "Administrator";
+    private const string Finance = "FinanceOfficer";
+
+    public static readonly ContractEndpoint[] All =
+    [
+        // §3 Auth
+        new("POST", "/api/auth/login", "/api/auth/login", """{"email":"lina@flowops.local","password":"secret"}""", Anonymous: true),
+        new("POST", "/api/auth/logout", "/api/auth/logout", null, Employee),
+        new("GET", "/api/auth/me", "/api/auth/me", null, Employee),
+        new("POST", "/api/auth/change-password", "/api/auth/change-password", """{"currentPassword":"old","newPassword":"a-long-new-password"}""", Employee),
+
+        // §4 Requests
+        new("POST", "/api/requests/purchase", "/api/requests/purchase",
+            """{"itemName":"Laptop","description":"14 inch","estimatedCost":{"amount":"1250.500","currency":"JOD"},"justification":"Broken"}""", Employee),
+        new("POST", "/api/requests/leave", "/api/requests/leave",
+            """{"startDate":"2026-12-01","endDate":"2026-12-03","leaveType":"Annual","reason":null}""", Employee),
+        new("GET", "/api/requests", "/api/requests?scope=visible&status=InReview&type=Leave&search=FO-2026&page=1&pageSize=20", null, Employee),
+        new("GET", "/api/requests/{id}", $"/api/requests/{Id}", null, Employee),
+        new("GET", "/api/requests/{id}/activity", $"/api/requests/{Id}/activity", null, Employee),
+        new("POST", "/api/requests/{id}/comments", $"/api/requests/{Id}/comments", """{"body":"Which model?"}""", Employee),
+
+        // §5 Tasks
+        new("GET", "/api/tasks", "/api/tasks?status=Done", null, Finance),
+        new("POST", "/api/tasks/{taskId}/approve", $"/api/tasks/{Id}/approve", """{"version":"7","comment":null}""", Finance),
+        new("POST", "/api/tasks/{taskId}/reject", $"/api/tasks/{Id}/reject", """{"version":"7","reason":"Over budget"}""", Finance),
+        new("POST", "/api/tasks/{taskId}/fulfill", $"/api/tasks/{Id}/fulfill", """{"version":"7","note":"PO-77"}""", "ProcurementOfficer"),
+
+        // §6 Notifications
+        new("GET", "/api/notifications", "/api/notifications?unreadOnly=true", null, Employee),
+        new("GET", "/api/notifications/unread-count", "/api/notifications/unread-count", null, Employee),
+        new("POST", "/api/notifications/{id}/read", $"/api/notifications/{Id}/read", null, Employee),
+        new("POST", "/api/notifications/read-all", "/api/notifications/read-all", null, Employee),
+
+        // §7 Dashboard
+        new("GET", "/api/dashboard", "/api/dashboard", null, Employee),
+
+        // §8 Administration
+        new("GET", "/api/departments", "/api/departments?includeInactive=false", null, Employee),
+        new("POST", "/api/departments", "/api/departments", """{"name":"Sales","code":"SALES"}""", Admin),
+        new("PUT", "/api/departments/{id}", $"/api/departments/{Id}", """{"name":"Sales","code":"SALES","isActive":false}""", Admin),
+        new("GET", "/api/users", $"/api/users?search=lina&departmentId={Id}&role=Employee&includeInactive=true", null, Admin),
+        new("GET", "/api/users/{id}", $"/api/users/{Id}", null, Admin),
+        new("POST", "/api/users", "/api/users",
+            """{"email":"new@flowops.local","displayName":"New Person","initialPassword":"a-long-initial-pw","departmentId":null,"managerId":null,"roles":["Employee"]}""", Admin),
+        new("PUT", "/api/users/{id}", $"/api/users/{Id}", """{"displayName":"Renamed","departmentId":null,"managerId":null,"isActive":true}""", Admin),
+        new("PUT", "/api/users/{id}/roles", $"/api/users/{Id}/roles", """{"roles":["Employee","HrOfficer"]}""", Admin),
+        new("POST", "/api/users/{id}/reset-password", $"/api/users/{Id}/reset-password", """{"newPassword":"a-long-reset-pw"}""", Admin),
+        new("GET", "/api/admin/stalled-tasks", "/api/admin/stalled-tasks?page=2&pageSize=50", null, Admin),
+    ];
+}
+
+internal sealed record ContractEndpoint(string Method, string Template, string Url, string? Body, params string[] Roles)
+{
+    public bool Anonymous { get; init; }
+
+    public ContractEndpoint(string method, string template, string url, string? body, bool Anonymous)
+        : this(method, template, url, body) => this.Anonymous = Anonymous;
+
+    public override string ToString() => $"{Method} {Template}";
+}
