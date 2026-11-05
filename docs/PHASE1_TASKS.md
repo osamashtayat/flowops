@@ -109,7 +109,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ## Requests and process
 
-### BE-09 — Access rules & task eligibility · `Todo`
+### BE-09 — Access rules & task eligibility · `Done`
 - **Objective:** `AccessRules.VisibleTo` and `TaskEligibility` (`AUTHORIZATION.md` §4) as the single implementation.
 - **Deps:** BE-07. **AC:** translates to one SQL query (no client evaluation); used by no code yet except tests.
 - **Tests:** table-driven integration tests over a seeded org for R1/R2/R3 and T1/T2 incl. self-decision and inactive users.

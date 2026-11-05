@@ -25,11 +25,12 @@ public sealed record Assignee
         return new Assignee(userId, null);
     }
 
+    /// <summary>Never Administrator: that role has no process authority, which is why AccessRules grants admins nothing.</summary>
     public static Assignee ForRole(string role)
     {
-        if (!Roles.All.Contains(role, StringComparer.Ordinal))
+        if (!Roles.All.Contains(role, StringComparer.Ordinal) || role == Roles.Administrator)
         {
-            throw new ArgumentException($"Unknown role '{role}'.", nameof(role));
+            throw new ArgumentException($"'{role}' cannot be a process role queue.", nameof(role));
         }
 
         return new Assignee(null, role);

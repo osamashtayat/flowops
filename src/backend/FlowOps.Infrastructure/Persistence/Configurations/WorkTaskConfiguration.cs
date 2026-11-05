@@ -37,6 +37,7 @@ internal sealed class WorkTaskConfiguration : IEntityTypeConfiguration<WorkTask>
         builder.Property(t => t.Comment).HasMaxLength(RequestLimits.CommentMaxLength);
         builder.Property(t => t.Version).IsRowVersion();
         builder.Ignore(t => t.IsOpen);
+        builder.Ignore(t => t.AllowedActions);
 
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.AssigneeUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(t => t.DecidedById).OnDelete(DeleteBehavior.Restrict);

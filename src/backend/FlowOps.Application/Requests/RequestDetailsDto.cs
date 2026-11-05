@@ -1,3 +1,4 @@
+using FlowOps.Application.Access;
 using System.Text.Json.Serialization;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
@@ -44,18 +45,3 @@ public sealed record WorkTaskDto(
 
 /// <summary>Exactly one of <see cref="User"/> and <see cref="Role"/> is set.</summary>
 public sealed record TaskAssigneeDto(UserRef? User, Role? Role);
-
-/// <summary>The caller's possible decisions on the current task, and the version to echo back.</summary>
-public sealed record AvailableActionsDto(Guid TaskId, IReadOnlyList<TaskAction> Actions, string Version);
-
-public enum TaskAction
-{
-    [JsonStringEnumMemberName("approve")]
-    Approve,
-
-    [JsonStringEnumMemberName("reject")]
-    Reject,
-
-    [JsonStringEnumMemberName("fulfill")]
-    Fulfill,
-}

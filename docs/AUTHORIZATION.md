@@ -114,7 +114,7 @@ Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `
 
 All resource rules live in **one** Application class, `AccessRules`. Its core method is `IQueryable<Request> VisibleTo(IQueryable<Request> requests, AccessContext user)`, an EF-translatable filter (it joins the users read model for R2). The *same* method backs list queries (`VisibleTo(db.Requests, me).Where(...)`) and single-item checks (`VisibleTo(...).AnyAsync(r => r.Id == id)`), so the two can never diverge. There is no second copy in controllers, services or the frontend.
 
-`AccessContext` = `{ UserId, Roles }`, built once per request from `ICurrentUser`.
+`AccessContext` = `{ UserId, Roles, IsActive }`, built once per request by `AccessRules.ForCurrentUserAsync` from `ICurrentUser`'s id and **the database** (not session claims).
 
 **Visibility — user U can see request Q iff any of:**
 - **R1** `Q.RequesterId == U.Id`
@@ -127,6 +127,21 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 - **T1/T2** (`T.AssigneeUserId == U.Id`) or (`T.AssigneeRole ∈ U.Roles`)
 - U is active
 - U is not the requester (I2)
+
+**As built (BE-09)** — `Application/Access/`:
+- **`AccessRules`** (scoped):
+  - **`ForCurrentUserAsync()`** builds the caller's `AccessContext` from the database in one query. `AccessContext` can't be built anywhere else: its constructor is internal, and tests use an internal `ContextForAsync(userId)` seam.
+  - **`VisibleTo(requests, me)`** is one SQL statement (`EXISTS` subqueries for R2/R3). It works on tracked or untracked queries, with or without includes. An inactive or unknown user sees nothing.
+  - **`CanViewAsync(id, me)`** is `VisibleTo(...).AnyAsync(id)`.
+  - **Commands load the aggregate through `VisibleTo`**, so an invisible request is simply "not found" (404) before any eligibility check.
+- **`TaskEligibility`** (static):
+  - **`AssignedTo(me)`** is the T1/T2 expression. The in-memory check uses the same expression, compiled once per context.
+  - **`DecidableBy(requests, me)`** yields `DecidableTask { Request, Task }`: open tasks the caller may decide now, excluding their own requests. The inbox projects both in one query.
+  - **`FailureCode` / `EnsureCanDecide(requesterId, task, me)`**: not assigned or inactive → `task.not_eligible`; then the requester → `task.self_decision`.
+  - **`AvailableActions(requesterId, openTask, me)`** takes only what a projection supplies. It returns the task's `WorkTask.AllowedActions` plus its `version`, or `null` for a decided task or a non-eligible caller.
+  - **Open/current/already-decided stay the domain's 409s**: a late decider gets `task.already_decided`, not 403.
+- **Administrator never gets a task.** The domain refuses Administrator as a role queue (`AssigneeRule`/`Assignee.ForRole`), which is what makes "admins see nothing" hold.
+- **Still to add (BE-11).** `canComment` and leave-reason visibility (§5: R1, R2, or HrOfficer with R3) belong in `AccessRules`, as translatable expressions next to `VisibleTo`. They must not be written in the query service.
 
 **Response codes**
 - Request not visible → **404** (do not reveal existence).
@@ -151,8 +166,8 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 | Check | Location |
 |---|---|
 | Authenticated? role-level gate (e.g. admin endpoints) | ASP.NET Core **policies** on controllers: `Policies.Authenticated` (fallback), `Policies.Admin`, `Policies.CanSubmit` |
-| Visibility of a request | `AccessRules.CanView` — called by query and command services |
-| Eligibility to decide a task | `TaskEligibility.Check` (Application) — uses `AccessRules` + roles |
+| Visibility of a request | `AccessRules.VisibleTo` / `CanViewAsync` (Application) — called by query and command services |
+| Eligibility to decide a task | `TaskEligibility.FailureCode` / `EnsureCanDecide` / `DecidableBy` (Application), after the visibility check |
 | Self-decision | Domain (`Request.DecideTask`) **and** `TaskEligibility` (fail fast with clear code) |
 | Actor identity | `ICurrentUser` (Api implementation reads `HttpContext.User`); services never accept a user id from a DTO |
 | Must-change-password gate | Middleware in Api |

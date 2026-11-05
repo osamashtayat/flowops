@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using FlowOps.Domain.Errors;
 
 namespace FlowOps.Domain.Requests;
@@ -73,7 +75,20 @@ public sealed class WorkTask
         }
     }
 
-    /// <summary>Valid (Kind, action) pairs: Approval → Approve/Reject; Fulfillment → Fulfill.</summary>
+    private static readonly ReadOnlyCollection<TaskDecisionAction> ApprovalActions =
+        Array.AsReadOnly([TaskDecisionAction.Approve, TaskDecisionAction.Reject]);
+
+    private static readonly ReadOnlyCollection<TaskDecisionAction> FulfillmentActions = Array.AsReadOnly([TaskDecisionAction.Fulfill]);
+
+    /// <summary>The actions valid for this task's kind (what the UI offers): Approval → Approve/Reject; Fulfillment → Fulfill.</summary>
+    public IReadOnlyList<TaskDecisionAction> AllowedActions => Kind switch
+    {
+        WorkTaskKind.Approval => ApprovalActions,
+        WorkTaskKind.Fulfillment => FulfillmentActions,
+        _ => throw new UnreachableException($"Unknown task kind {Kind}."),
+    };
+
+    /// <summary>Valid (Kind, action) pairs and their outcomes; must agree with <see cref="AllowedActions"/> (a test checks).</summary>
     internal WorkTaskOutcome OutcomeFor(TaskDecisionAction action) => (Kind, action) switch
     {
         (WorkTaskKind.Approval, TaskDecisionAction.Approve) => WorkTaskOutcome.Approved,
