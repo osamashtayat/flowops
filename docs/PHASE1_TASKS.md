@@ -88,7 +88,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **AC:** 401 JSON (no redirects); lockout 5/15 min; XSRF cookie issued + enforced on unsafe methods; bootstrap admin created once from config; roles seeded.
 - **Tests:** login success/failure/lockout; 401 shape; XSRF missing → rejected; must-change-password gate; capabilities per role combo (incl. derived `isManager`→`tasks.view`).
 
-### BE-06 — Domain core: Request aggregate & fixed processes · `Todo`
+### BE-06 — Domain core: Request aggregate & fixed processes · `Done`
 - **Objective:** everything in `DOMAIN_MODEL.md` §2–5 as pure C# (no EF attributes).
 - **Deps:** BE-01. **Modules:** FlowOps.Domain only.
 - **AC:** all invariants I2–I9 enforced in the aggregate; no public setters on state; `FixedProcesses` is the only place step order exists.
