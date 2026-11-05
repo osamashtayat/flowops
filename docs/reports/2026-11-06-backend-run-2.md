@@ -9,17 +9,12 @@ The run stopped at BE-12 as instructed. `docs/PHASE1_TASKS.md` marks BE-08 to BE
 
 ## Needs your decision
 
-1. **Can administrators give themselves process authority? (BE-08 security review M1, open, in AGENT_HANDOFF §6.)** Admin powers alone let an admin:
-   - grant themselves `FinanceOfficer` or `HrOfficer`;
-   - make themselves someone's manager, then read that person's leave reasons and decide their requests;
-   - reset a user's password and sign in as them.
+1. ~~**Can administrators give themselves process authority?**~~ **Decided 2026-11-06: block self-changes.** Implemented in https://github.com/osamashtayat/flowops/pull/24 (merged):
+   - an admin can't change their own roles or manager link, or set themselves as anyone's manager;
+   - any of these gives 422 `user.self_administration`;
+   - another admin can still make the change, and every admin change is logged.
 
-   This goes against the spirit of "Administrator grants no process authority" (AUTHORIZATION §2). Every admin change is now logged with the actor's id; nothing is blocked. FE-13 (admin screens) needs the answer. Options:
-   - **(a)** forbid an admin changing their own roles or manager link, and assigning themselves as anyone's manager (new 422 code);
-   - **(b)** (a), plus forbid giving process roles to accounts that hold Administrator;
-   - **(c)** accept it and rely on the audit log.
-
-   Recommendation: (a). It is small, testable and closes the quiet path. Password-reset impersonation remains, and only an audit trail or a second approver can address it.
+   The frontend notice is in AGENT_HANDOFF §6. One gap remains: password-reset impersonation (reset a user's password, then sign in as them). Only an audit trail or a second approver can address it.
 2. **Accepted check-then-act races (please confirm).** Two rules are checked before acting, with no lock:
    - two simultaneous demotions can leave no active administrator;
    - two simultaneous manager changes ("A reports to B" and "B reports to A") can create a cycle.
@@ -80,8 +75,10 @@ The run stopped at BE-12 as instructed. `docs/PHASE1_TASKS.md` marks BE-08 to BE
   - **Validation.** An unknown department or an unknown/inactive manager gives 400 on the field; an inactive department gives 422.
   - **Password reset** clears lockout and ends the user's sessions.
   - **New shared code:** `Paging.ToPagedResultAsync` (the CODE_STANDARDS §2.3 home) and `BusinessRuleException` (422).
+- **Follow-up:** https://github.com/osamashtayat/flowops/pull/24 (merged) blocks self-granted process authority. Tests at merge: Domain 100 passed / 0 failed; Integration 411 passed / 0 failed.
 - **Contract changes:**
   - 409 `concurrency.conflict` on user `PUT`, `/roles` and `/reset-password`;
+  - new 422 `user.self_administration` (#24);
   - `isActive` required on user and department `PUT`;
   - enums must be strings;
   - the unreachable 422 `user.manager_cycle` is dropped on `POST /users`.
