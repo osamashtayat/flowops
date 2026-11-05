@@ -9,13 +9,13 @@ internal static class Text
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw DomainErrors.Validation($"{field} is required.");
+            throw DomainErrors.Validation($"{field} is required.", field);
         }
 
         var trimmed = value.Trim();
         return trimmed.Length <= maxLength
             ? trimmed
-            : throw DomainErrors.Validation($"{field} must be at most {maxLength} characters.");
+            : throw DomainErrors.Validation($"{field} must be at most {maxLength} characters.", field);
     }
 
     internal static string? Optional(string? value, int maxLength, string field) =>

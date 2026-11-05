@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FlowOps.Api.Controllers;
 
-/// <summary>API_CONTRACT.md §4. Submission lands in BE-10, queries and comments in BE-11.</summary>
+/// <summary>API_CONTRACT.md §4. Queries and comments land in BE-11.</summary>
 [ApiController]
 [Route("api/requests")]
 [Tags("Requests")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-public sealed class RequestsController : ControllerBase
+public sealed class RequestsController(RequestSubmissionService submission) : ControllerBase
 {
     [HttpPost("purchase")]
     [Authorize(Policy = Policies.CanSubmit)]
@@ -19,7 +19,8 @@ public sealed class RequestsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
-    public ActionResult<RequestDetailsDto> SubmitPurchase(SubmitPurchaseRequest body) => this.Stub("BE-10");
+    public async Task<ActionResult<RequestDetailsDto>> SubmitPurchase(SubmitPurchaseRequest body, CancellationToken ct) =>
+        Submitted(await submission.SubmitPurchaseAsync(body, ct));
 
     [HttpPost("leave")]
     [Authorize(Policy = Policies.CanSubmit)]
@@ -27,7 +28,8 @@ public sealed class RequestsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
-    public ActionResult<RequestDetailsDto> SubmitLeave(SubmitLeaveRequest body) => this.Stub("BE-10");
+    public async Task<ActionResult<RequestDetailsDto>> SubmitLeave(SubmitLeaveRequest body, CancellationToken ct) =>
+        Submitted(await submission.SubmitLeaveAsync(body, ct));
 
     [HttpGet]
     [ProducesResponseType<PagedResult<RequestSummaryDto>>(StatusCodes.Status200OK)]
@@ -49,4 +51,6 @@ public sealed class RequestsController : ControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public ActionResult<ActivityDto> AddComment(Guid id, AddCommentRequest body) => this.Stub("BE-11");
+
+    private CreatedAtActionResult Submitted(RequestDetailsDto created) => CreatedAtAction(nameof(Get), new { id = created.Id }, created);
 }

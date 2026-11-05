@@ -5,7 +5,8 @@ namespace FlowOps.Domain.Errors;
 /// <summary>The one place each domain error's code and message are defined.</summary>
 public static class DomainErrors
 {
-    public static DomainException Validation(string message) => new(ErrorCodes.Validation, message);
+    /// <param name="field">The input field it is about, relative to the value being built (e.g. <c>amount</c>).</param>
+    public static DomainException Validation(string message, string? field = null) => new(ErrorCodes.Validation, message, field);
 
     public static DomainException TaskNotFound() =>
         new(ErrorCodes.NotFound, "The task does not belong to this request.");

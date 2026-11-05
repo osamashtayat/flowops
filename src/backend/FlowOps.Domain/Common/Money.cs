@@ -27,23 +27,23 @@ public sealed record Money
 
         if (!SupportedCurrencies.IsSupported(currency))
         {
-            throw DomainErrors.Validation($"Currency '{currency}' is not supported.");
+            throw DomainErrors.Validation($"Currency '{currency}' is not supported.", "currency");
         }
 
         if (amount <= 0)
         {
-            throw DomainErrors.Validation("Amount must be greater than zero.");
+            throw DomainErrors.Validation("Amount must be greater than zero.", "amount");
         }
 
         if (amount > MaxAmount)
         {
-            throw DomainErrors.Validation("Amount must not exceed 1,000,000.000.");
+            throw DomainErrors.Validation("Amount must not exceed 1,000,000.000.", "amount");
         }
 
         // Value-based: 1.5000 is fine, 1.0005 is not.
         if (decimal.Round(amount, Scale) != amount)
         {
-            throw DomainErrors.Validation("Amount must have at most 3 decimal places.");
+            throw DomainErrors.Validation("Amount must have at most 3 decimal places.", "amount");
         }
 
         return new Money(amount, currency);
