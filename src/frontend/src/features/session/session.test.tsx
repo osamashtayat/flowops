@@ -8,7 +8,7 @@ import { routes } from '@/app/routes'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
-import { MOCK_LOCKED_OUT_EMAIL, MOCK_PASSWORD } from '@/mocks/users'
+import { MOCK_RATE_LIMITED_EMAIL, MOCK_PASSWORD } from '@/mocks/users'
 import { setMockUser } from '@/mocks/state'
 import { server } from '@/mocks/server'
 import { renderRoutes } from '@/test/renderRoutes'
@@ -61,16 +61,16 @@ describe('sign in', () => {
     renderRoutes(routes, '/login')
     await signIn('employee@flowops.test', 'wrong-password')
     // (The toast region is also a role="alert", so find the banner by its text.)
-    const banner = await screen.findByText('The email or password is incorrect.')
+    const banner = await screen.findByText(/^The email or password is incorrect\./)
     expect(banner).toHaveAttribute('role', 'alert')
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument()
   })
 
-  it('shows the lockout message (423)', async () => {
+  it('shows the rate-limit message (429)', async () => {
     setMockUser(null)
     renderRoutes(routes, '/login')
-    await signIn(MOCK_LOCKED_OUT_EMAIL, MOCK_PASSWORD)
-    const banner = await screen.findByText('Too many attempts. Try again in 15 minutes.')
+    await signIn(MOCK_RATE_LIMITED_EMAIL, MOCK_PASSWORD)
+    const banner = await screen.findByText('Too many sign-in attempts. Please wait a few minutes and try again.')
     expect(banner).toHaveAttribute('role', 'alert')
   })
 
@@ -279,7 +279,7 @@ describe('session expiry', () => {
     setMockUser(null)
     renderRoutes(probeRoutes, '/login')
     await signIn('employee@flowops.test', 'bad-password')
-    await screen.findByText('The email or password is incorrect.')
+    await screen.findByText(/^The email or password is incorrect\./)
     // No "session ended" toast, and still on the sign-in page.
     expect(screen.getByRole('status')).toBeEmptyDOMElement()
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument()

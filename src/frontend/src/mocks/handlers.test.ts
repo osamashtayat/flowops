@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ApiError } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { setMockUser } from './state'
-import { MOCK_LOCKED_OUT_EMAIL, MOCK_PASSWORD, MOCK_USERS, type MockUserKey } from './users'
+import { MOCK_RATE_LIMITED_EMAIL, MOCK_PASSWORD, MOCK_USERS, type MockUserKey } from './users'
 
 async function rejection(promise: Promise<unknown>): Promise<ApiError> {
   try {
@@ -39,10 +39,10 @@ describe('mock auth', () => {
     expect(error).toMatchObject({ status: 401, code: 'auth.invalid_credentials' })
   })
 
-  it('answers the lockout account with 423 auth.locked_out', async () => {
+  it('answers a rate-limited email with 429 auth.rate_limited', async () => {
     setMockUser(null)
-    const error = await rejection(api.POST('/api/auth/login', { body: { email: MOCK_LOCKED_OUT_EMAIL, password: MOCK_PASSWORD } }))
-    expect(error).toMatchObject({ status: 423, code: 'auth.locked_out' })
+    const error = await rejection(api.POST('/api/auth/login', { body: { email: MOCK_RATE_LIMITED_EMAIL, password: MOCK_PASSWORD } }))
+    expect(error).toMatchObject({ status: 429, code: 'auth.rate_limited' })
   })
 
   it('logout signs out', async () => {

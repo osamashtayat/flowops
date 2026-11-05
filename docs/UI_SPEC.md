@@ -52,7 +52,7 @@ Filters, search, tab and page live in the **URL query string** so views are shar
 Each page = `PageHeader` + content built from shared components. States listed are **required**, not optional.
 
 ### 4.1 Login
-Centered card on canvas, product name, email, password, "Sign in" (primary, full width). Errors inline above the form: invalid credentials (generic), locked out (423: "Too many attempts. Try again in 15 minutes."). No "register" link. Submit on Enter. Autocomplete attributes set.
+Centered card on canvas, product name, email, password, "Sign in" (primary, full width). Errors inline above the form: invalid credentials (generic; also covers a locked-out account, so the message mentions the 15-minute pause) and rate limited (429: "Too many sign-in attempts. Please wait a few minutes and try again."). No "register" link. Submit on Enter. Autocomplete attributes set.
 
 ### 4.2 Dashboard (role-aware)
 Order = what needs attention first:
