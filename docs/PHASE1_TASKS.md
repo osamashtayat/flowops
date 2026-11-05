@@ -167,7 +167,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** real `AppShell`, `Sidebar` (+ drawer < 1024 px), `TopBar` (bell placeholder, user menu, logout), skip link.
 - **Deps:** FE-03. **Tests:** nav items per capability set; keyboard navigation of drawer.
 
-### FE-05 — Data display components · `Todo`
+### FE-05 — Data display components · `Done`
 - **Objective:** `DataTable` (loading/empty/error, stacked < 640 px), `Pagination`, `FilterBar`, `useUrlState`, `EmptyState`, `ErrorState`, `Skeleton`, `lib/format/{date,money}`.
 - **Deps:** FE-00. **Tests:** states; URL round trip; money/date formatting in Asia/Amman.
 
