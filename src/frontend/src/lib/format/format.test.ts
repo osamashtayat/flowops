@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDateOnly, formatDateTime } from './date'
+import { calendarDaysInclusive, formatDate, formatDateOnly, formatDateTime, todayInCompanyZone } from './date'
 import { formatAmount, formatMoney } from './money'
 
 describe('formatMoney', () => {
@@ -49,5 +49,24 @@ describe('date formatting (Asia/Amman)', () => {
   it('returns unparseable input unchanged', () => {
     expect(formatDate('not a date')).toBe('not a date')
     expect(formatDateOnly('05/11/2026')).toBe('05/11/2026')
+  })
+})
+
+describe('company calendar day helpers', () => {
+  it('reads "today" in Amman, not UTC', () => {
+    // 22:30 UTC on 5 Nov is already 6 Nov in Amman (UTC+3 since 2022).
+    expect(todayInCompanyZone(new Date('2026-11-05T22:30:00Z'))).toBe('2026-11-06')
+    expect(todayInCompanyZone(new Date('2026-11-05T12:00:00Z'))).toBe('2026-11-05')
+  })
+
+  it('counts calendar days with both ends included', () => {
+    expect(calendarDaysInclusive('2026-11-12', '2026-11-12')).toBe(1)
+    expect(calendarDaysInclusive('2026-11-12', '2026-11-14')).toBe(3)
+    expect(calendarDaysInclusive('2026-12-30', '2027-01-02')).toBe(4)
+  })
+
+  it('returns null for a missing, malformed or reversed range', () => {
+    expect(calendarDaysInclusive('', '2026-11-14')).toBeNull()
+    expect(calendarDaysInclusive('2026-11-14', '2026-11-12')).toBeNull()
   })
 })

@@ -5,6 +5,9 @@ import { RootLayout } from '@/app/RootLayout'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { AppShell } from '@/components/layout/AppShell'
+import { NewLeavePage } from '@/features/requests/pages/NewLeavePage'
+import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
+import { NewRequestPage } from '@/features/requests/pages/NewRequestPage'
 import { RequireAuth } from '@/features/session/components/RequireAuth'
 import { RequireCapability } from '@/features/session/components/RequireCapability'
 import { ChangePasswordPage } from '@/features/session/pages/ChangePasswordPage'
@@ -35,7 +38,9 @@ export const routes: RouteObject[] = [
               {
                 element: <RequireCapability capability="requests.submit" />,
                 children: [
-                  { path: '/requests/new', element: <PlaceholderPage title="New request" task="FE-07" /> },
+                  { path: '/requests/new', element: <NewRequestPage /> },
+                  { path: '/requests/new/purchase', element: <NewPurchasePage /> },
+                  { path: '/requests/new/leave', element: <NewLeavePage /> },
                 ],
               },
               {
