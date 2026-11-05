@@ -33,4 +33,5 @@ public static class ErrorCodes
     public const string UserDuplicateEmail = "user.duplicate_email";
     public const string UserManagerCycle = "user.manager_cycle";
     public const string UserLastAdmin = "user.last_admin";
+    public const string UserSelfAdministration = "user.self_administration";
 }

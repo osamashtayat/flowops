@@ -53,7 +53,7 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 | 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision` |
 | 404 | Not found **or not visible** to caller | `not_found` |
 | 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email` |
-| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `department.inactive` |
+| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `department.inactive` |
 | 429 | Too many login attempts from this address or for this email (login only); sends `Retry-After` (seconds) | `auth.rate_limited` |
 | 500 | Unhandled | `server.error` (no internals in `detail`) |
 
@@ -252,9 +252,9 @@ As built (BE-08): `includeInactive=true` is honoured only for administrators; ev
 |---|---|---|---|
 | `GET /api/users?search&departmentId&role&includeInactive&page&pageSize` | — | 200 `Paged<UserDto>` | |
 | `GET /api/users/{id}` | — | 200 `UserDto` | 404 |
-| `POST /api/users` | `CreateUserRequest` | 201 `UserDto` + `Location` | 400 (password rules → `errors.initialPassword`; unknown department; unknown/inactive manager), 409 `user.duplicate_email`, 422 `department.inactive` |
-| `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 400 (unknown department, unknown/inactive manager), 404, 409 `concurrency.conflict`, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin), `department.inactive` (moving into an inactive department) |
-| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 404, 409 `concurrency.conflict`, 422 `user.last_admin` |
+| `POST /api/users` | `CreateUserRequest` | 201 `UserDto` + `Location` | 400 (password rules → `errors.initialPassword`; unknown department; unknown/inactive manager), 409 `user.duplicate_email`, 422 `department.inactive`, `user.self_administration` (caller as manager) |
+| `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 400 (unknown department, unknown/inactive manager), 404, 409 `concurrency.conflict`, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin), `department.inactive` (moving into an inactive department), `user.self_administration` (changing own manager, or making yourself someone's manager) |
+| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 404, 409 `concurrency.conflict`, 422 `user.last_admin`, `user.self_administration` (own roles) |
 | `POST /api/users/{id}/reset-password` | `{ newPassword }` | 204 (sets MustChangePassword, clears lockout, ends the user's sessions) | 400, 404, 409 `concurrency.conflict` |
 
 ```ts
@@ -270,6 +270,12 @@ As built (BE-08):
 - **Manager.** Must be an existing, active user (otherwise 400 `errors.managerId`). It is checked only when the manager changes.
 - **Department.** An unknown department gives 400 `errors.departmentId`. An inactive one gives 422 `department.inactive`. Both are checked only when the department changes.
 - **Last administrator.** "Last admin" means the last **active** user with the `Administrator` role.
+- **No self-granted process authority (decided 2026-11-06).** An admin may not:
+  - change their own roles (another admin must);
+  - change their own manager link;
+  - set themselves as anyone's manager, on create or update.
+
+  Any of these gives 422 `user.self_administration`. The last-admin check runs first, so removing the last admin's own Administrator role still says `user.last_admin`. Existing links aren't re-checked when other fields are edited.
 - **Concurrent edits.** User edits carry no `version`, so between two administrators the last write wins. 409 `concurrency.conflict` appears only if the account changes during the request itself (e.g. the user changes their password at that moment).
 - **Required fields.** `isActive` is required on user and department `PUT`, so a missing value can't deactivate by accident. Enum values must be strings; numbers such as `0` give 400.
 - **Known races (accepted for Phase 1).** Two simultaneous demotions can remove the last administrator, and two simultaneous manager changes ("A reports to B" and "B reports to A") can create a cycle. Both rules are checked before acting, with no lock.
