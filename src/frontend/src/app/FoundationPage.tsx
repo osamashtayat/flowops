@@ -2,6 +2,7 @@ import { Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DataDisplayDemo } from '@/app/DataDisplayDemo'
+import { OverlaysDemo } from '@/app/OverlaysDemo'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { DateInput } from '@/components/ui/DateInput'
@@ -131,6 +132,8 @@ export function FoundationPage() {
       </Card>
 
       <DataDisplayDemo />
+
+      <OverlaysDemo />
 
       <Card title="Control states">
         <div className="grid max-w-2xl gap-5">

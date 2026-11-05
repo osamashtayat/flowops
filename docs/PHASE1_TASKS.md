@@ -171,7 +171,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `DataTable` (loading/empty/error, stacked < 640 px), `Pagination`, `FilterBar`, `useUrlState`, `EmptyState`, `ErrorState`, `Skeleton`, `lib/format/{date,money}`.
 - **Deps:** FE-00. **Tests:** states; URL round trip; money/date formatting in Asia/Amman.
 
-### FE-06 — Dialogs & toasts · `Todo`
+### FE-06 — Dialogs & toasts · `Done`
 - **Objective:** `Dialog`, `ConfirmDialog`, `Toast` provider (accessible, focus management).
 - **Deps:** FE-00. **Tests:** focus trap/return, Esc, roles for toasts.
 
