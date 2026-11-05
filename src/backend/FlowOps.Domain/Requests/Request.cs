@@ -12,6 +12,12 @@ public sealed class Request
     private readonly List<WorkTask> _tasks = [];
     private readonly List<RequestActivity> _activities = [];
 
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private Request()
+    {
+        Number = null!;
+    }
+
     private Request(RequestNumber number, RequestType type, Guid requesterId, Guid departmentId, DateTimeOffset now)
     {
         if (requesterId == Guid.Empty)

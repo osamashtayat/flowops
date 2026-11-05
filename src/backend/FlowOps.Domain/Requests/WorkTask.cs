@@ -8,6 +8,11 @@ namespace FlowOps.Domain.Requests;
 /// </summary>
 public sealed class WorkTask
 {
+    /// <summary>For persistence materialization only; state is set by the store, never by callers.</summary>
+    private WorkTask()
+    {
+    }
+
     private WorkTask(Guid requestId, ProcessStep step, Assignee assignee, DateTimeOffset now)
     {
         Id = Guid.CreateVersion7(now);
