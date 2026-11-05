@@ -32,6 +32,12 @@ describe('toUserMessage', () => {
     expect(toUserMessage(apiError(400, code))).toBe(message)
   })
 
+  it('says a not-yet-built endpoint (501) is not available yet, rather than blaming the server', () => {
+    expect(toUserMessage(apiError(501, UNKNOWN_ERROR_CODE))).toBe("This feature isn't available yet.")
+    expect(toUserMessage(apiError(501, 'server.error'))).toBe("This feature isn't available yet.")
+    expect(toUserMessage(apiError(500, UNKNOWN_ERROR_CODE))).toBe(PROBLEM_MESSAGES['server.error'])
+  })
+
   it('says what to do when the network is down', () => {
     expect(toUserMessage(apiError(0, NETWORK_ERROR_CODE))).toMatch(/connection/i)
   })

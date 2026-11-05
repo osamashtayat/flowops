@@ -291,7 +291,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    IncludeInactive?: boolean;
+                    includeInactive?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -549,9 +549,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    UnreadOnly?: boolean;
-                    Page?: number;
-                    PageSize?: number;
+                    unreadOnly?: boolean;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -935,12 +935,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    Scope?: components["schemas"]["RequestScope"];
-                    Status?: components["schemas"]["RequestStatus"];
-                    Type?: components["schemas"]["RequestType"];
-                    Search?: string;
-                    Page?: number;
-                    PageSize?: number;
+                    scope?: components["schemas"]["RequestScope"];
+                    status?: components["schemas"]["RequestStatus"];
+                    type?: components["schemas"]["RequestType"];
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1201,8 +1201,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    Page?: number;
-                    PageSize?: number;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1274,9 +1274,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    Status?: components["schemas"]["WorkTaskStatus"];
-                    Page?: number;
-                    PageSize?: number;
+                    status?: components["schemas"]["WorkTaskStatus"];
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1669,12 +1669,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    Search?: string;
-                    DepartmentId?: string;
-                    Role?: components["schemas"]["Role"];
-                    IncludeInactive?: boolean;
-                    Page?: number;
-                    PageSize?: number;
+                    search?: string;
+                    departmentId?: string;
+                    role?: components["schemas"]["Role"];
+                    includeInactive?: boolean;
+                    page?: number;
+                    pageSize?: number;
                 };
                 header?: never;
                 path?: never;

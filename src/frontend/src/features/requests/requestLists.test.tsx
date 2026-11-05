@@ -85,9 +85,9 @@ describe('My requests', () => {
     await userEvent.selectOptions(screen.getByLabelText('Type'), 'Leave')
     await waitFor(() => expect(router.state.location.search).toBe('?status=Approved&type=Leave'))
     const last = urls.at(-1)
-    expect(last?.searchParams.get('Scope')).toBe('mine')
-    expect(last?.searchParams.get('Status')).toBe('Approved')
-    expect(last?.searchParams.get('Type')).toBe('Leave')
+    expect(last?.searchParams.get('scope')).toBe('mine')
+    expect(last?.searchParams.get('status')).toBe('Approved')
+    expect(last?.searchParams.get('type')).toBe('Leave')
   })
 
   it('restores filters and page from a shared link', async () => {
@@ -96,17 +96,17 @@ describe('My requests', () => {
     expect(await screen.findByLabelText('Status')).toHaveValue('Rejected')
     expect(screen.getByLabelText('Search')).toHaveValue('lap')
     await waitFor(() => expect(urls.length).toBeGreaterThan(0))
-    expect(urls[0]?.searchParams.get('Page')).toBe('2')
-    expect(urls[0]?.searchParams.get('PageSize')).toBe('10')
-    expect(urls[0]?.searchParams.get('Search')).toBe('lap')
+    expect(urls[0]?.searchParams.get('page')).toBe('2')
+    expect(urls[0]?.searchParams.get('pageSize')).toBe('10')
+    expect(urls[0]?.searchParams.get('search')).toBe('lap')
   })
 
   it('ignores values in the URL the contract does not know', async () => {
     const urls = recordRequests()
     renderRoutes(routes, '/requests?status=Banana&type=Spaceship')
     await waitFor(() => expect(urls.length).toBeGreaterThan(0))
-    expect(urls[0]?.searchParams.has('Status')).toBe(false)
-    expect(urls[0]?.searchParams.has('Type')).toBe(false)
+    expect(urls[0]?.searchParams.has('status')).toBe(false)
+    expect(urls[0]?.searchParams.has('type')).toBe(false)
   })
 
   it('waits for a pause in typing before searching', async () => {
@@ -114,8 +114,8 @@ describe('My requests', () => {
     const { router } = renderRoutes(routes, '/requests')
     await userEvent.type(await screen.findByLabelText('Search'), 'laptop')
     await waitFor(() => expect(router.state.location.search).toBe('?search=laptop'))
-    await waitFor(() => expect(urls.some((u) => u.searchParams.has('Search'))).toBe(true))
-    const searches = urls.map((u) => u.searchParams.get('Search')).filter(Boolean)
+    await waitFor(() => expect(urls.some((u) => u.searchParams.has('search'))).toBe(true))
+    const searches = urls.map((u) => u.searchParams.get('search')).filter(Boolean)
     expect(searches).toEqual(['laptop']) // no request for "l", "la", "lap"…
   })
 
@@ -178,7 +178,7 @@ describe('Team requests', () => {
     const grid = await table('Team requests')
     expect(within(grid).getAllByRole('columnheader').map((h) => h.textContent)).toContain('Requester')
     expect(within(grid).getAllByText('Layla Haddad').length).toBeGreaterThan(0)
-    expect(urls[0]?.searchParams.get('Scope')).toBe('visible')
+    expect(urls[0]?.searchParams.get('scope')).toBe('visible')
     server.events.removeAllListeners()
   })
 })

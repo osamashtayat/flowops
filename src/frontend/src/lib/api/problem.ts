@@ -33,12 +33,14 @@ export const PROBLEM_MESSAGES = {
   'user.duplicate_email': 'A user with this email already exists.',
   'user.manager_cycle': "A person can't report to themselves or to someone who reports to them.",
   'user.last_admin': 'At least one active administrator is required.',
+  'user.self_administration': 'Another administrator has to make this change.',
 } as const satisfies Record<string, string>
 
 export type ProblemCode = keyof typeof PROBLEM_MESSAGES
 
 const NETWORK_MESSAGE = "Can't reach the server. Check your connection and try again."
 const GENERIC_MESSAGE = 'Something went wrong. Try again.'
+const NOT_AVAILABLE_MESSAGE = "This feature isn't available yet."
 
 function isKnownCode(code: string): code is ProblemCode {
   return Object.hasOwn(PROBLEM_MESSAGES, code)
@@ -48,6 +50,9 @@ function isKnownCode(code: string): code is ProblemCode {
 export function toUserMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return GENERIC_MESSAGE
   if (error.code === NETWORK_ERROR_CODE) return NETWORK_MESSAGE
+  // 501: the endpoint exists in the contract but its backend task isn't done. Checked before the
+  // code because the server may label it `server.error`; retrying won't help.
+  if (error.status === 501) return NOT_AVAILABLE_MESSAGE
   if (isKnownCode(error.code)) return PROBLEM_MESSAGES[error.code]
   if (error.status === 401) return PROBLEM_MESSAGES['auth.unauthenticated']
   if (error.status === 403) return PROBLEM_MESSAGES['auth.forbidden']

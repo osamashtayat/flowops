@@ -3,7 +3,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type { TaskAction } from '@/lib/api/types'
 
-const OPEN_COUNT_PARAMS = { Status: 'Open', Page: 1, PageSize: 1 } as const
+const OPEN_COUNT_PARAMS = { status: 'Open', page: 1, pageSize: 1 } as const
 
 /**
  * How many tasks wait for the signed-in user (the sidebar's Inbox badge): `totalCount` of a

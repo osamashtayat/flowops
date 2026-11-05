@@ -75,12 +75,12 @@ export function useRequests(params: RequestListParams) {
       const { data } = await api.GET('/api/requests', {
         params: {
           query: {
-            Scope: params.scope,
-            Status: params.status || undefined,
-            Type: params.type || undefined,
-            Search: params.search || undefined,
-            Page: params.page,
-            PageSize: params.pageSize,
+            scope: params.scope,
+            status: params.status || undefined,
+            type: params.type || undefined,
+            search: params.search || undefined,
+            page: params.page,
+            pageSize: params.pageSize,
           },
         },
       })

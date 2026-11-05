@@ -159,7 +159,7 @@ export const authHandlers = [
 /** Endpoints whose backend task isn't merged yet. They stay mocked in dev. */
 /**
  * A query parameter by name, ignoring case: the generated client sends the names as openapi.json
- * spells them (`Page`, `PageSize`, `Status`) and ASP.NET binds case-insensitively, so the mock does too.
+ * spells them (camelCase since BE-11) and ASP.NET binds case-insensitively, so the mock does too.
  */
 function queryParam(request: Request) {
   const params = [...new URL(request.url).searchParams]
@@ -176,14 +176,8 @@ function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | n
 
 /** The shared preamble of the request and decision endpoints: who is asking. */
 const NOT_FOUND = () => problem(404, 'not_found')
-
-export const dataHandlers = [
-  http.get<never, never, DashboardDto | Failure>('/api/dashboard', async () => {
-    const user = await currentActor()
-    if (!user) return problem(401, 'auth.unauthenticated')
-    return HttpResponse.json(buildMockDashboard(user))
-  }),
-
+/** Request submit, list, details, activity and comments — real in the backend since BE-10/BE-11, so only tests use these. */
+export const requestHandlers = [
   http.get<{ id: string }, never, RequestDetailsDto | Failure>('/api/requests/:id', async ({ params }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
@@ -208,20 +202,6 @@ export const dataHandlers = [
     return HttpResponse.json(addMockComment(user, target, body.trim()), { status: 201 })
   }),
 
-  ...(['approve', 'reject', 'fulfill'] as const).map((action) =>
-    http.post<{ taskId: string }, { version: string; comment?: string | null; reason?: string; note?: string | null }, Failure | null>(
-      `/api/tasks/:taskId/${action}`,
-      async ({ params, request }) => {
-        const user = await currentActor()
-        if (!user) return problem(401, 'auth.unauthenticated')
-        const body = await request.json()
-        const text = body.comment ?? body.reason ?? body.note ?? null
-        const failure = decideMockTask(user, params.taskId, action, body.version, text)
-        if (!failure) return new HttpResponse(null, { status: 204 })
-        return failure.status === 400 ? validationProblem({ reason: ['Enter a reason.'] }) : problem(failure.status, failure.code)
-      },
-    ),
-  ),
   http.get<never, never, PagedRequestSummaries | Failure>('/api/requests', async ({ request }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
@@ -256,6 +236,33 @@ export const dataHandlers = [
     if (blocked) return blocked
     return HttpResponse.json(addMockLeave(user, await request.json()), { status: 201 })
   }),
+]
+
+/** Approve / reject / fulfil — backend BE-12 not merged, but these act on the mock requests above, so only tests use them. */
+export const decisionHandlers = [
+  ...(['approve', 'reject', 'fulfill'] as const).map((action) =>
+    http.post<{ taskId: string }, { version: string; comment?: string | null; reason?: string; note?: string | null }, Failure | null>(
+      `/api/tasks/:taskId/${action}`,
+      async ({ params, request }) => {
+        const user = await currentActor()
+        if (!user) return problem(401, 'auth.unauthenticated')
+        const body = await request.json()
+        const text = body.comment ?? body.reason ?? body.note ?? null
+        const failure = decideMockTask(user, params.taskId, action, body.version, text)
+        if (!failure) return new HttpResponse(null, { status: 204 })
+        return failure.status === 400 ? validationProblem({ reason: ['Enter a reason.'] }) : problem(failure.status, failure.code)
+      },
+    ),
+  ),
+]
+
+/** Endpoints whose backend task isn't merged yet (dashboard BE-15, tasks BE-12, notifications BE-13). Also mocked in the dev browser. */
+export const pendingHandlers = [
+  http.get<never, never, DashboardDto | Failure>('/api/dashboard', async () => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    return HttpResponse.json(buildMockDashboard(user))
+  }),
 
   http.get<never, never, PagedInboxItems | Failure>('/api/tasks', async ({ request }) => {
     const user = await currentActor()
@@ -281,4 +288,4 @@ export const dataHandlers = [
   }),
 ]
 
-export const handlers = [...authHandlers, ...dataHandlers]
+export const handlers = [...authHandlers, ...requestHandlers, ...decisionHandlers, ...pendingHandlers]

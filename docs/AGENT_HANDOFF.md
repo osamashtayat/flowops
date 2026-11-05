@@ -70,8 +70,6 @@ Use this list for cross-lane requests that can't be resolved inside one task. Re
 
 | Date | From | Item | Status |
 |---|---|---|---|
-| 2026-11-06 | Backend (BE-11) | **Query parameter names are camelCase in `contracts/openapi.json`** (`scope`, `status`, `type`, `search`, `page`, `pageSize`, `includeInactive`, `departmentId`, `role`, `unreadOnly`), matching API_CONTRACT.md. The server accepts both spellings, so nothing breaks at runtime. Frontend: run `npm run api:types` and drop the capitalised names (`Scope`, `Status`, `PageSize`) noted in the 2026-11-06 frontend run report. `GET /api/requests*` and comments are now real (BE-11), and the submit endpoints too (BE-10). | Open |
-| 2026-11-06 | Backend (BE-08 follow-up) | **New 422 code `user.self_administration`** (decision: block self-changes). An admin can't change their own roles, change their own manager, or set themselves as anyone's manager, on create or update. FE-13: add it to `lib/api/problem.ts`, e.g. "Another administrator has to make this change." In the user form, consider hiding roles and the manager field when editing yourself, and excluding yourself from the manager picker. The server is the authority either way. | Open |
 
 ## 7. Ready-to-use prompts for the first sessions
 
