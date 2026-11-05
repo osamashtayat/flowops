@@ -125,11 +125,12 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
     }
 
     [Fact]
-    public async Task UnknownRoute_Returns404NotFoundProblem()
+    public async Task UnknownRoute_Anonymous_Returns401Problem()
     {
+        // Authenticated-by-default fallback policy: anonymous callers learn nothing about which routes exist.
         using var response = await GetAsync("/api/does-not-exist");
 
-        await ShouldBeProblemAsync(response, 404, ErrorCodes.NotFound);
+        await ShouldBeProblemAsync(response, 401, ErrorCodes.AuthUnauthenticated);
     }
 
     private HttpClient CreateClient() =>

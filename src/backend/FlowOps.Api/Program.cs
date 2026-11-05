@@ -1,5 +1,7 @@
+using FlowOps.Api;
 using FlowOps.Api.Auth;
 using FlowOps.Api.Errors;
+using FlowOps.Api.OpenApi;
 using FlowOps.Application;
 using FlowOps.Application.Common;
 using FlowOps.Infrastructure;
@@ -17,10 +19,15 @@ builder.Logging.AddJsonConsole(options =>
 });
 
 // Validation errors use JSON (camelCase) field paths, e.g. estimatedCost.amount (API_CONTRACT.md §2).
-builder.Services.AddControllers(options =>
-    options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()));
+builder.Services
+    .AddControllers(options =>
+        options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
+    .AddJsonOptions(options => JsonSetup.Configure(options.JsonSerializerOptions));
+// The OpenAPI generator reads the HTTP (minimal API) options, so both must agree with MVC.
+builder.Services.ConfigureHttpJsonOptions(options => JsonSetup.Configure(options.SerializerOptions));
 builder.Services.AddFlowOpsProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddFlowOpsOpenApi();
+builder.Services.AddFlowOpsAuthorization();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -36,11 +43,12 @@ app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
 }
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
