@@ -58,6 +58,6 @@ public sealed class Department
         var normalized = Text.Required(code, CodeMaxLength, "code").ToUpperInvariant();
         return normalized.All(c => c is (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '-')
             ? normalized
-            : throw DomainErrors.Validation("code may contain only letters A-Z, digits and '-'.");
+            : throw DomainErrors.Validation("code may contain only letters A-Z, digits and '-'.", "code");
     }
 }

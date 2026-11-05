@@ -106,6 +106,20 @@ type SubmitLeaveRequest = {
 ```
 → **201** `RequestDetailsDto`. Errors as above.
 
+As built (BE-10), for both submit endpoints:
+- **Order of checks.**
+  1. Input: field rules → 400.
+  2. Department: none → 422 `request.department_not_assigned`.
+  3. Manager: none, inactive, or the requester → 422 `request.manager_not_assigned`.
+
+  Nothing is saved on any failure.
+- **400 `errors` keys.** Rule failures that the domain finds (e.g. `estimatedCost.amount` > 1,000,000, `startDate` in the past, `endDate` beyond 90 days) also come back as `errors.{field}`, like DataAnnotations failures.
+- **Leave length.** The 90-day limit counts **both** start and end day (`days` = end − start + 1). "Today" is the date in `FlowOps:CompanyTimeZone`.
+- **Number.** `FO-{company year}-{seq:000000}` from one database sequence. Failed submissions may leave gaps.
+- **Title.** The item name for purchases. For leave, e.g. `Annual leave · 10–12 Mar` (`30 Nov – 2 Dec` across months, with years when they differ).
+- **Notifications.** The manager gets one `TaskAssigned` notification. It names the number, type and title, never the reason.
+- **No realtime push yet.** The realtime push arrives with BE-14.
+
 ### `GET /api/requests` — auth
 Query: `scope=mine|visible` (default `mine`), `status?`, `type?`, `search?` (number prefix or item name, ≤ 100 chars), `page`, `pageSize`. Sorted `submittedAt desc`.
 `scope=visible` returns everything the caller can see under `AUTHORIZATION.md` §4 (managers use it for "Team requests").

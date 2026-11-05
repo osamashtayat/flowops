@@ -36,18 +36,18 @@ public sealed class LeaveDetails
 
         if (!Enum.IsDefined(leaveType))
         {
-            throw DomainErrors.Validation("leaveType is not a known leave type.");
+            throw DomainErrors.Validation("leaveType is not a known leave type.", "leaveType");
         }
 
         var today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, companyTimeZone).DateTime);
         if (startDate < today)
         {
-            throw DomainErrors.Validation("startDate must not be in the past.");
+            throw DomainErrors.Validation("startDate must not be in the past.", "startDate");
         }
 
         if (endDate < startDate)
         {
-            throw DomainErrors.Validation("endDate must not be before startDate.");
+            throw DomainErrors.Validation("endDate must not be before startDate.", "endDate");
         }
 
         var details = new LeaveDetails(
@@ -55,6 +55,6 @@ public sealed class LeaveDetails
 
         return details.Days <= RequestLimits.LeaveMaxDays
             ? details
-            : throw DomainErrors.Validation($"Leave must not exceed {RequestLimits.LeaveMaxDays} days.");
+            : throw DomainErrors.Validation($"Leave must not exceed {RequestLimits.LeaveMaxDays} days.", "endDate");
     }
 }

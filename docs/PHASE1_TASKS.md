@@ -114,7 +114,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-07. **AC:** translates to one SQL query (no client evaluation); used by no code yet except tests.
 - **Tests:** table-driven integration tests over a seeded org for R1/R2/R3 and T1/T2 incl. self-decision and inactive users.
 
-### BE-10 — Submit purchase & leave · `Todo`
+### BE-10 — Submit purchase & leave · `Done`
 - **Objective:** `RequestSubmissionService`, `TaskAssigneeResolver`, `NotificationFactory` (TaskAssigned), endpoints `POST /requests/purchase|leave`.
 - **Deps:** BE-08, BE-09. **AC:** server-side requester/department; 422s for missing manager/department; one transaction; returns `RequestDetailsDto` 201 with `Location`.
 - **Tests:** `TESTING.md` §3.2 submission rows; validation limits (boundary values); company-TZ "today".

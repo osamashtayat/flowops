@@ -1,12 +1,14 @@
+using System.Linq.Expressions;
 using FlowOps.Application.Common;
+using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowOps.Application.Access;
 
 /// <summary>
-/// The one implementation of "who can see a request" (AUTHORIZATION.md §4). The same filter backs lists and
-/// single-item checks, so they can never disagree. Never saves. A request is visible to user U iff
+/// The one implementation of "who can see a request" (AUTHORIZATION.md §4) and of who may read a leave reason (§5).
+/// The same filters back lists and single-item checks, so they can never disagree. Never saves. Visible to user U iff
 /// <list type="bullet">
 /// <item>R1: U is the requester;</item>
 /// <item>R2: U is the requester's current direct manager;</item>
@@ -36,17 +38,54 @@ public sealed class AccessRules(IAppDbContext db, ICurrentUser currentUser)
     {
         ArgumentNullException.ThrowIfNull(requests);
         ArgumentNullException.ThrowIfNull(me);
-        var userId = me.UserId;
-        var isActive = me.IsActive;
-        var roles = me.RoleArray;
-        return requests.Where(r => isActive && (
-            r.RequesterId == userId
-            || db.Users.Any(u => u.Id == r.RequesterId && u.ManagerId == userId)
-            || r.Tasks.Any(t => t.AssigneeUserId == userId
-                || (t.AssigneeRole != null && roles.Contains(t.AssigneeRole))
-                || t.DecidedById == userId)));
+        return requests.Where(Active(me, AnyOf(IsRequester(me), IsRequestersManager(me), IsParticipant(me))));
     }
 
     public Task<bool> CanViewAsync(Guid requestId, AccessContext me, CancellationToken ct) =>
         VisibleTo(db.Requests, me).AnyAsync(r => r.Id == requestId, ct);
+
+    /// <summary>
+    /// §5: the leave reason goes to the requester (R1), their direct manager (R2) and HR officers who see the request
+    /// through a task (HrOfficer + R3). Everyone else gets <c>reason: null, reasonHidden: true</c>.
+    /// </summary>
+    public Task<bool> CanReadLeaveReasonAsync(Guid requestId, AccessContext me, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(me);
+        var hrParticipant = me.Roles.Contains(Roles.HrOfficer) ? IsParticipant(me) : r => false;
+        return db.Requests.Where(r => r.Id == requestId)
+            .AnyAsync(Active(me, AnyOf(IsRequester(me), IsRequestersManager(me), hrParticipant)), ct);
+    }
+
+    // R1
+    private static Expression<Func<Request, bool>> IsRequester(AccessContext me)
+    {
+        var userId = me.UserId;
+        return r => r.RequesterId == userId;
+    }
+
+    // R2
+    private Expression<Func<Request, bool>> IsRequestersManager(AccessContext me)
+    {
+        var userId = me.UserId;
+        return r => db.Users.Any(u => u.Id == r.RequesterId && u.ManagerId == userId);
+    }
+
+    // R3
+    private static Expression<Func<Request, bool>> IsParticipant(AccessContext me)
+    {
+        var userId = me.UserId;
+        var roles = me.RoleArray;
+        return r => r.Tasks.Any(t => t.AssigneeUserId == userId
+            || (t.AssigneeRole != null && roles.Contains(t.AssigneeRole))
+            || t.DecidedById == userId);
+    }
+
+    private static Expression<Func<Request, bool>> Active(AccessContext me, Expression<Func<Request, bool>> rule)
+    {
+        var isActive = me.IsActive;
+        return Predicates.And(_ => isActive, rule);
+    }
+
+    private static Expression<Func<Request, bool>> AnyOf(params Expression<Func<Request, bool>>[] rules) =>
+        rules.Aggregate(Predicates.Or);
 }

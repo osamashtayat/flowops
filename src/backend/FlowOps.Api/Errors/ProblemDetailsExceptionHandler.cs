@@ -39,9 +39,14 @@ public sealed partial class ProblemDetailsExceptionHandler(
 
         httpContext.Response.StatusCode = status;
         // Field errors keep the shape of automatic model validation (API_CONTRACT.md §2).
-        var problem = exception is ValidationFailedException validation
-            ? new HttpValidationProblemDetails(validation.Errors.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal))
-            : new ProblemDetails();
+        var problem = exception switch
+        {
+            ValidationFailedException validation =>
+                new HttpValidationProblemDetails(validation.Errors.ToDictionary(e => e.Key, e => e.Value, StringComparer.Ordinal)),
+            DomainException { Field: { } field } domain when status < StatusCodes.Status500InternalServerError =>
+                new HttpValidationProblemDetails(new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [domain.Message] }),
+            _ => new ProblemDetails(),
+        };
         problem.Status = status;
         problem.Detail = status >= StatusCodes.Status500InternalServerError ? "An unexpected error occurred." : detail;
         problem.Extensions[ProblemDetailsSetup.CodeKey] = code;

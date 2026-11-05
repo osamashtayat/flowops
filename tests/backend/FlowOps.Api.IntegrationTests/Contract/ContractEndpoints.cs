@@ -21,10 +21,11 @@ internal static class ContractEndpoints
         new("POST", "/api/auth/change-password", "/api/auth/change-password", """{"currentPassword":"old","newPassword":"a-long-new-password"}""", Employee) { Implemented = true },
 
         // §4 Requests
+        // Submission implemented in BE-10 (behaviour: Requests/SubmissionTests).
         new("POST", "/api/requests/purchase", "/api/requests/purchase",
-            """{"itemName":"Laptop","description":"14 inch","estimatedCost":{"amount":"1250.500","currency":"JOD"},"justification":"Broken"}""", Employee),
+            """{"itemName":"Laptop","description":"14 inch","estimatedCost":{"amount":"1250.500","currency":"JOD"},"justification":"Broken"}""", Employee) { Implemented = true },
         new("POST", "/api/requests/leave", "/api/requests/leave",
-            """{"startDate":"2026-12-01","endDate":"2026-12-03","leaveType":"Annual","reason":null}""", Employee),
+            """{"startDate":"2026-12-01","endDate":"2026-12-03","leaveType":"Annual","reason":null}""", Employee) { Implemented = true },
         new("GET", "/api/requests", "/api/requests?scope=visible&status=InReview&type=Leave&search=FO-2026&page=1&pageSize=20", null, Employee),
         new("GET", "/api/requests/{id}", $"/api/requests/{Id}", null, Employee),
         new("GET", "/api/requests/{id}/activity", $"/api/requests/{Id}/activity", null, Employee),

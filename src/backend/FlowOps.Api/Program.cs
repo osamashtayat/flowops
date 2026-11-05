@@ -37,6 +37,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 builder.Services.AddApplication();
+builder.Services.AddOptions<CompanyOptions>()
+    .Bind(builder.Configuration.GetSection(CompanyOptions.SectionName))
+    .Validate(o => TimeZoneInfo.TryFindSystemTimeZoneById(o.CompanyTimeZone, out _), "FlowOps:CompanyTimeZone is not a known time zone.")
+    .ValidateOnStart();
 // Composition root only: no controller uses Infrastructure types (ARCHITECTURE.md §3).
 builder.Services.AddInfrastructure(builder.Configuration);
 

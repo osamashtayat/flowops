@@ -50,12 +50,18 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         });
     }
 
-    /// <summary>Deletes all test data and rewinds the clock. <see cref="DatabaseTest"/> calls it before each test.</summary>
+    /// <summary>Deletes all test data, restarts the request-number sequence and rewinds the clock. <see cref="DatabaseTest"/> calls it before each test.</summary>
     public async Task ResetAsync()
     {
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
         await _respawner!.ResetAsync(connection);
+        // Respawn empties tables but not sequences; restart it so request numbers are deterministic per test.
+        await using (var restart = new NpgsqlCommand($"ALTER SEQUENCE {AppDbContext.RequestNumberSequence} RESTART", connection))
+        {
+            await restart.ExecuteNonQueryAsync();
+        }
+
         Clock.Reset();
     }
 

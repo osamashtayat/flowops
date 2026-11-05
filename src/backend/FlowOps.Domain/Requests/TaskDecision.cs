@@ -21,7 +21,7 @@ public sealed record TaskDecision
 
     public static TaskDecision Reject(string reason) =>
         string.IsNullOrWhiteSpace(reason)
-            ? throw DomainErrors.Validation("A rejection reason is required.")
+            ? throw DomainErrors.Validation("A rejection reason is required.", "reason")
             : new(TaskDecisionAction.Reject, Text.Required(reason, RequestLimits.CommentMaxLength, "reason"));
 
     public static TaskDecision Fulfill(string? note) =>

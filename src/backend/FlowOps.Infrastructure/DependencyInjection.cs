@@ -1,4 +1,5 @@
 using FlowOps.Application.Common;
+using FlowOps.Application.Requests;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,7 @@ public static class DependencyInjection
             PersistenceOptions.Configure(options, connectionString);
         });
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IRequestNumberSequence, RequestNumberSequence>();
         services.AddFlowOpsIdentity(configuration);
         return services;
     }
