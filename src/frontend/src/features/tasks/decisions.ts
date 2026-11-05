@@ -9,6 +9,8 @@ export interface DecisionPresentation {
   confirmLabel: string
   tone: 'primary' | 'danger'
   describe: (requestNumber: string) => { title: string; description: string }
+  /** The toast after the server accepted it. */
+  done: (requestNumber: string) => string
   reason: { label: string; required: boolean; helperText?: string; maxLength: number }
 }
 
@@ -25,6 +27,7 @@ export function decisionPresentation(action: TaskAction, stage: RequestStage): D
           title: `${verb} ${number}?`,
           description: 'The request moves on to the next step. This cannot be undone.',
         }),
+        done: (number) => `${number} ${verb === 'Confirm' ? 'confirmed' : 'approved'}.`,
         reason: { label: 'Comment', required: false, helperText: 'Optional. Visible in the request history.', maxLength: REQUEST_LIMITS.approveCommentMax },
       }
     }
@@ -37,6 +40,7 @@ export function decisionPresentation(action: TaskAction, stage: RequestStage): D
           title: `Reject ${number}?`,
           description: 'The request is closed as rejected and the requester is told why. This cannot be undone.',
         }),
+        done: (number) => `${number} rejected.`,
         reason: { label: 'Reason', required: true, helperText: 'Shown to the requester.', maxLength: REQUEST_LIMITS.rejectReasonMax },
       }
     case 'fulfill':
@@ -48,6 +52,7 @@ export function decisionPresentation(action: TaskAction, stage: RequestStage): D
           title: `Fulfill ${number}?`,
           description: 'The request is completed and the requester is notified. This cannot be undone.',
         }),
+        done: (number) => `${number} marked as fulfilled.`,
         reason: { label: 'Note', required: false, helperText: 'Optional. Visible in the request history.', maxLength: REQUEST_LIMITS.fulfillNoteMax },
       }
     default:

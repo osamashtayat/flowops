@@ -53,7 +53,14 @@ export function RequestDetailsPage() {
         </div>
       )
     }
-    return <ErrorState message={toUserMessage(query.error)} onRetry={() => void query.refetch()} />
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Request" />
+        <Card>
+          <ErrorState message={toUserMessage(query.error)} onRetry={() => void query.refetch()} />
+        </Card>
+      </div>
+    )
   }
 
   const request = query.data

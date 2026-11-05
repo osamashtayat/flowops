@@ -44,7 +44,7 @@ export function DecisionDialog({ action, taskId, version, stage, requestNumber, 
       { taskId, action, version, text: reason },
       {
         onSuccess: () => {
-          toast.success(`${requestNumber}: done.`)
+          toast.success(text.done(requestNumber))
           close()
           onDecided?.()
         },
