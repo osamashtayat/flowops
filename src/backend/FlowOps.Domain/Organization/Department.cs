@@ -43,6 +43,16 @@ public sealed class Department
     public static Department Create(string name, string code, DateTimeOffset now) =>
         new(Text.Required(name, NameMaxLength, "name"), NormalizeCode(code), now);
 
+    /// <summary>Renames and (de)activates. Members stay when a department is deactivated; it just takes no new ones.</summary>
+    public void Update(string name, string code, bool isActive)
+    {
+        var validName = Text.Required(name, NameMaxLength, "name");
+        var validCode = NormalizeCode(code);
+        Name = validName;
+        Code = validCode;
+        IsActive = isActive;
+    }
+
     private static string NormalizeCode(string code)
     {
         var normalized = Text.Required(code, CodeMaxLength, "code").ToUpperInvariant();

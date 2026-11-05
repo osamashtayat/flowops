@@ -7,6 +7,8 @@ using FlowOps.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using FlowOps.Domain.Errors;
+using Npgsql;
 
 namespace FlowOps.Infrastructure.Persistence;
 
@@ -37,6 +39,30 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     IQueryable<UserRoleReadModel> IAppDbContext.UserRoles =>
         UserRoles.Join(Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new UserRoleReadModel { UserId = ur.UserId, RoleName = r.Name! });
+
+    /// <summary>
+    /// Unique-index violations that mean "duplicate" in the contract, by index name. Translating them here keeps the
+    /// database the single judge of uniqueness (no check-then-insert race) and keeps Npgsql out of Application.
+    /// </summary>
+    private static readonly Dictionary<string, (string Code, string Message)> DuplicateByIndex = new(StringComparer.Ordinal)
+    {
+        ["ux_departments_code"] = (ErrorCodes.DepartmentDuplicate, "A department with this code already exists."),
+        ["ux_departments_name_ci"] = (ErrorCodes.DepartmentDuplicate, "A department with this name already exists."),
+        ["ux_users_normalized_user_name"] = (ErrorCodes.UserDuplicateEmail, "A user with this email already exists."),
+    };
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } pg
+            && pg.ConstraintName is { } index && DuplicateByIndex.TryGetValue(index, out var duplicate))
+        {
+            throw new ConflictException(duplicate.Code, duplicate.Message);
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -17,6 +17,33 @@ public sealed class DepartmentTests
         department.CreatedAt.ShouldBe(T0);
     }
 
+    [Fact]
+    public void Update_NormalizesAndSetsActiveFlag()
+    {
+        var department = Department.Create("Sales", "SALES", T0);
+
+        department.Update(" Field Sales ", " fs-1 ", isActive: false);
+
+        department.Name.ShouldBe("Field Sales");
+        department.Code.ShouldBe("FS-1");
+        department.IsActive.ShouldBeFalse();
+        department.CreatedAt.ShouldBe(T0);
+    }
+
+    [Theory]
+    [InlineData("", "SALES")]
+    [InlineData("Sales", "SA LES")]
+    public void Update_Invalid_ThrowsValidationAndKeepsState(string name, string code)
+    {
+        var department = Department.Create("Sales", "SALES", T0);
+
+        ShouldFailWith(() => department.Update(name, code, isActive: false), ErrorCodes.Validation);
+
+        department.Name.ShouldBe("Sales");
+        department.Code.ShouldBe("SALES");
+        department.IsActive.ShouldBeTrue();
+    }
+
     [Theory]
     [InlineData("Sales", "SA LES")]
     [InlineData("Sales", "SALES_1")]

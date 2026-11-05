@@ -87,7 +87,7 @@ public sealed class CapabilityTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         using var allowed = await admin.GetAsync(users, Ct);
 
         await ProblemAssert.HasCode(forbidden, 403, ErrorCodes.AuthForbidden);
-        allowed.StatusCode.ShouldBe(HttpStatusCode.NotImplemented, "past the policy: user admin is still a BE-08 stub");
+        allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     private async Task<string?[]> CapabilitiesOf(TestUser user)
