@@ -42,7 +42,8 @@
   "overrides": [
     {
       "files": [
-        "src/lib/api/**"
+        "src/lib/api/**",
+        "src/mocks/**"
       ],
       "rules": {
         "no-restricted-globals": "off"

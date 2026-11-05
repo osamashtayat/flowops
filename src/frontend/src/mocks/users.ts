@@ -67,14 +67,6 @@ export const MOCK_USERS: Record<MockUserKey, CurrentUserDto> = {
   },
 }
 
-export const MOCK_USER_LABELS: Record<MockUserKey, string> = {
-  employee: 'Employee',
-  manager: 'Manager',
-  finance: 'Finance officer',
-  admin: 'Administrator',
-  newHire: 'New hire (must change password)',
-}
-
 export const MOCK_USER_KEYS = Object.keys(MOCK_USERS) as MockUserKey[]
 
 export function mockUserByEmail(email: string): MockUserKey | undefined {
