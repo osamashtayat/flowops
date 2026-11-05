@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Check, CircleCheck, CircleX, Clock, MessageSquare, Send, type LucideIcon } from 'lucide-react'
 import type { ActivityDto, ActivityType } from '@/lib/api/types'
 import { activityAction } from '@/lib/format/activity'
@@ -13,8 +14,11 @@ const ICONS: Record<ActivityType, { icon: LucideIcon; tone: string }> = {
   CommentAdded: { icon: MessageSquare, tone: 'text-ink-muted' },
 }
 
+/** An activity entry; the dashboard's carry the request they belong to, which then becomes a link. */
+export type ActivityTimelineItem = ActivityDto & { requestId?: string; requestNumber?: string }
+
 export interface ActivityTimelineProps {
-  items: readonly ActivityDto[]
+  items: readonly ActivityTimelineItem[]
   /** Shown when there is nothing yet. */
   emptyText?: string
 }
@@ -37,6 +41,14 @@ export function ActivityTimeline({ items, emptyText = 'No activity yet.' }: Acti
             </div>
             <div className="min-w-0 flex-1 pb-1">
               <p className="text-sm text-ink">
+                {entry.requestId && entry.requestNumber && (
+                  <>
+                    <Link to={`/requests/${entry.requestId}`} className="tabular-nums text-primary underline">
+                      {entry.requestNumber}
+                    </Link>
+                    {' · '}
+                  </>
+                )}
                 {entry.actor && <strong className="font-semibold">{entry.actor.displayName} </strong>}
                 {activityAction(entry)}
               </p>
