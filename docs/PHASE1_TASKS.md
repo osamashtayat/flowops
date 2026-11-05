@@ -42,7 +42,7 @@ flowchart LR
 ### FE-00 — Frontend scaffold, theme tokens, first primitives · `Done` (architecture session)
 Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette disabled), `Button`, `StatusBadge`, `AppShell` placeholder, Vitest + Testing Library, token lint. Verified: typecheck, lint, test, build.
 
-### BE-01 — Backend solution scaffold · `Todo`
+### BE-01 — Backend solution scaffold · `Done`
 - **Objective:** create the solution exactly as `ARCHITECTURE.md` §2–3.
 - **Deps:** none. **Modules:** `src/backend/*`, `tests/backend/*`, root `FlowOps.slnx`, `global.json`, `Directory.Build.props`, `Directory.Packages.props`.
 - **Steps (exact):**
@@ -154,7 +154,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-03. **AC:** no hand-written API types (replace the local unions in `lib/format/status.ts` with generated ones); the existing oxlint rule forbidding `fetch` outside `lib/api` stays green; add a 4xx-never-retry rule to `lib/queryClient.ts`.
 - **Tests:** client attaches XSRF on unsafe methods only; ApiError parsing; `toUserMessage` for every known code.
 
-### FE-02 — Form primitives · `Todo`
+### FE-02 — Form primitives · `Done`
 - **Objective:** `Input`, `Textarea`, `Select`, `DateInput`, `MoneyInput`, `FormField`, `Card`, `PageHeader` per `DESIGN_SYSTEM.md` §5; react-hook-form + zod wiring helper.
 - **Deps:** FE-00. **Tests:** label/error association (`aria-describedby`, `aria-invalid`); MoneyInput 3-decimal handling.
 - **Parallel:** FE-05, FE-06, any backend task.
