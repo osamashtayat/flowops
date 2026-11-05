@@ -165,7 +165,7 @@ No abbreviations except well-known ones (`Id`, `Dto`, `Api`, `Url`). No magic st
 | Domain | Invariants | aggregate methods / value objects |
 | Database | Integrity | FKs, unique, check constraints |
 
-Limits (max lengths, date windows) are **constants in one place per stack**: `Domain/Requests/RequestLimits.cs` and `frontend/src/features/requests/limits.ts`. The contract doc is the bridge; the integration tests assert the server limits.
+Limits (max lengths, date windows) are **constants in one place per stack**: `Domain/Requests/RequestLimits.cs` and `frontend/src/lib/api/limits.ts`. The contract doc is the bridge; the integration tests assert the server limits.
 
 ## 8. Async & cancellation
 All I/O is async; pass `CancellationToken` from the controller down to EF calls. No `.Result`/`.Wait()`. Don't pass tokens into the domain (it does no I/O).

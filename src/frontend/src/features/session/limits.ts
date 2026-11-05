@@ -1,7 +1,7 @@
 /**
  * Sign-in and password limits, from `LoginRequest` / `ChangePasswordRequest` in
  * contracts/openapi.json (limits.test.ts fails if they drift). Request limits live in
- * features/requests/limits.ts.
+ * lib/api/limits.ts, shared by the requests and tasks features.
  */
 export const SESSION_LIMITS = {
   /** LoginRequest.email, 1–256 */

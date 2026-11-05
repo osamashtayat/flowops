@@ -6,7 +6,7 @@ import { Select } from '@/components/ui/Select'
 import { requestStatusPresentation } from '@/lib/format/status'
 import type { RequestStatus, RequestType } from '@/lib/api/types'
 import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '../labels'
-import { REQUEST_LIMITS } from '../limits'
+import { REQUEST_LIMITS } from '@/lib/api/limits'
 
 /** How long typing must pause before the search reaches the URL (docs/UI_SPEC.md §4.3). */
 const SEARCH_DEBOUNCE_MS = 300

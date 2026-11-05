@@ -28,7 +28,7 @@ Read with: `docs/UI_SPEC.md`, `docs/DESIGN_SYSTEM.md`, ADR-0008. Visual rules: `
 - Filters/page/tab state in the URL (`useUrlState`).
 
 ## Forms
-- react-hook-form + zod schemas in `features/*/schemas.ts`; limits imported from `features/requests/limits.ts` (mirrors API_CONTRACT).
+- react-hook-form + zod schemas in `features/*/schemas.ts`; limits imported from `lib/api/limits.ts` (mirrors API_CONTRACT).
 - Labels, `aria-describedby` for help/error, `aria-invalid`, focus first invalid field on submit.
 
 ## TypeScript

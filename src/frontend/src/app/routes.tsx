@@ -9,6 +9,7 @@ import { MyRequestsPage } from '@/features/requests/pages/MyRequestsPage'
 import { NewLeavePage } from '@/features/requests/pages/NewLeavePage'
 import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
 import { NewRequestPage } from '@/features/requests/pages/NewRequestPage'
+import { RequestDetailsPage } from '@/features/requests/pages/RequestDetailsPage'
 import { TeamRequestsPage } from '@/features/requests/pages/TeamRequestsPage'
 import { RequireAuth } from '@/features/session/components/RequireAuth'
 import { RequireCapability } from '@/features/session/components/RequireCapability'
@@ -36,7 +37,7 @@ export const routes: RouteObject[] = [
               { index: true, element: <FoundationPage /> },
               { path: '/requests', element: <MyRequestsPage /> },
               { path: '/notifications', element: <PlaceholderPage title="Notifications" task="FE-11" /> },
-              { path: '/requests/:id', element: <PlaceholderPage title="Request details" task="FE-09" /> },
+              { path: '/requests/:id', element: <RequestDetailsPage /> },
               {
                 element: <RequireCapability capability="requests.submit" />,
                 children: [

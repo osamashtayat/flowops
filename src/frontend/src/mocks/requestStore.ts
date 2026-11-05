@@ -1,67 +1,138 @@
 import type {
+  ActivityDto,
   CurrentUserDto,
   RequestDetailsDto,
+  RequestStage,
   RequestStatus,
   RequestSummaryDto,
+  Role,
   SubmitLeaveRequest,
   SubmitPurchaseRequest,
+  TaskAction,
+  UserRef,
+  WorkTaskDto,
 } from '@/lib/api/types'
 import { calendarDaysInclusive, formatDateOnly } from '@/lib/format/date'
 import { MOCK_USERS } from './users'
 
 /**
  * In-memory requests for the mock API, reset between tests. Only what a mocked endpoint needs;
- * the real rules (numbering, routing, visibility) live in the backend.
+ * the real rules (numbering, routing, visibility, eligibility) live in the backend and are only
+ * imitated here, coarsely, so screens can be exercised without it.
  */
+const MOCK_VERSION = 'v1'
+const SEEDED_STATUSES: RequestStatus[] = ['InReview', 'Approved', 'Completed', 'Rejected']
+
 let created: RequestDetailsDto[] = []
+let seeded: RequestDetailsDto[] = []
+let comments = new Map<string, ActivityDto[]>()
 
 export function resetMockRequests() {
   created = []
+  seeded = buildSeeded()
+  comments = new Map()
+}
+
+const userRef = (user: CurrentUserDto): UserRef => ({ id: user.id, displayName: user.displayName })
+const EMPLOYEE = userRef(MOCK_USERS.employee)
+const MANAGER = userRef(MOCK_USERS.manager)
+const FINANCE = userRef(MOCK_USERS.finance)
+
+export function mockTask(init: {
+  id: string
+  stage: RequestStage
+  createdAt: string
+  assignee: WorkTaskDto['assignee']
+  decided?: { outcome: 'Approved' | 'Fulfilled'; by: UserRef; at: string; comment?: string | null }
+}): WorkTaskDto {
+  return {
+    id: init.id,
+    kind: init.stage === 'ProcurementFulfillment' ? 'Fulfillment' : 'Approval',
+    stage: init.stage,
+    status: init.decided ? 'Done' : 'Open',
+    assignee: init.assignee,
+    outcome: init.decided?.outcome ?? null,
+    decidedBy: init.decided?.by ?? null,
+    decidedAt: init.decided?.at ?? null,
+    comment: init.decided?.comment ?? null,
+    createdAt: init.createdAt,
+  }
+}
+
+function seededTasks(id: string, status: RequestStatus, at: string): WorkTaskDto[] {
+  const task = (n: number, stage: RequestStage, assignee: WorkTaskDto['assignee'], decided?: { by: UserRef; comment?: string }) =>
+    mockTask({
+      id: `${id}-t${n}`,
+      stage,
+      createdAt: at,
+      assignee,
+      decided: decided ? { outcome: 'Approved', by: decided.by, at, comment: decided.comment } : undefined,
+    })
+  const manager = { user: MANAGER, role: null }
+  const finance = { user: null, role: 'FinanceOfficer' as Role }
+  switch (status) {
+    case 'InReview':
+      return [task(1, 'ManagerApproval', manager, { by: MANAGER, comment: 'Looks reasonable.' }), task(2, 'FinanceApproval', finance)]
+    case 'Approved':
+      return [
+        task(1, 'ManagerApproval', manager, { by: MANAGER }),
+        task(2, 'FinanceApproval', finance, { by: FINANCE }),
+        task(3, 'ProcurementFulfillment', { user: null, role: 'ProcurementOfficer' }),
+      ]
+    case 'Completed':
+      return [task(1, 'ManagerApproval', manager, { by: MANAGER }), task(2, 'FinanceApproval', finance, { by: FINANCE })]
+    case 'Rejected':
+      return [{ ...task(1, 'ManagerApproval', manager, { by: MANAGER, comment: 'Not in this quarter’s budget.' }), outcome: 'Rejected' }]
+    default:
+      return status satisfies never
+  }
 }
 
 /** 23 older requests from the mock employee, so lists have something to filter and page through. */
-const SEEDED_STATUSES: RequestStatus[] = ['InReview', 'Approved', 'Completed', 'Rejected']
-const SEEDED: RequestDetailsDto[] = Array.from({ length: 23 }, (_, index) => {
-  const status = SEEDED_STATUSES[index % SEEDED_STATUSES.length] ?? 'InReview'
-  const isPurchase = index % 3 !== 2
-  const submittedAt = new Date(Date.UTC(2026, 9, 28 - index, 9)).toISOString()
-  const base = {
-    id: `5eed0000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-    number: `FO-2026-${String(800 - index).padStart(6, '0')}`,
-    requester: { id: MOCK_USERS.employee.id, displayName: MOCK_USERS.employee.displayName },
-    department: MOCK_USERS.employee.department ?? { id: '', name: '' },
-    status,
-    stage: status === 'InReview' ? 'FinanceApproval' : 'Closed',
-    submittedAt,
-    closedAt: status === 'InReview' ? null : submittedAt,
-    tasks: [],
-    availableActions: null,
-    canComment: true,
-  } satisfies Partial<RequestDetailsDto>
-  return isPurchase
-    ? {
-        ...base,
-        type: 'EquipmentPurchase',
-        title: ['Dell XPS 15 laptop', 'Monitor 27 inch', 'Standing desk', 'Noise-cancelling headset'][index % 4] ?? 'Laptop',
-        purchase: {
-          itemName: 'Equipment',
-          description: 'Mock description',
-          estimatedCost: { amount: `${(index + 1) * 100}.000`, currency: 'JOD' },
-          justification: 'Mock justification',
-        },
-        leave: null,
-      }
-    : {
-        ...base,
-        type: 'Leave',
-        title: `Annual leave · ${index + 1} Dec`,
-        purchase: null,
-        leave: { startDate: '2026-12-01', endDate: '2026-12-03', days: 3, leaveType: 'Annual', reason: null, reasonHidden: false },
-      }
-})
+function buildSeeded(): RequestDetailsDto[] {
+  return Array.from({ length: 23 }, (_, index) => {
+    const status = SEEDED_STATUSES[index % SEEDED_STATUSES.length] ?? 'InReview'
+    const submittedAt = new Date(Date.UTC(2026, 9, 28 - index, 9)).toISOString()
+    const id = `5eed0000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`
+    const base = {
+      id,
+      number: `FO-2026-${String(800 - index).padStart(6, '0')}`,
+      requester: EMPLOYEE,
+      department: MOCK_USERS.employee.department ?? { id: '', name: '' },
+      status,
+      stage: (status === 'InReview' ? 'FinanceApproval' : status === 'Approved' ? 'ProcurementFulfillment' : 'Closed') as RequestStage,
+      submittedAt,
+      closedAt: status === 'Completed' || status === 'Rejected' ? submittedAt : null,
+      tasks: seededTasks(id, status, submittedAt),
+      availableActions: null,
+      canComment: true,
+    }
+    return index % 3 !== 2
+      ? {
+          ...base,
+          type: 'EquipmentPurchase' as const,
+          title: ['Dell XPS 15 laptop', 'Monitor 27 inch', 'Standing desk', 'Noise-cancelling headset'][index % 4] ?? 'Laptop',
+          purchase: {
+            itemName: 'Equipment',
+            description: 'Mock description',
+            estimatedCost: { amount: `${(index + 1) * 100}.000`, currency: 'JOD' as const },
+            justification: 'Mock justification',
+          },
+          leave: null,
+        }
+      : {
+          ...base,
+          type: 'Leave' as const,
+          title: `Annual leave · ${index + 1} Dec`,
+          purchase: null,
+          leave: { startDate: '2026-12-01', endDate: '2026-12-03', days: 3, leaveType: 'Annual' as const, reason: 'Family trip', reasonHidden: false },
+        }
+  })
+}
 
 export function mockRequests(): readonly RequestDetailsDto[] {
-  return [...created, ...SEEDED]
+  seeded = seeded.length > 0 ? seeded : buildSeeded()
+  return [...created, ...seeded]
 }
 
 export interface MockRequestQuery {
@@ -96,6 +167,83 @@ export function listMockRequests(user: CurrentUserDto, query: MockRequestQuery) 
   }
 }
 
+/** Stand-in for the server's visibility rule: your own, or anything if you work the queues. */
+export function canSeeMockRequest(user: CurrentUserDto, request: RequestDetailsDto): boolean {
+  return request.requester.id === user.id || user.capabilities.includes('tasks.view')
+}
+
+/** Stand-in for TaskEligibility: not your own request, and the task is assigned to you or your role. */
+export function mockEligibleActions(user: CurrentUserDto, request: RequestDetailsDto, task: WorkTaskDto): TaskAction[] {
+  if (task.status !== 'Open' || request.requester.id === user.id) return []
+  const assignedToMe = task.assignee.user?.id === user.id || (task.assignee.role !== null && user.roles.includes(task.assignee.role))
+  if (!assignedToMe) return []
+  return task.kind === 'Fulfillment' ? ['fulfill'] : ['approve', 'reject']
+}
+
+export const mockTaskVersion = () => MOCK_VERSION
+
+/** The request as the given user would receive it (reason hidden, actions computed). */
+export function getMockRequestFor(user: CurrentUserDto, id: string): RequestDetailsDto | null {
+  const request = mockRequests().find((candidate) => candidate.id === id)
+  if (!request || !canSeeMockRequest(user, request)) return null
+  const openTask = request.tasks.find((task) => task.status === 'Open')
+  const actions = openTask ? mockEligibleActions(user, request, openTask) : []
+  const mayReadReason = request.requester.id === user.id || user.roles.includes('HrOfficer') || user.id === MOCK_USERS.manager.id
+  return {
+    ...request,
+    leave: request.leave && !mayReadReason ? { ...request.leave, reason: null, reasonHidden: true } : request.leave,
+    availableActions: openTask && actions.length > 0 ? { taskId: openTask.id, actions, version: MOCK_VERSION } : null,
+  }
+}
+
+export function findMockTask(taskId: string): { request: RequestDetailsDto; task: WorkTaskDto } | null {
+  for (const request of mockRequests()) {
+    const task = request.tasks.find((candidate) => candidate.id === taskId)
+    if (task) return { request, task }
+  }
+  return null
+}
+
+/** Replaces a request in whichever list holds it (used by the workflow mock). */
+export function updateMockRequest(next: RequestDetailsDto) {
+  created = created.map((request) => (request.id === next.id ? next : request))
+  seeded = seeded.map((request) => (request.id === next.id ? next : request))
+}
+
+export function mockActivities(request: RequestDetailsDto): ActivityDto[] {
+  const entry = (id: string, type: ActivityDto['type'], actor: UserRef | null, stage: RequestStage | null, body: string | null, at: string): ActivityDto => ({
+    id,
+    type,
+    actor,
+    stage,
+    body,
+    occurredAt: at,
+  })
+  const items: ActivityDto[] = [entry(`${request.id}-a0`, 'Submitted', request.requester, null, null, request.submittedAt)]
+  for (const task of request.tasks) {
+    items.push(entry(`${task.id}-assigned`, 'TaskAssigned', null, task.stage, null, task.createdAt))
+    if (task.decidedAt && task.decidedBy) {
+      const type = task.outcome === 'Rejected' ? 'Rejected' : task.outcome === 'Fulfilled' ? 'Fulfilled' : 'Approved'
+      items.push(entry(`${task.id}-decided`, type, task.decidedBy, task.stage, task.comment, task.decidedAt))
+    }
+  }
+  if (request.status === 'Completed' && request.closedAt) items.push(entry(`${request.id}-done`, 'Completed', null, null, null, request.closedAt))
+  return [...items, ...(comments.get(request.id) ?? [])].toSorted((a, b) => a.occurredAt.localeCompare(b.occurredAt))
+}
+
+export function addMockComment(user: CurrentUserDto, request: RequestDetailsDto, body: string): ActivityDto {
+  const comment: ActivityDto = {
+    id: `${request.id}-c${(comments.get(request.id)?.length ?? 0) + 1}`,
+    type: 'CommentAdded',
+    actor: userRef(user),
+    stage: null,
+    body,
+    occurredAt: new Date().toISOString(),
+  }
+  comments.set(request.id, [...(comments.get(request.id) ?? []), comment])
+  return comment
+}
+
 function nextIdentity() {
   const index = created.length + 1
   return {
@@ -107,16 +255,18 @@ function nextIdentity() {
 type Header = Omit<RequestDetailsDto, 'purchase' | 'leave' | 'title' | 'type'>
 
 function header(user: CurrentUserDto): Header {
+  const identity = nextIdentity()
+  const submittedAt = new Date().toISOString()
   return {
-    ...nextIdentity(),
-    requester: { id: user.id, displayName: user.displayName },
+    ...identity,
+    requester: userRef(user),
     // The caller checks the department before getting here.
     department: user.department ?? { id: '', name: '' },
     status: 'InReview',
     stage: 'ManagerApproval',
-    submittedAt: new Date().toISOString(),
+    submittedAt,
     closedAt: null,
-    tasks: [],
+    tasks: [mockTask({ id: `${identity.id}-t1`, stage: 'ManagerApproval', createdAt: submittedAt, assignee: { user: user.manager, role: null } })],
     availableActions: null,
     canComment: true,
   }

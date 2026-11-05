@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { calendarDaysInclusive, todayInCompanyZone } from '@/lib/format/date'
 import { moneyAmountSchema } from '@/lib/forms/money'
 import { LEAVE_TYPES } from './labels'
-import { REQUEST_LIMITS, upToCharacters } from './limits'
+import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
 
 /**
  * Client-side checks mirroring docs/API_CONTRACT.md §4 for fast feedback. The server validates
@@ -41,3 +41,8 @@ export const leaveSchema = z
     else if (days > REQUEST_LIMITS.leaveMaxDays) issue('endDate', `Leave can be at most ${REQUEST_LIMITS.leaveMaxDays} days.`)
   })
 export type LeaveValues = z.infer<typeof leaveSchema>
+
+export const commentSchema = z.object({
+  body: requiredText('a comment', REQUEST_LIMITS.commentMax),
+})
+export type CommentValues = z.infer<typeof commentSchema>

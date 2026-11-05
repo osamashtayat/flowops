@@ -5,6 +5,8 @@ import type {
   InboxItemDto,
   LoginRequest,
   PagedInboxItems,
+  ActivityDto,
+  AddCommentRequest,
   PagedRequestSummaries,
   RequestDetailsDto,
   SubmitLeaveRequest,
@@ -14,7 +16,15 @@ import type {
   ValidationProblemDetails,
 } from '@/lib/api/types'
 import { currentActor } from './actor'
-import { addMockLeave, addMockPurchase, listMockRequests } from './requestStore'
+import {
+  addMockComment,
+  addMockLeave,
+  addMockPurchase,
+  getMockRequestFor,
+  listMockRequests,
+  mockActivities,
+} from './requestStore'
+import { decideMockTask } from './requestWorkflow'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
   MOCK_RATE_LIMITED_EMAIL,
@@ -162,7 +172,48 @@ function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | n
   return null
 }
 
+/** The shared preamble of the request and decision endpoints: who is asking. */
+const NOT_FOUND = () => problem(404, 'not_found')
+
 export const dataHandlers = [
+  http.get<{ id: string }, never, RequestDetailsDto | Failure>('/api/requests/:id', async ({ params }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const request = getMockRequestFor(user, params.id)
+    return request ? HttpResponse.json(request) : NOT_FOUND()
+  }),
+
+  http.get<{ id: string }, never, ActivityDto[] | Failure>('/api/requests/:id/activity', async ({ params }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const request = getMockRequestFor(user, params.id)
+    return request ? HttpResponse.json(mockActivities(request)) : NOT_FOUND()
+  }),
+
+  http.post<{ id: string }, AddCommentRequest, ActivityDto | Failure>('/api/requests/:id/comments', async ({ params, request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const target = getMockRequestFor(user, params.id)
+    if (!target) return NOT_FOUND()
+    const { body } = await request.json()
+    if (!body.trim()) return validationProblem({ body: ['The comment cannot be empty.'] })
+    return HttpResponse.json(addMockComment(user, target, body.trim()), { status: 201 })
+  }),
+
+  ...(['approve', 'reject', 'fulfill'] as const).map((action) =>
+    http.post<{ taskId: string }, { version: string; comment?: string | null; reason?: string; note?: string | null }, Failure | null>(
+      `/api/tasks/:taskId/${action}`,
+      async ({ params, request }) => {
+        const user = await currentActor()
+        if (!user) return problem(401, 'auth.unauthenticated')
+        const body = await request.json()
+        const text = body.comment ?? body.reason ?? body.note ?? null
+        const failure = decideMockTask(user, params.taskId, action, body.version, text)
+        if (!failure) return new HttpResponse(null, { status: 204 })
+        return failure.status === 400 ? validationProblem({ reason: ['Enter a reason.'] }) : problem(failure.status, failure.code)
+      },
+    ),
+  ),
   http.get<never, never, PagedRequestSummaries | Failure>('/api/requests', async ({ request }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
