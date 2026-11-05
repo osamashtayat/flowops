@@ -1,12 +1,10 @@
+import type { MoneyDto } from '@/lib/api/types'
+
 /**
  * Money display. Amounts are strings (docs/API_CONTRACT.md §1) and are formatted by string
- * manipulation only, so no float ever rounds them. Once FE-01 generates schema.d.ts, replace
- * this local `Money` with the generated type.
+ * manipulation only, so no float ever rounds them.
  */
-export interface Money {
-  amount: string
-  currency: 'JOD'
-}
+export type Money = MoneyDto
 
 const AMOUNT = /^(\d+)(?:\.(\d+))?$/
 
