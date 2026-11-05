@@ -63,7 +63,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** architecture test asserting the dependency table (can use reflection over referenced assemblies).
 - **Parallel:** with BE-06 once projects exist.
 
-### BE-02 — Persistence foundation and error pipeline · `Todo`
+### BE-02 — Persistence foundation and error pipeline · `Done`
 - **Objective:** `AppDbContext` (Identity), Npgsql, snake_case naming, migrations workflow, `IAppDbContext`, global exception→ProblemDetails handler, `ICurrentUser`, `TimeProvider`.
 - **Deps:** BE-01. **Modules:** Infrastructure/Persistence, Application/Common, Api/Errors, Api/Auth.
 - **AC:** `docker compose up -d db` + `dotnet ef database update` creates schema; exception types map to the statuses in `API_CONTRACT.md` §2 with `code` and `traceId`; unhandled → 500 without internals; connection string from env/user-secrets only.

@@ -53,3 +53,7 @@ trim_trailing_whitespace = false
 [tests/**.cs]
 # Test names follow Method_Condition_Result (docs/TESTING.md §5), so underscores are intended.
 dotnet_diagnostic.CA1707.severity = none
+
+[src/backend/FlowOps.Infrastructure/Migrations/**.cs]
+# Produced by `dotnet ef migrations add`; reviewed via `dotnet ef migrations script`, not hand-edited.
+generated_code = true
