@@ -41,14 +41,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         UserRoles.Join(Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new UserRoleReadModel { UserId = ur.UserId, RoleName = r.Name! });
 
     /// <summary>
-    /// Unique-index violations that mean "duplicate" in the contract, by index name. Translating them here keeps the
+    /// Unique-index violations with a contract meaning (mostly "duplicate"), by index name. Translating them here keeps the
     /// database the single judge of uniqueness (no check-then-insert race) and keeps Npgsql out of Application.
     /// </summary>
     private static readonly Dictionary<string, (string Code, string Message)> DuplicateByIndex = new(StringComparer.Ordinal)
     {
-        ["ux_departments_code"] = (ErrorCodes.DepartmentDuplicate, "A department with this code already exists."),
-        ["ux_departments_name_ci"] = (ErrorCodes.DepartmentDuplicate, "A department with this name already exists."),
-        ["ux_users_normalized_user_name"] = (ErrorCodes.UserDuplicateEmail, "A user with this email already exists."),
+        [DepartmentConfiguration.CodeIndex] = (ErrorCodes.DepartmentDuplicate, "A department with this code already exists."),
+        [DepartmentConfiguration.NameIndex] = (ErrorCodes.DepartmentDuplicate, "A department with this name already exists."),
+        [IdentityTableNames.UserNameIndex] = (ErrorCodes.UserDuplicateEmail, "A user with this email already exists."),
+        // Two concurrent role edits adding the same role: the loser sees the winner's row.
+        ["pk_user_roles"] = (ErrorCodes.ConcurrencyConflict, "The user was changed by someone else. Reload and try again."),
     };
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)

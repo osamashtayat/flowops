@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using FlowOps.Domain.Organization;
 
@@ -38,5 +39,7 @@ public sealed record UpdateDepartmentRequest
     [RegularExpression(CreateDepartmentRequest.CodePattern)]
     public string Code { get; init; } = "";
 
+    /// <summary>Required: a missing value must not silently deactivate.</summary>
+    [JsonRequired]
     public bool IsActive { get; init; }
 }

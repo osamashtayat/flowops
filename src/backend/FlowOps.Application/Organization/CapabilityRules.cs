@@ -11,6 +11,10 @@ public static class CapabilityRules
 {
     private static readonly string[] OfficerRoles = [Roles.FinanceOfficer, Roles.HrOfficer, Roles.ProcurementOfficer];
 
+    /// <summary>Administration doesn't depend on the manager relationship, so no isManager is needed to ask.</summary>
+    public static bool CanAdminister(IReadOnlyCollection<string> roles) =>
+        For(roles, isManager: false).Contains(Capability.AdminManage);
+
     public static IReadOnlyList<Capability> For(IReadOnlyCollection<string> roles, bool isManager)
     {
         ArgumentNullException.ThrowIfNull(roles);

@@ -97,6 +97,77 @@ public sealed class UserRulesTests(FlowOpsApiFactory factory) : DatabaseTest(fac
     }
 
     [Fact]
+    public async Task Update_WithoutIsActive_Returns400AndKeepsTheUserActive()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var admin = await AdminClientAsync(Factory);
+
+        using var response = await admin.PutAsJsonAsync(ById(lina.Id), new { displayName = "Lina R", departmentId = (Guid?)null, managerId = (Guid?)null }, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+        (await JsonBody.ReadAsync(await admin.GetAsync(ById(lina.Id), Ct))).GetProperty("isActive").GetBoolean().ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Update_UnknownManagerOrDepartment_Returns400(bool unknownManager)
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var admin = await AdminClientAsync(Factory);
+        var unknown = Guid.CreateVersion7();
+
+        using var response = await admin.PutAsJsonAsync(ById(lina.Id),
+            Profile("Lina", departmentId: unknownManager ? null : unknown, managerId: unknownManager ? unknown : null), Ct);
+
+        var problem = await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+        problem.GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe([unknownManager ? "managerId" : "departmentId"]);
+    }
+
+    [Fact]
+    public async Task Update_DeactivateThenReactivateWithinAMinute_StillEndsOldSessions()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var linaClient = await Factory.ClientFor(lina);
+        using var admin = await AdminClientAsync(Factory);
+
+        (await admin.PutAsJsonAsync(ById(lina.Id), Profile("Lina", isActive: false), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await admin.PutAsJsonAsync(ById(lina.Id), Profile("Lina", isActive: true), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        Factory.Clock.Advance(TimeSpan.FromMinutes(2));
+
+        using var me = await linaClient.GetAsync(new Uri("/api/auth/me", UriKind.Relative), Ct);
+        await ProblemAssert.HasCode(me, 401, ErrorCodes.AuthUnauthenticated);
+    }
+
+    [Fact]
+    public async Task UpdateRoles_DemotedAdminLosesAdminAccessAtNextRevalidation()
+    {
+        var bea = await Given.User("bea").WithRoles(Roles.Administrator, Roles.Employee).CreateAsync(Factory);
+        using var beaClient = await Factory.ClientFor(bea);
+        using var admin = await AdminClientAsync(Factory);
+
+        (await admin.PutAsJsonAsync(ById(bea.Id, "/roles"), RoleSet("Employee"), Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        Factory.Clock.Advance(TimeSpan.FromMinutes(2));
+
+        using var response = await beaClient.GetAsync(new Uri("/api/users", UriKind.Relative), Ct);
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
+    }
+
+    [Theory]
+    [InlineData("[99]")]
+    [InlineData("[0]")]
+    public async Task UpdateRoles_RolesAsNumbers_Returns400(string roles)
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var admin = await AdminClientAsync(Factory);
+        using var content = new StringContent($$"""{"roles":{{roles}}}""", System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await admin.PutAsync(ById(lina.Id, "/roles"), content, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
     public async Task UpdateRoles_RemovingAdminFromTheLastActiveAdmin_Returns422()
     {
         var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
@@ -157,9 +228,9 @@ public sealed class UserRulesTests(FlowOpsApiFactory factory) : DatabaseTest(fac
     [Fact]
     public async Task Update_MovingIntoAnInactiveDepartment_Returns422()
     {
-        var old = await InactiveDepartmentAsync(Factory);
         var lina = await Given.User("lina").CreateAsync(Factory);
         using var admin = await AdminClientAsync(Factory);
+        var old = await InactiveDepartmentAsync(admin);
 
         using var response = await admin.PutAsJsonAsync(ById(lina.Id), Profile("Lina", departmentId: old), Ct);
 

@@ -8,9 +8,11 @@ namespace FlowOps.Application.Organization;
 public interface IIdentityAdmin
 {
     /// <summary>The password rules (AUTHORIZATION.md §1.6) the password breaks; empty when it is acceptable.</summary>
-    Task<IReadOnlyList<string>> CheckPasswordAsync(string password);
+    Task<IReadOnlyList<string>> CheckPasswordAsync(string password, CancellationToken ct);
 
     /// <summary>Stages a new account with <c>MustChangePassword = true</c>. Returns its id.</summary>
+    /// <exception cref="Common.ValidationFailedException">Identity rejects the email as a user name (<c>errors.email</c>).</exception>
+    /// <exception cref="Common.ConflictException"><c>user.duplicate_email</c>.</exception>
     Task<Guid> StageNewUserAsync(NewUserAccount account, CancellationToken ct);
 
     Task StageProfileAsync(Guid userId, UserProfile profile, CancellationToken ct);

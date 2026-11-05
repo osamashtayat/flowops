@@ -11,8 +11,7 @@ public sealed class DepartmentService(IAppDbContext db, ICurrentUser currentUser
     public async Task<IReadOnlyList<DepartmentDto>> ListAsync(DepartmentListQuery query, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(query);
-        var includeInactive = query.IncludeInactive
-            && CapabilityRules.For(currentUser.Roles, isManager: false).Contains(Capability.AdminManage);
+        var includeInactive = query.IncludeInactive && CapabilityRules.CanAdminister(currentUser.Roles);
         // Ordered before projecting: EF can't sort on a member of a constructor-built DTO.
         return await Project(db.Departments.Where(d => includeInactive || d.IsActive).OrderBy(d => d.Name).ThenBy(d => d.Id))
             .ToListAsync(ct);

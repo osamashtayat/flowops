@@ -102,7 +102,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ## Organization
 
-### BE-08 — Departments & user administration API · `Todo`
+### BE-08 — Departments & user administration API · `Done`
 - **Objective:** `API_CONTRACT.md` §8 (departments, users, roles, reset password) via `DepartmentService`, `UserAdministrationService`, `ManagerAssignmentRules`.
 - **Deps:** BE-05, BE-07. **AC:** cycle/self-manager prevention (I13); last-admin protection; duplicate email/department → 409; inactive department can't receive members.
 - **Tests:** each error code; non-admin → 403; paging/search.

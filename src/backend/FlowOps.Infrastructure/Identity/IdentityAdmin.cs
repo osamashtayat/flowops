@@ -1,4 +1,6 @@
+using FlowOps.Application.Common;
 using FlowOps.Application.Organization;
+using FlowOps.Domain.Errors;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +14,7 @@ namespace FlowOps.Infrastructure.Identity;
 /// </summary>
 internal sealed class IdentityAdmin(AppDbContext db, UserManager<ApplicationUser> users) : IIdentityAdmin
 {
-    public async Task<IReadOnlyList<string>> CheckPasswordAsync(string password)
+    public async Task<IReadOnlyList<string>> CheckPasswordAsync(string password, CancellationToken ct)
     {
         var problems = new List<string>();
         foreach (var validator in users.PasswordValidators)
@@ -46,6 +48,7 @@ internal sealed class IdentityAdmin(AppDbContext db, UserManager<ApplicationUser
             MustChangePassword = true,
             CreatedAt = account.CreatedAt,
         };
+        await EnsureValidUserAsync(user);
         user.PasswordHash = users.PasswordHasher.HashPassword(user, account.Password);
         db.Users.Add(user);
         await AddRolesAsync(user.Id, account.Roles, ct);
@@ -59,13 +62,20 @@ internal sealed class IdentityAdmin(AppDbContext db, UserManager<ApplicationUser
         user.DisplayName = profile.DisplayName;
         user.DepartmentId = profile.DepartmentId;
         user.ManagerId = profile.ManagerId;
-        // Deactivation needs no stamp change: re-validation rejects inactive users (FlowOpsSignInManager).
+        if (user.IsActive && !profile.IsActive)
+        {
+            // Re-validation already rejects inactive users; a new stamp also kills old cookies if the user is reactivated soon after.
+            user.SecurityStamp = NewStamp();
+        }
+
         user.IsActive = profile.IsActive;
     }
 
     public async Task StageRolesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(roles);
+        // Loading rotates the user's concurrency stamp, so two concurrent role edits can't both commit.
+        await LoadAsync(userId, ct);
         var wanted = await RoleIdsAsync(roles, ct);
         var current = await db.UserRoles.Where(ur => ur.UserId == userId).ToListAsync(ct);
         db.UserRoles.RemoveRange(current.Where(ur => !wanted.Contains(ur.RoleId)));
@@ -83,6 +93,29 @@ internal sealed class IdentityAdmin(AppDbContext db, UserManager<ApplicationUser
         user.LockoutEnd = null;
         // A new stamp ends every existing session at its next re-validation, as a password change does.
         user.SecurityStamp = NewStamp();
+    }
+
+    /// <summary>
+    /// Identity's own user rules (allowed user-name characters, unique email). Skipping them would create accounts
+    /// that UserManager later refuses to update, e.g. on their first password change.
+    /// </summary>
+    private async Task EnsureValidUserAsync(ApplicationUser user)
+    {
+        var errors = new List<IdentityError>();
+        foreach (var validator in users.UserValidators)
+        {
+            errors.AddRange((await validator.ValidateAsync(users, user)).Errors);
+        }
+
+        if (errors.Any(e => e.Code is nameof(IdentityErrorDescriber.DuplicateEmail) or nameof(IdentityErrorDescriber.DuplicateUserName)))
+        {
+            throw new ConflictException(ErrorCodes.UserDuplicateEmail, "A user with this email already exists.");
+        }
+
+        if (errors.Count > 0)
+        {
+            throw ValidationFailedException.For("email", [.. errors.Select(e => e.Description)]);
+        }
     }
 
     private async Task<ApplicationUser> LoadAsync(Guid userId, CancellationToken ct)

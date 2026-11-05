@@ -3,8 +3,6 @@ using System.Net.Http.Json;
 using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
-using FlowOps.Infrastructure.Persistence;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FlowOps.Api.IntegrationTests.Organization;
 
@@ -83,6 +81,57 @@ public sealed class UsersApiTests(FlowOpsApiFactory factory) : DatabaseTest(fact
     }
 
     [Fact]
+    public async Task Create_EmailIdentityRejectsAsUserName_Returns400OnEmail()
+    {
+        using var admin = await AdminClientAsync(Factory);
+
+        // [EmailAddress] accepts it; Identity's user-name rules don't, and such an account could never change its password.
+        using var response = await admin.PostAsJsonAsync(Users, NewUser("o'neil@flowops.test"), Ct);
+
+        var problem = await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+        problem.GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["email"]);
+    }
+
+    [Fact]
+    public async Task Create_ThenFirstPasswordChange_Succeeds()
+    {
+        using var admin = await AdminClientAsync(Factory);
+        (await admin.PostAsJsonAsync(Users, NewUser("nour.q+ops@flowops.test"), Ct)).StatusCode.ShouldBe(HttpStatusCode.Created);
+        using var nour = await Factory.ClientFor(new TestUser(Guid.Empty, "nour.q+ops@flowops.test", InitialPassword, "Nour"));
+
+        using var change = await nour.PostAsJsonAsync(new Uri("/api/auth/change-password", UriKind.Relative),
+            new { currentPassword = InitialPassword, newPassword = "Brand-new-Pa55word" }, Ct);
+
+        change.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Theory]
+    [InlineData("[99]")]
+    [InlineData("[0]")]
+    public async Task Create_RolesAsNumbers_Returns400(string roles)
+    {
+        using var admin = await AdminClientAsync(Factory);
+        using var content = new StringContent(
+            $$"""{"email":"nour@flowops.test","displayName":"Nour","initialPassword":"{{InitialPassword}}","departmentId":null,"managerId":null,"roles":{{roles}}}""",
+            System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await admin.PostAsync(Users, content, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
+    public async Task Create_UnknownManager_Returns400()
+    {
+        using var admin = await AdminClientAsync(Factory);
+
+        using var response = await admin.PostAsJsonAsync(Users, NewUser("nour@flowops.test", managerId: Guid.CreateVersion7()), Ct);
+
+        var problem = await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+        problem.GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["managerId"]);
+    }
+
+    [Fact]
     public async Task Create_UnknownDepartment_Returns400()
     {
         using var admin = await AdminClientAsync(Factory);
@@ -108,8 +157,8 @@ public sealed class UsersApiTests(FlowOpsApiFactory factory) : DatabaseTest(fact
     [Fact]
     public async Task Create_InInactiveDepartment_Returns422()
     {
-        var old = await InactiveDepartmentAsync(Factory);
         using var admin = await AdminClientAsync(Factory);
+        var old = await InactiveDepartmentAsync(admin);
 
         using var response = await admin.PostAsJsonAsync(Users, NewUser("nour@flowops.test", old), Ct);
 
@@ -216,15 +265,16 @@ public sealed class UsersApiTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         return await factory.ClientFor(ada);
     }
 
-    internal static async Task<Guid> InactiveDepartmentAsync(FlowOpsApiFactory factory)
+    /// <summary>Creates an inactive department through the admin API.</summary>
+    internal static async Task<Guid> InactiveDepartmentAsync(HttpClient admin)
     {
-        var old = await Given.DepartmentAsync(factory, "Old", "OLD");
-        await using var scope = factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var tracked = await db.Departments.FindAsync([old.Id], Ct);
-        tracked!.Update(old.Name, old.Code, isActive: false);
-        await db.SaveChangesAsync(Ct);
-        return old.Id;
+        ArgumentNullException.ThrowIfNull(admin);
+        using var created = await admin.PostAsJsonAsync(new Uri("/api/departments", UriKind.Relative), new { name = "Old", code = "OLD" }, Ct);
+        var id = (await JsonBody.ReadAsync(created)).GetProperty("id").GetGuid();
+        using var deactivated = await admin.PutAsJsonAsync(new Uri($"/api/departments/{id}", UriKind.Relative),
+            new { name = "Old", code = "OLD", isActive = false }, Ct);
+        deactivated.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return id;
     }
 
     internal static Uri ById(Guid id, string suffix = "") => new($"/api/users/{id}{suffix}", UriKind.Relative);

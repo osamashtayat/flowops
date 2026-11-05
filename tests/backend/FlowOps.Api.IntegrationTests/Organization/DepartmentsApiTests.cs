@@ -101,6 +101,29 @@ public sealed class DepartmentsApiTests(FlowOpsApiFactory factory) : DatabaseTes
     }
 
     [Fact]
+    public async Task Update_ToAnotherDepartmentsNameInOtherCase_Returns409()
+    {
+        await Given.DepartmentAsync(Factory, "Sales", "SALES");
+        var hr = await Given.DepartmentAsync(Factory, "HR", "HR");
+        using var admin = await AdminClientAsync();
+
+        using var response = await admin.PutAsJsonAsync(ById(hr.Id), new { name = "sales", code = "HR", isActive = true }, Ct);
+
+        await ProblemAssert.HasCode(response, 409, ErrorCodes.DepartmentDuplicate);
+    }
+
+    [Fact]
+    public async Task Update_WithoutIsActive_Returns400()
+    {
+        var sales = await Given.DepartmentAsync(Factory, "Sales", "SALES");
+        using var admin = await AdminClientAsync();
+
+        using var response = await admin.PutAsJsonAsync(ById(sales.Id), new { name = "Sales", code = "SALES" }, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
     public async Task Update_Unknown_Returns404()
     {
         using var admin = await AdminClientAsync();

@@ -4593,7 +4593,8 @@
       "UpdateDepartmentRequest": {
         "required": [
           "name",
-          "code"
+          "code",
+          "isActive"
         ],
         "type": "object",
         "properties": {
@@ -4615,7 +4616,8 @@
       },
       "UpdateUserRequest": {
         "required": [
-          "displayName"
+          "displayName",
+          "isActive"
         ],
         "type": "object",
         "properties": {

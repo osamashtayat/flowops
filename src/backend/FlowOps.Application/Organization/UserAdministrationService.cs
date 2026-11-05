@@ -2,6 +2,7 @@ using FlowOps.Application.Common;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FlowOps.Application.Organization;
 
@@ -9,7 +10,8 @@ namespace FlowOps.Application.Organization;
 /// User administration (API_CONTRACT.md §8). Rules: no manager cycles (I13), an active Administrator always
 /// remains, inactive departments take no new members. Duplicate emails surface as 409 from the unique index.
 /// </summary>
-public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin identity, TimeProvider time)
+public sealed partial class UserAdministrationService(
+    IAppDbContext db, IIdentityAdmin identity, ICurrentUser currentUser, TimeProvider time, ILogger<UserAdministrationService> logger)
 {
     public async Task<PagedResult<UserDto>> ListAsync(UserListQuery query, CancellationToken ct)
     {
@@ -63,11 +65,12 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
             await EnsureActiveManagerAsync(managerId, ct);
         }
 
-        await EnsurePasswordAcceptedAsync(body.InitialPassword, "initialPassword");
+        await EnsurePasswordAcceptedAsync(body.InitialPassword, "initialPassword", ct);
         var account = new NewUserAccount(body.Email.Trim(), body.DisplayName.Trim(), body.InitialPassword, body.DepartmentId,
             body.ManagerId, RoleNames(body.Roles), time.GetUtcNow());
         var id = await identity.StageNewUserAsync(account, ct);
         await db.SaveChangesAsync(ct);
+        LogCreated(logger, currentUser.Id, id, account.Roles);
         return await GetAsync(id, ct);
     }
 
@@ -96,6 +99,7 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
 
         await identity.StageProfileAsync(id, new UserProfile(body.DisplayName.Trim(), body.DepartmentId, body.ManagerId, body.IsActive), ct);
         await SaveAsync(ct);
+        LogProfileUpdated(logger, currentUser.Id, id, body.DepartmentId, body.ManagerId, body.IsActive);
         return await GetAsync(id, ct);
     }
 
@@ -111,6 +115,7 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
 
         await identity.StageRolesAsync(id, roles, ct);
         await SaveAsync(ct);
+        LogRolesReplaced(logger, currentUser.Id, id, roles);
         return await GetAsync(id, ct);
     }
 
@@ -118,9 +123,10 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
     {
         ArgumentNullException.ThrowIfNull(body);
         await EnsureExistsAsync(id, ct);
-        await EnsurePasswordAcceptedAsync(body.NewPassword, "newPassword");
+        await EnsurePasswordAcceptedAsync(body.NewPassword, "newPassword", ct);
         await identity.StagePasswordResetAsync(id, body.NewPassword, ct);
         await SaveAsync(ct);
+        LogPasswordReset(logger, currentUser.Id, id);
     }
 
     private async Task SaveAsync(CancellationToken ct)
@@ -178,9 +184,9 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
         }
     }
 
-    private async Task EnsurePasswordAcceptedAsync(string password, string field)
+    private async Task EnsurePasswordAcceptedAsync(string password, string field, CancellationToken ct)
     {
-        var problems = await identity.CheckPasswordAsync(password);
+        var problems = await identity.CheckPasswordAsync(password, ct);
         if (problems.Count > 0)
         {
             throw ValidationFailedException.For(field, [.. problems]);
@@ -207,6 +213,20 @@ public sealed class UserAdministrationService(IAppDbContext db, IIdentityAdmin i
         db.Users.Where(m => m.Id == u.ManagerId).Select(m => new UserRef(m.Id, m.DisplayName)).SingleOrDefault(),
         db.UserRoles.Where(r => r.UserId == u.Id).Select(r => r.RoleName).ToList(),
         u.CreatedAt));
+
+    // Audit trail of administrative changes (who changed whom, and what): ids, role names and flags only, never passwords.
+    [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} created user {UserId} with roles {Roles}")]
+    private static partial void LogCreated(ILogger logger, Guid actorId, Guid userId, IEnumerable<string> roles);
+
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Admin {ActorId} updated user {UserId}: department {DepartmentId}, manager {ManagerId}, active {IsActive}")]
+    private static partial void LogProfileUpdated(ILogger logger, Guid actorId, Guid userId, Guid? departmentId, Guid? managerId, bool isActive);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} set roles of user {UserId} to {Roles}")]
+    private static partial void LogRolesReplaced(ILogger logger, Guid actorId, Guid userId, IEnumerable<string> roles);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} reset the password of user {UserId}")]
+    private static partial void LogPasswordReset(ILogger logger, Guid actorId, Guid userId);
 
     private sealed record UserRow(
         Guid Id, string Email, string DisplayName, bool IsActive, bool MustChangePassword,

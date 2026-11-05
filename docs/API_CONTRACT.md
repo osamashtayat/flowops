@@ -240,6 +240,11 @@ As built (BE-08):
 - **Manager.** Must be an existing, active user (otherwise 400 `errors.managerId`). It is checked only when the manager changes.
 - **Department.** An unknown department gives 400 `errors.departmentId`. An inactive one gives 422 `department.inactive`. Both are checked only when the department changes.
 - **Last administrator.** "Last admin" means the last **active** user with the `Administrator` role.
+- **Concurrent edits.** User edits carry no `version`, so between two administrators the last write wins. 409 `concurrency.conflict` appears only if the account changes during the request itself (e.g. the user changes their password at that moment).
+- **Required fields.** `isActive` is required on user and department `PUT`, so a missing value can't deactivate by accident. Enum values must be strings; numbers such as `0` give 400.
+- **Known races (accepted for Phase 1).** Two simultaneous demotions can remove the last administrator, and two simultaneous manager changes ("A reports to B" and "B reports to A") can create a cycle. Both rules are checked before acting, with no lock.
+- **Audit.** Every user change is logged with the acting admin's id (no passwords).
+- **Email.** It must also be a valid Identity user name: letters, digits and `-._@+`. Anything else gives 400 `errors.email`.
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
