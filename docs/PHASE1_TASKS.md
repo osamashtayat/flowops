@@ -82,7 +82,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-02. **AC:** a sample test spins PostgreSQL via Testcontainers, applies migrations, hits `/api/health`; Respawn reset works between tests; suite runs in < 30 s locally after image pull.
 - **Parallel:** BE-06.
 
-### BE-05 — Identity, cookie auth, antiforgery, bootstrap admin · `Todo`
+### BE-05 — Identity, cookie auth, antiforgery, bootstrap admin · `Done`
 - **Objective:** `AUTHORIZATION.md` §1–2 and §6 (policies, must-change-password middleware); `POST /auth/login`, `/logout`, `GET /auth/me` (with capabilities), `POST /auth/change-password`.
 - **Deps:** BE-03, BE-04. **Modules:** Api/Auth, Infrastructure/Identity, Application/Organization (capabilities).
 - **AC:** 401 JSON (no redirects); lockout 5/15 min; XSRF cookie issued + enforced on unsafe methods; bootstrap admin created once from config; roles seeded.
@@ -96,7 +96,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Parallel:** BE-02…BE-05 (no shared files).
 
 ### BE-07 — Domain persistence mapping · `Todo`
-- **Objective:** EF configurations for Request/details/WorkTask/Activity/Notification/Department/user extensions; `xmin` tokens; constraints and indexes from `DOMAIN_MODEL.md` §6; request-number sequence; migration.
+- **Objective:** EF configurations for Request/details/WorkTask/Activity/Notification (Department and the user profile columns landed early in BE-05, which `/api/auth/me` needed); `xmin` tokens; constraints and indexes from `DOMAIN_MODEL.md` §6; request-number sequence; migration.
 - **Deps:** BE-02, BE-06. **AC:** migration applies cleanly; partial unique index and check constraints exist (assert via `information_schema`/`pg_indexes` in a test).
 - **Tests:** round-trip persistence of a full purchase aggregate; inserting a second open task fails at DB level.
 

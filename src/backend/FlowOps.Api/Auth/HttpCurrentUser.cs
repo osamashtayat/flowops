@@ -3,7 +3,10 @@ using FlowOps.Application.Common;
 
 namespace FlowOps.Api.Auth;
 
-/// <summary><see cref="ICurrentUser"/> from the authenticated principal. The only place claims are read.</summary>
+/// <summary>
+/// <see cref="ICurrentUser"/> from the authenticated principal: the only way services read claims.
+/// (Policies and the password-change gate read the FlowOps claims via <see cref="ClaimsPrincipalExtensions"/>.)
+/// </summary>
 public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 {
     private ClaimsPrincipal? Principal => accessor.HttpContext?.User;

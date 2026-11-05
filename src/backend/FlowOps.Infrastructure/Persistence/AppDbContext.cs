@@ -1,4 +1,5 @@
 using FlowOps.Application.Common;
+using FlowOps.Domain.Organization;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +12,23 @@ namespace FlowOps.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IAppDbContext
 {
+    public DbSet<Department> Departments => Set<Department>();
+
+    IQueryable<UserReadModel> IAppDbContext.Users => Users.Select(u => new UserReadModel
+    {
+        Id = u.Id,
+        Email = u.Email!,
+        DisplayName = u.DisplayName,
+        DepartmentId = u.DepartmentId,
+        ManagerId = u.ManagerId,
+        IsActive = u.IsActive,
+        MustChangePassword = u.MustChangePassword,
+        CreatedAt = u.CreatedAt,
+    });
+
+    IQueryable<UserRoleReadModel> IAppDbContext.UserRoles =>
+        UserRoles.Join(Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new UserRoleReadModel { UserId = ur.UserId, RoleName = r.Name! });
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

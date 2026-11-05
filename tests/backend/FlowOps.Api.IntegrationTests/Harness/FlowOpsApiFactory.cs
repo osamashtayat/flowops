@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -61,6 +62,31 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
     /// <summary>An HTTPS client (the auth cookie is <c>__Host-</c>/Secure) that never follows redirects.</summary>
     public HttpClient CreateHttpsClient() =>
         CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+
+    /// <summary>
+    /// A client signed in as <paramref name="user"/> through the real login endpoint, sending the
+    /// <c>X-XSRF-TOKEN</c> header the SPA would send (TESTING.md §2).
+    /// </summary>
+    public async Task<HttpClient> ClientFor(TestUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        var client = CreateHttpsClient();
+        using var response = await LoginAsync(client, user.Email, user.Password);
+        response.StatusCode.ShouldBe(System.Net.HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", XsrfTokenFrom(response));
+        return client;
+    }
+
+    public static Task<HttpResponseMessage> LoginAsync(HttpClient client, string email, string password) =>
+        client.PostAsJsonAsync(new Uri("/api/auth/login", UriKind.Relative), new { email, password }, TestContext.Current.CancellationToken);
+
+    /// <summary>The value of the readable <c>XSRF-TOKEN</c> cookie set by <paramref name="response"/>.</summary>
+    public static string XsrfTokenFrom(HttpResponseMessage response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("XSRF-TOKEN=", StringComparison.Ordinal));
+        return Uri.UnescapeDataString(cookie["XSRF-TOKEN=".Length..cookie.IndexOf(';', StringComparison.Ordinal)]);
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

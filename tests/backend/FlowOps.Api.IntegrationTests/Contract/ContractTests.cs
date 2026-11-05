@@ -14,6 +14,10 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
 
     public static TheoryData<string> Endpoints => [.. ContractEndpoints.All.Select(e => e.ToString())];
 
+    public static TheoryData<string> Stubs => [.. ContractEndpoints.All.Where(e => !e.Implemented).Select(e => e.ToString())];
+
+    public static TheoryData<string> Protected => [.. ContractEndpoints.All.Where(e => !e.Anonymous).Select(e => e.ToString())];
+
     [Fact]
     public async Task CommittedOpenApi_MatchesWhatTheApiGenerates()
     {
@@ -49,7 +53,7 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
     }
 
     [Theory]
-    [MemberData(nameof(Endpoints))]
+    [MemberData(nameof(Stubs))]
     public async Task Endpoint_WithAuthorizedCallerAndValidInput_Returns501Stub(string endpoint)
     {
         var e = ContractEndpoints.All.Single(x => x.ToString() == endpoint);
@@ -61,19 +65,13 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
     }
 
     [Theory]
-    [MemberData(nameof(Endpoints))]
-    public async Task Endpoint_Anonymous_Returns401ProblemUnlessPublic(string endpoint)
+    [MemberData(nameof(Protected))]
+    public async Task Endpoint_Anonymous_Returns401Problem(string endpoint)
     {
         var e = ContractEndpoints.All.Single(x => x.ToString() == endpoint);
         using var client = factory.ClientWithRoles();
 
         using var response = await SendAsync(client, e);
-
-        if (e.Anonymous)
-        {
-            response.StatusCode.ShouldBe(HttpStatusCode.NotImplemented);
-            return;
-        }
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await CodeOf(response)).ShouldBe(ErrorCodes.AuthUnauthenticated);

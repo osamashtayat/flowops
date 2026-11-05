@@ -21,7 +21,10 @@ builder.Logging.AddJsonConsole(options =>
 // Validation errors use JSON (camelCase) field paths, e.g. estimatedCost.amount (API_CONTRACT.md §2).
 builder.Services
     .AddControllers(options =>
-        options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
+    {
+        options.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider());
+        options.Filters.Add<ValidateAntiforgeryFilter>();
+    })
     .AddJsonOptions(options => JsonSetup.Configure(options.JsonSerializerOptions));
 // The OpenAPI generator reads the HTTP (minimal API) options, so both must agree with MVC.
 builder.Services.ConfigureHttpJsonOptions(options => JsonSetup.Configure(options.SerializerOptions));
@@ -38,6 +41,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseFlowOpsSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -49,6 +53,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
+app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 
 app.MapControllers();
