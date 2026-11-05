@@ -77,7 +77,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** a test that the generated document equals the committed file (drift check).
 - **Parallel:** BE-06/BE-07.
 
-### BE-04 — Integration test harness · `Todo`
+### BE-04 — Integration test harness · `Done`
 - **Objective:** everything in `TESTING.md` §2 for the backend.
 - **Deps:** BE-02. **AC:** a sample test spins PostgreSQL via Testcontainers, applies migrations, hits `/api/health`; Respawn reset works between tests; suite runs in < 30 s locally after image pull.
 - **Parallel:** BE-06.

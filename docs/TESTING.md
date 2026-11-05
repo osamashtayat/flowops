@@ -21,11 +21,14 @@ Why Shouldly rather than FluentAssertions: FluentAssertions v8 moved to a commer
 
 ## 2. Test infrastructure (built once, in BE-04)
 
-- `FlowOpsApiFactory : WebApplicationFactory<Program>` — one PostgreSQL Testcontainer per test *collection*; migrations applied once; **Respawn** resets data between tests (keeps roles).
-- `TestClock` registered as `TimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`).
-- `RecordingRealtimePublisher` replaces SignalR publisher; tests assert what was published.
-- **Builders** (`Given.User("lina").InDepartment(sales).ManagedBy(karim).WithRoles(Employee)`), **authenticated clients** (`await factory.ClientFor(lina)` logs in through the real login endpoint and handles the XSRF header). No test talks to `DbContext` to *arrange* state that an API call could create, except bulk org setup.
-- `ProblemAssert.HasCode(response, 409, "task.already_decided")`.
+All of it lives in `tests/backend/FlowOps.Api.IntegrationTests/Harness/`.
+
+- `FlowOpsApiFactory : WebApplicationFactory<Program>` — one PostgreSQL Testcontainer (`postgres:17-alpine`, same as `docker-compose.yml`) per test *collection*; migrations applied once; **Respawn** resets data between tests (keeps `roles` and `__EFMigrationsHistory`). `CreateHttpsClient()` gives an HTTPS client that never follows redirects (so a 302 can't hide behind a 200).
+- Database tests derive from `DatabaseTest(factory)`: it puts the class in the shared `Database` collection (classes in it run sequentially) and resets data + clock before each test. Tests that need no database (contract, error pipeline, architecture) keep their own lightweight factories and run in parallel.
+- `TestClock` registered as `TimeProvider`: a resettable wrapper over `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) — a fake can't move backwards, so each reset swaps in a fresh one at `TestClock.Start` (Mon 2026-03-02 09:00 Asia/Amman). Tests move time with `Factory.Clock.Advance(...)`.
+- `RecordingRealtimePublisher` replaces the SignalR publisher; tests assert what was published. *(Added with the `IRealtimePublisher` port in BE-14.)*
+- **Builders** (`Given.User("lina").InDepartment(sales).ManagedBy(karim).WithRoles(Employee)`), **authenticated clients** (`await factory.ClientFor(lina)` logs in through the real login endpoint and handles the XSRF header). No test talks to `DbContext` to *arrange* state that an API call could create, except bulk org setup. *(`ClientFor` lands with the login endpoint in BE-05; user builders grow with the profile fields in BE-07/BE-08.)*
+- `ProblemAssert.HasCode(response, 409, "task.already_decided")` — asserts status, `application/problem+json` and `code`; returns the body for further checks.
 
 Frontend: `src/test/setup.ts` (jest-dom, MSW server), `renderWithProviders()` (QueryClient with retries off + MemoryRouter + session), MSW handlers typed from `schema.d.ts`.
 
