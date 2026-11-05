@@ -41,7 +41,7 @@ describe('REQUEST_LIMITS match contracts/openapi.json', () => {
   })
 
   it('search limit matches the GET /api/requests parameter', () => {
-    const search = contract.paths['/api/requests']?.get?.parameters?.find((p) => p.name === 'Search')
+    const search = contract.paths['/api/requests']?.get?.parameters?.find((p) => p.name === 'search')
     expect(search?.schema.maxLength).toBe(REQUEST_LIMITS.searchMax)
   })
 

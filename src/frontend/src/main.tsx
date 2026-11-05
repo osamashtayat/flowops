@@ -14,20 +14,25 @@ const root = createRoot(rootElement)
  * VITE_API_MOCKS=off to talk to the real API. The dynamic import keeps the mocks out of
  * production builds.
  */
-async function enableMocking() {
-  if (!import.meta.env.DEV || import.meta.env.VITE_API_MOCKS === 'off') return
+/** Resolves to false only when mocking was wanted but failed. */
+async function enableMocking(): Promise<boolean> {
+  if (!import.meta.env.DEV || import.meta.env.VITE_API_MOCKS === 'off') return true
   try {
     const { startMockApi } = await import('@/mocks/browser')
     await startMockApi()
+    return true
   } catch (error) {
     // e.g. a browser that blocks service workers: show the app anyway (it will reach the real API).
     console.error('Could not start the mock API; continuing without it.', error)
+    return false
   }
 }
 
-void enableMocking().then(() => {
+void enableMocking().then(async (mocksOk) => {
+  const { MockApiFailedBanner } = mocksOk ? { MockApiFailedBanner: null } : await import('@/mocks/MockApiFailedBanner')
   root.render(
     <StrictMode>
+      {MockApiFailedBanner && <MockApiFailedBanner />}
       <AppProviders>
         <RouterProvider router={router} />
       </AppProviders>

@@ -99,7 +99,7 @@ describe('mock inbox', () => {
 
   it('returns open counts per user with paging fields', async () => {
     setMockUser('manager')
-    const { data } = await api.GET('/api/tasks', { params: { query: { Status: 'Open', Page: 1, PageSize: 1 } } })
+    const { data } = await api.GET('/api/tasks', { params: { query: { status: 'Open', page: 1, pageSize: 1 } } })
     expect(data).toMatchObject({ page: 1, pageSize: 1, totalCount: 3 })
     expect(data?.items).toHaveLength(1)
     setMockUser('finance')
