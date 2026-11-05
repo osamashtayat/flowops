@@ -13,7 +13,7 @@ import { formatDate } from '@/lib/format/date'
 import { requestStageLabel, requestStatusPresentation } from '@/lib/format/status'
 import { useUrlState } from '@/lib/useUrlState'
 import { useRequests } from '../api'
-import { REQUEST_LIMITS } from '../limits'
+import { REQUEST_LIMITS } from '@/lib/api/limits'
 import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '../labels'
 import { RequestFilters, type RequestFilterValues } from './RequestFilters'
 

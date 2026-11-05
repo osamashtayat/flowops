@@ -90,3 +90,35 @@ export function useRequests(params: RequestListParams) {
     placeholderData: keepPreviousData,
   })
 }
+
+/** `GET /api/requests/{id}`. A 404 (not visible or not there) is a normal outcome the page shows as "not found". */
+export function useRequest(id: string) {
+  return useQuery({
+    queryKey: queryKeys.requests.detail(id),
+    queryFn: async () => {
+      const { data } = await api.GET('/api/requests/{id}', { params: { path: { id } } })
+      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
+      return data
+    },
+  })
+}
+
+export function useRequestActivity(id: string) {
+  return useQuery({
+    queryKey: queryKeys.requests.activity(id),
+    queryFn: async () => {
+      const { data } = await api.GET('/api/requests/{id}/activity', { params: { path: { id } } })
+      return data ?? []
+    },
+  })
+}
+
+export function useAddComment(id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: string) => {
+      await api.POST('/api/requests/{id}/comments', { params: { path: { id } }, body: { body } })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.requests.activity(id) }),
+  })
+}

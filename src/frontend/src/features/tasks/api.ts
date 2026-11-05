@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
+import type { TaskAction } from '@/lib/api/types'
 
 const OPEN_COUNT_PARAMS = { Status: 'Open', Page: 1, PageSize: 1 } as const
 
@@ -16,5 +17,51 @@ export function useOpenTaskCount(enabled: boolean) {
       return data?.totalCount ?? 0
     },
     enabled,
+  })
+}
+
+export interface DecideTaskInput {
+  taskId: string
+  action: TaskAction
+  /** The `version` the server sent with `availableActions` / the inbox item. */
+  version: string
+  /** Approve comment, reject reason or fulfil note; "" means none. */
+  text: string
+}
+
+async function decide({ taskId, action, version, text }: DecideTaskInput): Promise<void> {
+  const params = { path: { taskId } }
+  const optional = text === '' ? null : text
+  switch (action) {
+    case 'approve':
+      await api.POST('/api/tasks/{taskId}/approve', { params, body: { version, comment: optional } })
+      return
+    case 'reject':
+      await api.POST('/api/tasks/{taskId}/reject', { params, body: { version, reason: text } })
+      return
+    case 'fulfill':
+      await api.POST('/api/tasks/{taskId}/fulfill', { params, body: { version, note: optional } })
+      return
+    default:
+      return action satisfies never
+  }
+}
+
+/**
+ * The one decision mutation (approve / reject / fulfil), used by the request page and the inbox.
+ * Whatever the outcome — success, 409 "someone else got there first", 403, 404 — what the screen
+ * showed may be stale, so tasks, requests and the dashboard are refetched. A conflict is never
+ * retried silently (.claude/rules/security.md, "Concurrency as security").
+ */
+export function useDecideTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: decide,
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.requests.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+      ]),
   })
 }

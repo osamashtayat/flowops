@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarDaysInclusive, formatDate, formatDateOnly, formatDateTime, todayInCompanyZone } from './date'
+import { calendarDaysInclusive, formatDate, formatDateOnly, formatDateTime, formatRelative, todayInCompanyZone } from './date'
 import { formatAmount, formatMoney } from './money'
 
 describe('formatMoney', () => {
@@ -68,5 +68,18 @@ describe('company calendar day helpers', () => {
   it('returns null for a missing, malformed or reversed range', () => {
     expect(calendarDaysInclusive('', '2026-11-14')).toBeNull()
     expect(calendarDaysInclusive('2026-11-14', '2026-11-12')).toBeNull()
+  })
+})
+
+describe('formatRelative', () => {
+  const now = new Date('2026-11-05T12:00:00Z')
+  it.each([
+    ['2026-11-05T11:59:40Z', 'just now'],
+    ['2026-11-05T11:55:00Z', '5 min ago'],
+    ['2026-11-05T09:00:00Z', '3 h ago'],
+    ['2026-11-03T12:00:00Z', '2 d ago'],
+    ['2026-09-01T12:00:00Z', '1 Sep 2026'],
+  ])('%s → %s', (timestamp, expected) => {
+    expect(formatRelative(timestamp, now)).toBe(expected)
   })
 })

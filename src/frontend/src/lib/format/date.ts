@@ -76,3 +76,19 @@ export function calendarDaysInclusive(start: string, end: string): number | null
   const days = (parse(end) - parse(start)) / 86_400_000 + 1
   return Number.isInteger(days) && days >= 1 ? days : null
 }
+
+const MINUTE = 60_000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
+
+/** "just now", "5 min ago", "3 h ago", "2 d ago"; older than 30 days falls back to the date (timelines, docs/DESIGN_SYSTEM.md §6). */
+export function formatRelative(timestamp: string, now: Date = new Date()): string {
+  const then = new Date(timestamp).getTime()
+  if (Number.isNaN(then)) return timestamp
+  const age = now.getTime() - then
+  if (age < MINUTE) return 'just now'
+  if (age < HOUR) return `${Math.floor(age / MINUTE)} min ago`
+  if (age < DAY) return `${Math.floor(age / HOUR)} h ago`
+  if (age < 30 * DAY) return `${Math.floor(age / DAY)} d ago`
+  return formatDate(timestamp)
+}

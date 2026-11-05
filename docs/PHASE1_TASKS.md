@@ -182,7 +182,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### FE-08 — My requests & Team requests · `Done` (against MSW mocks; real integration waits for BE-11)
 - **Objective:** `UI_SPEC.md` §4.3. **Deps:** FE-04, FE-05 (+ BE-11).
 
-### FE-09 — Request details · `Todo`
+### FE-09 — Request details · `Done` (against MSW mocks; real integration waits for BE-11/12)
 - **Objective:** `UI_SPEC.md` §4.5 incl. `ActivityTimeline`, comment box, `DecisionDialog` + `useDecideTask`.
 - **Deps:** FE-08, FE-06 (+ BE-11/12). **Tests:** actions only from `availableActions`; 409 path; restricted reason display.
 
