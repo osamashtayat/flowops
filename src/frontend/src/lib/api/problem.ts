@@ -14,8 +14,8 @@ export const PROBLEM_MESSAGES = {
   'auth.unauthenticated': 'Your session has ended. Please sign in again.',
   'auth.forbidden': "You don't have permission to do that.",
   'auth.password_change_required': 'You must change your password before continuing.',
-  'auth.invalid_credentials': 'The email or password is incorrect.',
-  'auth.locked_out': 'Too many attempts. Try again in 15 minutes.',
+  'auth.invalid_credentials': 'The email or password is incorrect. After 5 failed attempts, sign-in is paused for 15 minutes.',
+  'auth.rate_limited': 'Too many sign-in attempts. Please wait a few minutes and try again.',
 
   'task.not_eligible': "You can't decide this task.",
   'task.self_decision': "You can't decide your own request.",
