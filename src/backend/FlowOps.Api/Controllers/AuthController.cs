@@ -2,6 +2,7 @@ using FlowOps.Api.Auth;
 using FlowOps.Application.Organization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FlowOps.Api.Controllers;
 
@@ -19,7 +20,10 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     [ProducesResponseType<CurrentUserDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status423Locked)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
+    [EnableRateLimiting(LoginRateLimiting.PerIpPolicy)]
+    // Outside [IssueXsrfToken] (order 0), so a rejection writes no token; [ApiController]'s 400 (-2000) still runs first.
+    [ServiceFilter<LoginEmailRateLimitFilter>(Order = -1)]
     public async Task<ActionResult<CurrentUserDto>> Login(LoginRequest body, CancellationToken ct) =>
         Ok(await auth.LoginAsync(body, ct));
 

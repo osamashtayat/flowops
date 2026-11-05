@@ -38,7 +38,7 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
         { ErrorCodes.UserManagerCycle, 422 },
         { ErrorCodes.UserLastAdmin, 422 },
         { ErrorCodes.DepartmentInactive, 422 },
-        { ErrorCodes.AuthLockedOut, 423 },
+        { ErrorCodes.AuthRateLimited, 429 },
         { ErrorCodes.ServerError, 500 },
     };
 

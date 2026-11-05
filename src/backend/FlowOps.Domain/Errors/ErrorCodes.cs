@@ -15,7 +15,7 @@ public static class ErrorCodes
     public const string AuthForbidden = "auth.forbidden";
     public const string AuthPasswordChangeRequired = "auth.password_change_required";
     public const string AuthInvalidCredentials = "auth.invalid_credentials";
-    public const string AuthLockedOut = "auth.locked_out";
+    public const string AuthRateLimited = "auth.rate_limited";
 
     public const string TaskNotEligible = "task.not_eligible";
     public const string TaskSelfDecision = "task.self_decision";

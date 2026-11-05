@@ -19,12 +19,16 @@ Prerequisites: .NET 10 SDK, Node.js ≥ 22, Docker.
 cp .env.example .env                       # then edit the placeholder passwords
 docker compose up -d db                    # PostgreSQL on 127.0.0.1:5432
 
-# Backend (available after task BE-01/BE-02)
+# Backend. ASP.NET Core does not read .env: give the API its settings through user-secrets
+# (or export .env into your shell first: set -a; source .env; set +a)
 dotnet dev-certs https --trust
-dotnet ef database update --project src/backend/FlowOps.Infrastructure --startup-project src/backend/FlowOps.Api
-# First administrator (created once, must change password on first login; values from your .env)
+dotnet tool restore                        # installs the pinned dotnet-ef
+dotnet user-secrets --project src/backend/FlowOps.Api set "ConnectionStrings:FlowOps" "Host=localhost;Port=5432;Database=flowops;Username=flowops;Password=<POSTGRES_PASSWORD from .env>"
+# First administrator: created once at start-up, must change the password at first sign-in.
+# Sign in with this email and password (the same values as FlowOps__BootstrapAdmin__Email / __Password in .env).
 dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Email" "admin@flowops.local"
 dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Password" "<12+ chars, upper, lower, digit, symbol>"
+dotnet ef database update --project src/backend/FlowOps.Infrastructure --startup-project src/backend/FlowOps.Api
 dotnet run --project src/backend/FlowOps.Api        # https://localhost:7180
 
 # Frontend

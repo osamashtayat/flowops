@@ -30,7 +30,7 @@ JWT is reconsidered only if a third-party or mobile client needs the API (Phase 
 | SameSite | Strict |
 | Lifetime | 8 h sliding expiration (`ExpireTimeSpan` = 8 h idle; then re-login). Session cookie (no `Expires`): closing the browser ends it |
 | Re-validation | Security stamp checked every **1 min**: role, manager-flag and must-change changes, password changes elsewhere and deactivation reach existing sessions within a minute. Until then the coarse policies use the session's claims while `/api/auth/me` reads the database, so the two can disagree for up to a minute (resource checks always use the database) |
-| Logout | Rotates the security stamp, then deletes the cookie: a copied cookie stops working at the next re-validation, and the user's other sessions end too |
+| Logout | Rotates the security stamp, then deletes the cookie: a copied cookie stops working at the next re-validation, and **the user's other sessions end too** (signing out signs out every device within a minute). Decided 2026-11-06: kept deliberately — server-side revocation matters more than staying signed in elsewhere |
 | Unauthenticated API call | **401 ProblemDetails**, never a 302 redirect (override `OnRedirectToLogin` / `OnRedirectToAccessDenied`) |
 
 Implementation (BE-05): Identity owns the scheme (`Infrastructure/Identity/IdentitySetup.cs`); the Api configures the cookie, antiforgery and policies (`Api/Auth/AuthorizationSetup.cs`). The session principal carries Identity's id/role/stamp claims plus `flowops:is_manager` and `flowops:must_change_password` (`AppClaimTypes`), rebuilt on every re-validation.
@@ -53,7 +53,8 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 
 ### 1.6 Credentials & accounts
 - Passwords: Identity defaults (PBKDF2; digit, upper, lower and non-alphanumeric required), min length 12, lockout after 5 failed attempts for 15 min (Identity measures lockout with the system clock, not `TimeProvider`).
-- Sign-in failures for unknown email, wrong password and inactive account are indistinguishable (`401 auth.invalid_credentials`, same hashing work). Known gap: only existing accounts can reach `423 auth.locked_out` (see the BE-05 run report).
+- Sign-in failures for unknown email, wrong password, inactive account and **locked-out account** are indistinguishable (`401 auth.invalid_credentials`, same message, same hashing work). There is no distinct lockout response (decided 2026-11-06; it used to be 423 and told an attacker which emails exist).
+- **Login rate limiting** (ASP.NET Core rate limiting, `Api/Auth/LoginRateLimiting.cs`), configurable under `FlowOps:LoginRateLimit`: per client IP 30 attempts / 1 min (rate-limiter middleware, before the body is read); per email 10 attempts / 15 min, counted for every email whether or not an account exists (action filter after binding). Over either limit → `429 auth.rate_limited` with `Retry-After`. Limits are in memory per instance. Behind a reverse proxy the per-IP limit needs forwarded headers configured, otherwise every client shares the proxy's address. Residual risk: anyone who knows an email can still trigger that account's 15-minute lockout with 5 wrong passwords; the limits slow this down but cannot prevent it.
 - Change-password: wrong current passwords count towards lockout; the new password must differ from the current one.
 - **No public registration.** Accounts are created by administrators only.
 - **Bootstrap admin:** on startup in any environment, if no Administrator exists, the app creates one from `FlowOps:BootstrapAdmin:Email` / `Password` (env vars / user-secrets; absent in production → startup logs a warning and creates nothing). `MustChangePassword = true`. Invalid configuration (weak password, email already used) stops start-up. The five roles are seeded by migration with fixed ids, not at start-up.
@@ -155,6 +156,8 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 | Self-decision | Domain (`Request.DecideTask`) **and** `TaskEligibility` (fail fast with clear code) |
 | Actor identity | `ICurrentUser` (Api implementation reads `HttpContext.User`); services never accept a user id from a DTO |
 | Must-change-password gate | Middleware in Api |
+
+**Claim staleness (accepted 2026-11-06).** The coarse policies read the session's claims, which are rebuilt at the security-stamp re-validation every 1 minute (§1.2). So for up to a minute after a role, manager-link, must-change or deactivation change, a session may still pass (or fail) a policy by its old claims, and `/api/auth/me` (database) and the policies (cookie) may disagree. Resource checks (`AccessRules`, `TaskEligibility`) always read the database and are never stale. A shorter interval would cost extra queries on every request.
 
 Resource checks are not implemented as ASP.NET `IAuthorizationHandler`s because that would force controllers to load entities before calling services (fat controllers). ADR-0003 records this.
 

@@ -12,7 +12,8 @@ Read with: `docs/DOMAIN_MODEL.md` §6, ADR-0006, ADR-0007.
 ## Boundaries
 - Only Application services touch `IAppDbContext`. Controllers and the domain never do.
 - No generic repositories. Command services load aggregates; query services project.
-- `SaveChangesAsync` exactly once per use case, in the use-case service. No explicit transactions unless a use case truly needs two round trips (none in Phase 1 — flag if you think you need one).
+- `SaveChangesAsync` exactly once per use case, in the use-case service. No explicit transactions unless a use case truly needs two round trips (flag if you think you need one).
+- Allowed exception (approved 2026-11-06): `BootstrapAdminSeeder` wraps creating the admin and assigning the Administrator role (two Identity saves) in one transaction, so a crash never leaves a half-created admin. Nothing else in Phase 1.
 
 ## Queries
 - Read paths: `AsNoTracking()` + `Select(...)` to DTOs. Never load entity graphs and map in memory for lists.

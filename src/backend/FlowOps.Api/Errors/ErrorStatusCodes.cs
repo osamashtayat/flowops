@@ -36,7 +36,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.UserLastAdmin] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.DepartmentInactive] = StatusCodes.Status422UnprocessableEntity,
 
-        [ErrorCodes.AuthLockedOut] = StatusCodes.Status423Locked,
+        [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,
 
         [ErrorCodes.ServerError] = StatusCodes.Status500InternalServerError,
     };

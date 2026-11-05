@@ -106,23 +106,37 @@ public sealed class LoginTests(FlowOpsApiFactory factory) : DatabaseTest(factory
     }
 
     [Fact]
-    public async Task Login_AfterFiveFailures_Returns423EvenWithCorrectPassword()
+    public async Task Login_AfterFiveFailures_Returns401EvenWithCorrectPassword()
     {
         var lina = await Given.User("lina").CreateAsync(Factory);
         using var client = Factory.CreateHttpsClient();
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < 5; i++)
         {
             using var failed = await FlowOpsApiFactory.LoginAsync(client, lina.Email, "Wrong-password-123");
             await ProblemAssert.HasCode(failed, 401, ErrorCodes.AuthInvalidCredentials);
         }
 
-        using (var fifth = await FlowOpsApiFactory.LoginAsync(client, lina.Email, "Wrong-password-123"))
+        using var correct = await FlowOpsApiFactory.LoginAsync(client, lina.Email, lina.Password);
+
+        await ProblemAssert.HasCode(correct, 401, ErrorCodes.AuthInvalidCredentials);
+    }
+
+    [Fact]
+    public async Task Login_LockedOutAccount_AnswersExactlyLikeAnUnknownEmail()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var client = Factory.CreateHttpsClient();
+        for (var i = 0; i < 5; i++)
         {
-            await ProblemAssert.HasCode(fifth, 423, ErrorCodes.AuthLockedOut);
+            using var failed = await FlowOpsApiFactory.LoginAsync(client, lina.Email, "Wrong-password-123");
         }
 
-        using var correct = await FlowOpsApiFactory.LoginAsync(client, lina.Email, lina.Password);
-        await ProblemAssert.HasCode(correct, 423, ErrorCodes.AuthLockedOut);
+        using var locked = await FlowOpsApiFactory.LoginAsync(client, lina.Email, lina.Password);
+        using var unknown = await FlowOpsApiFactory.LoginAsync(client, "nobody@flowops.test", lina.Password);
+
+        var lockedProblem = await ProblemAssert.HasCode(locked, 401, ErrorCodes.AuthInvalidCredentials);
+        var unknownProblem = await ProblemAssert.HasCode(unknown, 401, ErrorCodes.AuthInvalidCredentials);
+        lockedProblem.GetProperty("detail").GetString().ShouldBe(unknownProblem.GetProperty("detail").GetString());
     }
 
     // Identity's lockout reads the system clock, not the injected TimeProvider, so this test checks the stored
