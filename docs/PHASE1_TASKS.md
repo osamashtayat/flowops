@@ -42,7 +42,7 @@ flowchart LR
 ### FE-00 — Frontend scaffold, theme tokens, first primitives · `Done` (architecture session)
 Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette disabled), `Button`, `StatusBadge`, `AppShell` placeholder, Vitest + Testing Library, token lint. Verified: typecheck, lint, test, build.
 
-### BE-01 — Backend solution scaffold · `Todo`
+### BE-01 — Backend solution scaffold · `Done`
 - **Objective:** create the solution exactly as `ARCHITECTURE.md` §2–3.
 - **Deps:** none. **Modules:** `src/backend/*`, `tests/backend/*`, root `FlowOps.slnx`, `global.json`, `Directory.Build.props`, `Directory.Packages.props`.
 - **Steps (exact):**

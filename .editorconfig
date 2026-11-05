@@ -49,3 +49,7 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+[tests/**.cs]
+# Test names follow Method_Condition_Result (docs/TESTING.md §5), so underscores are intended.
+dotnet_diagnostic.CA1707.severity = none

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlowOps.Application\FlowOps.Application.csproj" />
+    <ProjectReference Include="..\FlowOps.Domain\FlowOps.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

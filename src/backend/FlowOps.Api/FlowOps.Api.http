@@ -1,0 +1,6 @@
+@FlowOps.Api_HostAddress = https://localhost:7180
+
+GET {{FlowOps.Api_HostAddress}}/api/health
+Accept: application/json
+
+###

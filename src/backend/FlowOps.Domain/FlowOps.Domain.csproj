@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- BCL only: no project or package references (ARCHITECTURE.md §3). -->
+
+</Project>

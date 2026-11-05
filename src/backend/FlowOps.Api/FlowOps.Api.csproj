@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+
+  <!-- Infrastructure is referenced only for composition-root DI registration (ARCHITECTURE.md §3). -->
+  <ItemGroup>
+    <ProjectReference Include="..\FlowOps.Application\FlowOps.Application.csproj" />
+    <ProjectReference Include="..\FlowOps.Infrastructure\FlowOps.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
