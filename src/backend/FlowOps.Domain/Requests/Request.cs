@@ -97,6 +97,10 @@ public sealed class Request
     {
         ArgumentNullException.ThrowIfNull(decision);
         ArgumentNullException.ThrowIfNull(resolveAssignee);
+        if (actorId == Guid.Empty)
+        {
+            throw new ArgumentException("A decision needs an actor.", nameof(actorId));
+        }
 
         EnsureNotClosed();
         var task = _tasks.SingleOrDefault(t => t.Id == taskId) ?? throw DomainErrors.TaskNotFound();
@@ -113,7 +117,7 @@ public sealed class Request
 
         var outcome = task.OutcomeFor(decision.Action);
         var nextStep = outcome == WorkTaskOutcome.Rejected ? null : FixedProcesses.Next(Type, task.Stage);
-        var nextAssignee = nextStep is null ? null : resolveAssignee(nextStep);
+        var nextAssignee = nextStep is null ? null : ResolveNextAssignee(nextStep, resolveAssignee);
 
         // Every check and lookup has passed: from here on the aggregate changes.
         task.Complete(outcome, decision.Comment, actorId, now);
@@ -144,10 +148,24 @@ public sealed class Request
         return Append(ActivityType.CommentAdded, actorId, taskId: null, stage: null, text, now);
     }
 
+    /// <summary>
+    /// Validated before anything changes, so a faulty resolver cannot leave a half-applied decision.
+    /// A wrong assignee is a programming error (ArgumentException), not a business-rule violation.
+    /// </summary>
+    private static Assignee ResolveNextAssignee(ProcessStep nextStep, Func<ProcessStep, Assignee> resolveAssignee)
+    {
+        var assignee = resolveAssignee(nextStep)
+            ?? throw new ArgumentNullException(nameof(resolveAssignee), $"No assignee was resolved for the {nextStep.Stage} step.");
+
+        return nextStep.Assignee.Accepts(assignee)
+            ? assignee
+            : throw new ArgumentException($"The resolved assignee does not satisfy the {nextStep.Stage} step's rule.", nameof(resolveAssignee));
+    }
+
     private void Start(Guid managerId, DateTimeOffset now)
     {
         // The Application layer checks I12 first (manager exists and is active); this guards the part the domain can know.
-        if (managerId == RequesterId)
+        if (managerId == Guid.Empty || managerId == RequesterId)
         {
             throw DomainErrors.ManagerNotAssigned();
         }

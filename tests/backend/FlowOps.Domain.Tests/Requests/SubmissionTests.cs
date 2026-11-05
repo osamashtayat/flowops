@@ -13,6 +13,12 @@ public sealed class SubmissionTests
             ErrorCodes.RequestManagerNotAssigned);
 
     [Fact]
+    public void Submit_WithEmptyManagerId_ThrowsManagerNotAssigned() =>
+        ShouldFailWith(
+            () => Request.SubmitLeave(RequestNumber.Create(2026, 1), Requester, DepartmentId, AnnualLeave(), Guid.Empty, T0),
+            ErrorCodes.RequestManagerNotAssigned);
+
+    [Fact]
     public void Submit_WithoutRequester_Throws() =>
         Should.Throw<ArgumentException>(() =>
             Request.SubmitLeave(RequestNumber.Create(2026, 1), Guid.Empty, DepartmentId, AnnualLeave(), Manager, T0));

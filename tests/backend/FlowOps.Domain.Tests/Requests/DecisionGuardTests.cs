@@ -126,12 +126,40 @@ public sealed class DecisionGuardTests
     }
 
     [Fact]
-    public void Decide_WithAssigneeNotMatchingStepRule_IsRejected()
+    public void Decide_WithAssigneeNotMatchingStepRule_LeavesRequestUnchanged()
     {
+        // FinanceApproval needs the FinanceOfficer role queue, not a specific user.
         var request = SubmitPurchase();
+        var before = Snapshot(request);
 
         Should.Throw<ArgumentException>(() => request.DecideTask(
             request.OpenTask!.Id, Manager, TaskDecision.Approve(null), _ => Assignee.ForUser(FinanceOfficer), T0));
+
+        Snapshot(request).ShouldBe(before);
+    }
+
+    [Fact]
+    public void Decide_WhenResolverReturnsNull_LeavesRequestUnchanged()
+    {
+        var request = SubmitPurchase();
+        var before = Snapshot(request);
+
+        Should.Throw<ArgumentNullException>(() => request.DecideTask(
+            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), _ => null!, T0));
+
+        Snapshot(request).ShouldBe(before);
+    }
+
+    [Fact]
+    public void Decide_WithEmptyActorId_LeavesRequestUnchanged()
+    {
+        var request = SubmitPurchase();
+        var before = Snapshot(request);
+
+        Should.Throw<ArgumentException>(() => request.DecideTask(
+            request.OpenTask!.Id, Guid.Empty, TaskDecision.Approve(null), Resolve, T0));
+
+        Snapshot(request).ShouldBe(before);
     }
 
     private static void AssertRejectedWithoutChange(Request request, Action decide, string code)
