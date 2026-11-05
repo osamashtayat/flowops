@@ -92,8 +92,8 @@
               }
             }
           },
-          "423": {
-            "description": "Locked",
+          "429": {
+            "description": "Too Many Requests",
             "content": {
               "text/plain": {
                 "schema": {

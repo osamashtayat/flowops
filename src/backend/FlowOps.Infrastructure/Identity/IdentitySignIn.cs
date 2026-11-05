@@ -28,12 +28,8 @@ internal sealed class IdentitySignIn(SignInManager<ApplicationUser> signInManage
             _ = userManager.PasswordHasher.HashPassword(user, password);
         }
 
-        if (result.IsLockedOut)
-        {
-            throw new AuthenticationFailedException(ErrorCodes.AuthLockedOut, "Too many failed attempts. Try again in 15 minutes.");
-        }
-
-        // NotAllowed (inactive account) deliberately looks like a wrong password.
+        // Locked out and NotAllowed (inactive account) deliberately look like a wrong password: a distinct answer
+        // would tell an attacker which emails belong to real accounts (AUTHORIZATION.md §1.6).
         if (!result.Succeeded)
         {
             throw new AuthenticationFailedException(ErrorCodes.AuthInvalidCredentials, InvalidCredentials);

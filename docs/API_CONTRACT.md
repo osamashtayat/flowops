@@ -53,8 +53,8 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 | 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision` |
 | 404 | Not found **or not visible** to caller | `not_found` |
 | 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email` |
-| 423 | Account locked out (login only) | `auth.locked_out` |
 | 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `department.inactive` |
+| 429 | Too many login attempts from this address or for this email (login only); sends `Retry-After` (seconds) | `auth.rate_limited` |
 | 500 | Unhandled | `server.error` (no internals in `detail`) |
 
 The full code list lives in `FlowOps.Domain/Errors/ErrorCodes.cs` and `src/frontend/src/lib/api/problem.ts` maps codes to user messages. Adding a code = update both + this table.
@@ -65,7 +65,7 @@ The full code list lives in `FlowOps.Domain/Errors/ErrorCodes.cs` and `src/front
 
 | Method & path | Access | Body | Success | Errors |
 |---|---|---|---|---|
-| `POST /api/auth/login` | **public** | `{ email, password }` | 200 `CurrentUserDto` + session cookie + XSRF cookie | 400, 401 `auth.invalid_credentials`, 423 `auth.locked_out` |
+| `POST /api/auth/login` | **public** | `{ email, password }` | 200 `CurrentUserDto` + session cookie + XSRF cookie | 400, 401 `auth.invalid_credentials` (also while the account is locked out), 429 `auth.rate_limited` |
 | `POST /api/auth/logout` | auth | — | 204 | — |
 | `GET /api/auth/me` | auth (allowed during must-change-password) | — | 200 `CurrentUserDto`; refreshes XSRF cookie | 401 |
 | `POST /api/auth/change-password` | auth (allowed during must-change-password) | `{ currentPassword, newPassword }` | 204 | 400 `validation` (Identity password rules mapped to `errors.newPassword`) |
@@ -80,7 +80,7 @@ type CurrentUserDto = {
   mustChangePassword: boolean;
 };
 ```
-Note: 423 is used only for lockout so the UI can show a distinct message.
+Note: a locked-out account answers exactly like a wrong password (401 `auth.invalid_credentials`), so the response never reveals which emails belong to real accounts. The login screen's message for 401 mentions the 15-minute pause after repeated failures (AUTHORIZATION.md §1.6).
 
 ## 4. Requests
 

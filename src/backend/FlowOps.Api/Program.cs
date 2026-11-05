@@ -31,6 +31,7 @@ builder.Services.ConfigureHttpJsonOptions(options => JsonSetup.Configure(options
 builder.Services.AddFlowOpsProblemDetails();
 builder.Services.AddFlowOpsOpenApi();
 builder.Services.AddFlowOpsAuthorization();
+builder.Services.AddFlowOpsLoginRateLimiting(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -51,6 +52,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseMiddleware<PasswordChangeGate>();

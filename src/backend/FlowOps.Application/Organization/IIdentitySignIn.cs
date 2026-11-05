@@ -7,7 +7,7 @@ namespace FlowOps.Application.Organization;
 public interface IIdentitySignIn
 {
     /// <summary>Checks the password (with lockout) and issues the session cookie. Returns the user id.</summary>
-    /// <exception cref="Common.AuthenticationFailedException"><c>auth.invalid_credentials</c> or <c>auth.locked_out</c>.</exception>
+    /// <exception cref="Common.AuthenticationFailedException"><c>auth.invalid_credentials</c>, also while the account is locked out.</exception>
     Task<Guid> PasswordSignInAsync(string email, string password);
 
     Task SignOutAsync();

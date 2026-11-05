@@ -132,7 +132,8 @@ public sealed class PasswordChangeTests(FlowOpsApiFactory factory) : DatabaseTes
         using var fresh = Factory.CreateHttpsClient();
         using var login = await FlowOpsApiFactory.LoginAsync(fresh, lina.Email, lina.Password);
 
-        await ProblemAssert.HasCode(login, 423, ErrorCodes.AuthLockedOut);
+        // Locked out answers exactly like a wrong password (AUTHORIZATION.md §1.6).
+        await ProblemAssert.HasCode(login, 401, ErrorCodes.AuthInvalidCredentials);
     }
 
     [Fact]
