@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
@@ -133,13 +133,13 @@ describe('purchase form', () => {
 })
 
 describe('leave form', () => {
-  const setDate = (label: RegExp, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
+  const setDate = (label: RegExp, value: string) => userEvent.type(screen.getByLabelText(label), value)
 
   it('computes the calendar days and keeps the end date from going before the start', async () => {
     renderRoutes(routes, '/requests/new/leave')
     await heading('Leave')
-    setDate(/^Start date/, '2030-01-10')
-    setDate(/^End date/, '2030-01-12')
+    await setDate(/^Start date/, '2030-01-10')
+    await setDate(/^End date/, '2030-01-12')
     expect(await screen.findByText('3 calendar days')).toBeInTheDocument()
     expect(screen.getByLabelText(/^End date/)).toHaveAttribute('min', '2030-01-10')
   })
@@ -152,8 +152,8 @@ describe('leave form', () => {
   it('shows an error when the end is before the start', async () => {
     renderRoutes(routes, '/requests/new/leave')
     await heading('Leave')
-    setDate(/^Start date/, '2030-01-10')
-    setDate(/^End date/, '2030-01-09')
+    await setDate(/^Start date/, '2030-01-10')
+    await setDate(/^End date/, '2030-01-09')
     await userEvent.click(screen.getByRole('button', { name: 'Submit request' }))
     expect(await screen.findByText('The end date cannot be before the start date.')).toBeInTheDocument()
   })
@@ -168,8 +168,8 @@ describe('leave form', () => {
     )
     const { router } = renderRoutes(routes, '/requests/new/leave')
     await heading('Leave')
-    setDate(/^Start date/, '2030-01-10')
-    setDate(/^End date/, '2030-01-12')
+    await setDate(/^Start date/, '2030-01-10')
+    await setDate(/^End date/, '2030-01-12')
     await userEvent.selectOptions(screen.getByLabelText(/^Leave type/), 'Sick')
     await userEvent.click(screen.getByRole('button', { name: 'Submit request' }))
 
@@ -181,8 +181,8 @@ describe('leave form', () => {
     server.use(http.post('/api/requests/leave', () => problem(400, 'validation', { startDate: ['The start date cannot be in the past.'] })))
     renderRoutes(routes, '/requests/new/leave')
     await heading('Leave')
-    setDate(/^Start date/, '2030-01-10')
-    setDate(/^End date/, '2030-01-12')
+    await setDate(/^Start date/, '2030-01-10')
+    await setDate(/^End date/, '2030-01-12')
     await userEvent.click(screen.getByRole('button', { name: 'Submit request' }))
     const field = await screen.findByLabelText(/^Start date/)
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'))
