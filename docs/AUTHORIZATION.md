@@ -141,7 +141,9 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
   - **`AvailableActions(requesterId, openTask, me)`** takes only what a projection supplies. It returns the task's `WorkTask.AllowedActions` plus its `version`, or `null` for a decided task or a non-eligible caller.
   - **Open/current/already-decided stay the domain's 409s**: a late decider gets `task.already_decided`, not 403.
 - **Administrator never gets a task.** The domain refuses Administrator as a role queue (`AssigneeRule`/`Assignee.ForRole`), which is what makes "admins see nothing" hold.
-- **Still to add (BE-11).** `canComment` and leave-reason visibility (§5: R1, R2, or HrOfficer with R3) belong in `AccessRules`, as translatable expressions next to `VisibleTo`. They must not be written in the query service.
+- **Leave reason (BE-10/11).** `AccessRules.CanReadLeaveReasonAsync` is composed from the same R1/R2/R3 predicates as `VisibleTo`: R1, or R2, or HrOfficer + R3. A former manager who decided the step but is no longer the direct manager sees the request (R3) but not the reason.
+- **Commenting = visibility** (§3). There is no separate rule: `canComment` is `true` on every request the caller can see.
+- **`TaskEligibility.EligibleDeciders`** applies the same three conditions to address notifications: active, assigned, not the requester.
 
 **Response codes**
 - Request not visible → **404** (do not reveal existence).

@@ -6,12 +6,13 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FlowOps.Api.Controllers;
 
-/// <summary>API_CONTRACT.md §4. Queries and comments land in BE-11.</summary>
+/// <summary>API_CONTRACT.md §4.</summary>
 [ApiController]
 [Route("api/requests")]
 [Tags("Requests")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-public sealed class RequestsController(RequestSubmissionService submission) : ControllerBase
+public sealed class RequestsController(
+    RequestSubmissionService submission, RequestQueryService queries, RequestCommentService comments) : ControllerBase
 {
     [HttpPost("purchase")]
     [Authorize(Policy = Policies.CanSubmit)]
@@ -34,23 +35,26 @@ public sealed class RequestsController(RequestSubmissionService submission) : Co
     [HttpGet]
     [ProducesResponseType<PagedResult<RequestSummaryDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    public ActionResult<PagedResult<RequestSummaryDto>> List([FromQuery] RequestListQuery query) => this.Stub("BE-11");
+    public async Task<ActionResult<PagedResult<RequestSummaryDto>>> List([FromQuery] RequestListQuery query, CancellationToken ct) =>
+        Ok(await queries.ListAsync(query, ct));
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType<RequestDetailsDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public ActionResult<RequestDetailsDto> Get(Guid id) => this.Stub("BE-11");
+    public async Task<ActionResult<RequestDetailsDto>> Get(Guid id, CancellationToken ct) => Ok(await queries.GetAsync(id, ct));
 
     [HttpGet("{id:guid}/activity")]
     [ProducesResponseType<IReadOnlyList<ActivityDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public ActionResult<IReadOnlyList<ActivityDto>> Activity(Guid id) => this.Stub("BE-11");
+    public async Task<ActionResult<IReadOnlyList<ActivityDto>>> Activity(Guid id, CancellationToken ct) =>
+        Ok(await queries.GetActivityAsync(id, ct));
 
     [HttpPost("{id:guid}/comments")]
     [ProducesResponseType<ActivityDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public ActionResult<ActivityDto> AddComment(Guid id, AddCommentRequest body) => this.Stub("BE-11");
+    public async Task<ActionResult<ActivityDto>> AddComment(Guid id, AddCommentRequest body, CancellationToken ct) =>
+        CreatedAtAction(nameof(Activity), new { id }, await comments.AddAsync(id, body, ct));
 
     private CreatedAtActionResult Submitted(RequestDetailsDto created) => CreatedAtAction(nameof(Get), new { id = created.Id }, created);
 }

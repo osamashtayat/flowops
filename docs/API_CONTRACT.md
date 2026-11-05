@@ -166,6 +166,22 @@ type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Re
 Body `{ body: string }` (1–2000). → 201 `ActivityDto` · 400 · 404.
 Comments are allowed on closed requests (follow-up notes), so there is no `request.closed` error here. Users who can't see the request (including admin-only users) get 404.
 
+As built (BE-11):
+- **List.**
+  - `scope=mine` is the caller's own requests; `scope=visible` is everything §4 lets them see.
+  - `search` matches a number prefix, case-insensitive (`fo-2026-0001`), or a substring of a purchase item name. Leave requests match by number only.
+  - Sorted `submittedAt` desc, then `id`.
+- **Details.**
+  - `reason` comes back only under AUTHORIZATION §5 (`AccessRules.CanReadLeaveReasonAsync`).
+  - `canComment` is always `true` on a details response, because anyone who can see a request may comment on it.
+  - `availableActions` comes from `TaskEligibility`.
+- **Activity.** Chronological, capped at 500. `actor` is `null` for system entries (`TaskAssigned`, `Completed`).
+- **Comment.**
+  - Returns 201 with `Location: /api/requests/{id}/activity`.
+  - Notifies the requester, everyone who decided a step, and whoever may decide the open task (active users only, never the author).
+  - The notification doesn't repeat the comment text.
+- **Query parameter names** in `contracts/openapi.json` are now camelCase (`pageSize`, `scope`, `includeInactive`, …) as this document always said. The server accepts either spelling.
+
 ## 5. Tasks (inbox and decisions)
 
 ### `GET /api/tasks` — capability `tasks.view`

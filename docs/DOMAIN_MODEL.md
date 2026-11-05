@@ -284,3 +284,4 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 - `xmin` is mapped with `IsRowVersion()` on `Request.Version` and `WorkTask.Version`; it is a system column, so it doesn't appear in the DDL.
 - Every FK has an index except `work_tasks.assignee_user_id`, which only has the open-task partial index, because users are never deleted.
 - Domain types have a private parameterless constructor for materialization only; `RequestNumber.Parse` rebuilds the stored value.
+- **Ids (BE-11).** Domain ids come from `Common/SequentialGuid.NewV7(now)`: UUIDv7 with a per-process counter in the same millisecond, so ordering by id is creation order. Lists sort by time then `id`, e.g. a request's `Submitted` before its first `TaskAssigned`, which share an instant. `Guid.CreateVersion7` randomises within the millisecond, so that order was not guaranteed before.

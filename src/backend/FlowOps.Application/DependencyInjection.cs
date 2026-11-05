@@ -18,6 +18,8 @@ public static class DependencyInjection
         services.AddSingleton<CompanyCalendar>();
         services.AddScoped<RequestDetailsReader>();
         services.AddScoped<RequestSubmissionService>();
+        services.AddScoped<RequestQueryService>();
+        services.AddScoped<RequestCommentService>();
         services.AddScoped<AuthService>();
         services.AddScoped<DepartmentService>();
         services.AddScoped<UserAdministrationService>();

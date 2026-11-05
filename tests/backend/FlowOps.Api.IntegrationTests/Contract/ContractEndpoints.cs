@@ -26,10 +26,10 @@ internal static class ContractEndpoints
             """{"itemName":"Laptop","description":"14 inch","estimatedCost":{"amount":"1250.500","currency":"JOD"},"justification":"Broken"}""", Employee) { Implemented = true },
         new("POST", "/api/requests/leave", "/api/requests/leave",
             """{"startDate":"2026-12-01","endDate":"2026-12-03","leaveType":"Annual","reason":null}""", Employee) { Implemented = true },
-        new("GET", "/api/requests", "/api/requests?scope=visible&status=InReview&type=Leave&search=FO-2026&page=1&pageSize=20", null, Employee),
-        new("GET", "/api/requests/{id}", $"/api/requests/{Id}", null, Employee),
-        new("GET", "/api/requests/{id}/activity", $"/api/requests/{Id}/activity", null, Employee),
-        new("POST", "/api/requests/{id}/comments", $"/api/requests/{Id}/comments", """{"body":"Which model?"}""", Employee),
+        new("GET", "/api/requests", "/api/requests?scope=visible&status=InReview&type=Leave&search=FO-2026&page=1&pageSize=20", null, Employee) { Implemented = true },
+        new("GET", "/api/requests/{id}", $"/api/requests/{Id}", null, Employee) { Implemented = true },
+        new("GET", "/api/requests/{id}/activity", $"/api/requests/{Id}/activity", null, Employee) { Implemented = true },
+        new("POST", "/api/requests/{id}/comments", $"/api/requests/{Id}/comments", """{"body":"Which model?"}""", Employee) { Implemented = true },
 
         // §5 Tasks
         new("GET", "/api/tasks", "/api/tasks?status=Done", null, Finance),
