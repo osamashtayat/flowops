@@ -5,9 +5,11 @@ import { RootLayout } from '@/app/RootLayout'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { AppShell } from '@/components/layout/AppShell'
+import { MyRequestsPage } from '@/features/requests/pages/MyRequestsPage'
 import { NewLeavePage } from '@/features/requests/pages/NewLeavePage'
 import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
 import { NewRequestPage } from '@/features/requests/pages/NewRequestPage'
+import { TeamRequestsPage } from '@/features/requests/pages/TeamRequestsPage'
 import { RequireAuth } from '@/features/session/components/RequireAuth'
 import { RequireCapability } from '@/features/session/components/RequireCapability'
 import { ChangePasswordPage } from '@/features/session/pages/ChangePasswordPage'
@@ -32,7 +34,7 @@ export const routes: RouteObject[] = [
             element: <AppShell />,
             children: [
               { index: true, element: <FoundationPage /> },
-              { path: '/requests', element: <PlaceholderPage title="My requests" task="FE-08" /> },
+              { path: '/requests', element: <MyRequestsPage /> },
               { path: '/notifications', element: <PlaceholderPage title="Notifications" task="FE-11" /> },
               { path: '/requests/:id', element: <PlaceholderPage title="Request details" task="FE-09" /> },
               {
@@ -46,7 +48,7 @@ export const routes: RouteObject[] = [
               {
                 element: <RequireCapability capability="tasks.view" />,
                 children: [
-                  { path: '/requests/team', element: <PlaceholderPage title="Team requests" task="FE-08" /> },
+                  { path: '/requests/team', element: <TeamRequestsPage /> },
                   { path: '/inbox', element: <PlaceholderPage title="Inbox" task="FE-10" /> },
                 ],
               },
