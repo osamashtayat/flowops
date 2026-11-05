@@ -106,7 +106,7 @@ Task: /implement-feature FE-02 — build the form primitives in src/frontend/src
 Input, Textarea, Select, DateInput, MoneyInput (JOD, up to 3 decimals, value kept as a string),
 FormField (label, required marker, helper, error with aria-describedby/aria-invalid), Card,
 and components/layout/PageHeader. Add react-hook-form + zod and a small helper that wires a
-zod schema to FormField errors. Show all primitives on the FoundationPage.
+zod schema to FormField errors. Show all primitives on the FoundationPage (since removed by FE-12).
 
 Constraints: theme tokens only (no hex/rgb, no arbitrary or default-palette colour classes);
 control outlines use border-border-strong; visible focus; no API calls (that is FE-01, blocked
