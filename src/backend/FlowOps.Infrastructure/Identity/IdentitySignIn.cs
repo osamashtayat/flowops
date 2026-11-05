@@ -22,6 +22,12 @@ internal sealed class IdentitySignIn(SignInManager<ApplicationUser> signInManage
         }
 
         var result = await signInManager.PasswordSignInAsync(user, password, isPersistent: false, lockoutOnFailure: true);
+        if (result.IsLockedOut || result.IsNotAllowed)
+        {
+            // Identity refuses these before hashing; spend the work anyway so timing doesn't single them out.
+            _ = userManager.PasswordHasher.HashPassword(user, password);
+        }
+
         if (result.IsLockedOut)
         {
             throw new AuthenticationFailedException(ErrorCodes.AuthLockedOut, "Too many failed attempts. Try again in 15 minutes.");
@@ -39,12 +45,37 @@ internal sealed class IdentitySignIn(SignInManager<ApplicationUser> signInManage
         return user.Id;
     }
 
-    public Task SignOutAsync() => signInManager.SignOutAsync();
+    public async Task SignOutAsync()
+    {
+        // Rotating the stamp revokes the session server-side (AUTHORIZATION.md §1.1): a copied cookie dies at the
+        // next re-validation. The price: the user's other sessions end too.
+        var user = await userManager.GetUserAsync(signInManager.Context.User);
+        if (user is not null)
+        {
+            await userManager.UpdateSecurityStampAsync(user);
+        }
+
+        await signInManager.SignOutAsync();
+    }
 
     public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
             ?? throw new AuthenticationFailedException(ErrorCodes.AuthUnauthenticated, "Your session has ended. Please sign in again.");
+
+        // Wrong current passwords count towards lockout here too, so a stolen session can't guess the password.
+        var check = await signInManager.CheckPasswordSignInAsync(user, currentPassword, lockoutOnFailure: true);
+        if (!check.Succeeded)
+        {
+            throw ValidationFailedException.For("currentPassword", check.IsLockedOut
+                ? "Too many failed attempts. Try again in 15 minutes."
+                : "The current password is incorrect.");
+        }
+
+        if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
+        {
+            throw ValidationFailedException.For("newPassword", "The new password must differ from the current one.");
+        }
 
         // Cleared before ChangePasswordAsync so both are saved in its single update; a failed change saves nothing.
         user.MustChangePassword = false;

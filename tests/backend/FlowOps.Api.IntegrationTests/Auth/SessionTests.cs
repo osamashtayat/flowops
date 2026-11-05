@@ -123,6 +123,35 @@ public sealed class SessionTests(FlowOpsApiFactory factory) : DatabaseTest(facto
     }
 
     [Fact]
+    public async Task Logout_RevokesACopiedCookieAtNextRevalidation()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var client = Factory.CreateHttpsClient();
+        using var login = await FlowOpsApiFactory.LoginAsync(client, lina.Email, lina.Password);
+        var sessionCookie = login.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("__Host-flowops=", StringComparison.Ordinal)).Split(';')[0];
+        client.DefaultRequestHeaders.Add("X-XSRF-TOKEN", FlowOpsApiFactory.XsrfTokenFrom(login));
+        using var thief = Factory.CreateHttpsClient();
+        using (var before = await GetMeWithCookieAsync(thief, sessionCookie))
+        {
+            before.StatusCode.ShouldBe(HttpStatusCode.OK, "control: the copied cookie works while the session lives");
+        }
+
+        using var logout = await client.PostAsync(Logout, null, Ct);
+        logout.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        Factory.Clock.Advance(TimeSpan.FromMinutes(2));
+        using var response = await GetMeWithCookieAsync(thief, sessionCookie);
+
+        await ProblemAssert.HasCode(response, 401, ErrorCodes.AuthUnauthenticated);
+    }
+
+    private static async Task<HttpResponseMessage> GetMeWithCookieAsync(HttpClient client, string cookie)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, Me);
+        request.Headers.Add("Cookie", cookie);
+        return await client.SendAsync(request, Ct);
+    }
+
+    [Fact]
     public async Task Session_OfDeactivatedUser_EndsAtNextRevalidation()
     {
         var lina = await Given.User("lina").CreateAsync(Factory);

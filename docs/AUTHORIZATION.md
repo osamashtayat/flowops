@@ -29,7 +29,8 @@ JWT is reconsidered only if a third-party or mobile client needs the API (Phase 
 | Secure | Always (dev uses HTTPS via `dotnet dev-certs`; the Vite proxy targets HTTPS) |
 | SameSite | Strict |
 | Lifetime | 8 h sliding expiration (`ExpireTimeSpan` = 8 h idle; then re-login). Session cookie (no `Expires`): closing the browser ends it |
-| Re-validation | Security stamp checked every **1 min**: role, manager-flag and must-change changes, password changes elsewhere and deactivation reach existing sessions within a minute |
+| Re-validation | Security stamp checked every **1 min**: role, manager-flag and must-change changes, password changes elsewhere and deactivation reach existing sessions within a minute. Until then the coarse policies use the session's claims while `/api/auth/me` reads the database, so the two can disagree for up to a minute (resource checks always use the database) |
+| Logout | Rotates the security stamp, then deletes the cookie: a copied cookie stops working at the next re-validation, and the user's other sessions end too |
 | Unauthenticated API call | **401 ProblemDetails**, never a 302 redirect (override `OnRedirectToLogin` / `OnRedirectToAccessDenied`) |
 
 Implementation (BE-05): Identity owns the scheme (`Infrastructure/Identity/IdentitySetup.cs`); the Api configures the cookie, antiforgery and policies (`Api/Auth/AuthorizationSetup.cs`). The session principal carries Identity's id/role/stamp claims plus `flowops:is_manager` and `flowops:must_change_password` (`AppClaimTypes`), rebuilt on every re-validation.
@@ -52,7 +53,8 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 
 ### 1.6 Credentials & accounts
 - Passwords: Identity defaults (PBKDF2; digit, upper, lower and non-alphanumeric required), min length 12, lockout after 5 failed attempts for 15 min (Identity measures lockout with the system clock, not `TimeProvider`).
-- Sign-in failures for unknown email, wrong password and inactive account are indistinguishable (`401 auth.invalid_credentials`, same hashing work).
+- Sign-in failures for unknown email, wrong password and inactive account are indistinguishable (`401 auth.invalid_credentials`, same hashing work). Known gap: only existing accounts can reach `423 auth.locked_out` (see the BE-05 run report).
+- Change-password: wrong current passwords count towards lockout; the new password must differ from the current one.
 - **No public registration.** Accounts are created by administrators only.
 - **Bootstrap admin:** on startup in any environment, if no Administrator exists, the app creates one from `FlowOps:BootstrapAdmin:Email` / `Password` (env vars / user-secrets; absent in production → startup logs a warning and creates nothing). `MustChangePassword = true`. Invalid configuration (weak password, email already used) stops start-up. The five roles are seeded by migration with fixed ids, not at start-up.
 - **Employee creation:** admin creates the user with an initial password → `MustChangePassword = true` → on first login every endpoint except `/api/auth/*` returns 403 `auth.password_change_required` until changed.

@@ -107,6 +107,62 @@ public sealed class PasswordChangeTests(FlowOpsApiFactory factory) : DatabaseTes
     }
 
     [Fact]
+    public async Task ChangePassword_ToTheSamePassword_Returns400OnNewPassword()
+    {
+        var lina = await Given.User("lina").MustChangePassword().CreateAsync(Factory);
+        using var client = await Factory.ClientFor(lina);
+
+        using var response = await PostChangeAsync(client, lina.Password, lina.Password);
+
+        var problem = await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+        problem.GetProperty("errors").EnumerateObject().Select(p => p.Name).ShouldBe(["newPassword"]);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WrongCurrentPasswordFiveTimes_LocksTheAccount()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var client = await Factory.ClientFor(lina);
+        for (var i = 0; i < 5; i++)
+        {
+            using var failed = await PostChangeAsync(client, "Not-the-Pa55word", NewPassword);
+            await ProblemAssert.HasCode(failed, 400, ErrorCodes.Validation);
+        }
+
+        using var fresh = Factory.CreateHttpsClient();
+        using var login = await FlowOpsApiFactory.LoginAsync(fresh, lina.Email, lina.Password);
+
+        await ProblemAssert.HasCode(login, 423, ErrorCodes.AuthLockedOut);
+    }
+
+    [Fact]
+    public async Task ChangePassword_EndsTheUsersOtherSessionsAtRevalidation()
+    {
+        var lina = await Given.User("lina").CreateAsync(Factory);
+        using var laptop = await Factory.ClientFor(lina);
+        using var phone = await Factory.ClientFor(lina);
+
+        using var change = await PostChangeAsync(laptop, lina.Password, NewPassword);
+        change.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        Factory.Clock.Advance(TimeSpan.FromMinutes(2));
+
+        (await laptop.GetAsync(Me, Ct)).StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var stale = await phone.GetAsync(Me, Ct);
+        await ProblemAssert.HasCode(stale, 401, ErrorCodes.AuthUnauthenticated);
+    }
+
+    [Fact]
+    public async Task MustChangePasswordUser_IsBlockedFromUnsafeNonAuthEndpoints()
+    {
+        var lina = await Given.User("lina").MustChangePassword().CreateAsync(Factory);
+        using var client = await Factory.ClientFor(lina);
+
+        using var response = await client.PostAsJsonAsync(new Uri("/api/notifications/read-all", UriKind.Relative), new { }, Ct);
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthPasswordChangeRequired);
+    }
+
+    [Fact]
     public async Task ChangePassword_Anonymous_Returns401()
     {
         using var client = Factory.CreateHttpsClient();
