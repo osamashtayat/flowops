@@ -12,6 +12,8 @@ public static class DependencyInjection
         // All time comes from TimeProvider so tests can substitute FakeTimeProvider (TESTING.md §2).
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<AuthService>();
+        services.AddScoped<DepartmentService>();
+        services.AddScoped<UserAdministrationService>();
         return services;
     }
 }

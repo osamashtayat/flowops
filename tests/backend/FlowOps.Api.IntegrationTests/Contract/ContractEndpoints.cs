@@ -45,17 +45,17 @@ internal static class ContractEndpoints
         // §7 Dashboard
         new("GET", "/api/dashboard", "/api/dashboard", null, Employee),
 
-        // §8 Administration
-        new("GET", "/api/departments", "/api/departments?includeInactive=false", null, Employee),
-        new("POST", "/api/departments", "/api/departments", """{"name":"Sales","code":"SALES"}""", Admin),
-        new("PUT", "/api/departments/{id}", $"/api/departments/{Id}", """{"name":"Sales","code":"SALES","isActive":false}""", Admin),
-        new("GET", "/api/users", $"/api/users?search=lina&departmentId={Id}&role=Employee&includeInactive=true", null, Admin),
-        new("GET", "/api/users/{id}", $"/api/users/{Id}", null, Admin),
+        // §8 Administration: departments and users implemented in BE-08 (behaviour: Organization/*Tests).
+        new("GET", "/api/departments", "/api/departments?includeInactive=false", null, Employee) { Implemented = true },
+        new("POST", "/api/departments", "/api/departments", """{"name":"Sales","code":"SALES"}""", Admin) { Implemented = true },
+        new("PUT", "/api/departments/{id}", $"/api/departments/{Id}", """{"name":"Sales","code":"SALES","isActive":false}""", Admin) { Implemented = true },
+        new("GET", "/api/users", $"/api/users?search=lina&departmentId={Id}&role=Employee&includeInactive=true", null, Admin) { Implemented = true },
+        new("GET", "/api/users/{id}", $"/api/users/{Id}", null, Admin) { Implemented = true },
         new("POST", "/api/users", "/api/users",
-            """{"email":"new@flowops.local","displayName":"New Person","initialPassword":"a-long-initial-pw","departmentId":null,"managerId":null,"roles":["Employee"]}""", Admin),
-        new("PUT", "/api/users/{id}", $"/api/users/{Id}", """{"displayName":"Renamed","departmentId":null,"managerId":null,"isActive":true}""", Admin),
-        new("PUT", "/api/users/{id}/roles", $"/api/users/{Id}/roles", """{"roles":["Employee","HrOfficer"]}""", Admin),
-        new("POST", "/api/users/{id}/reset-password", $"/api/users/{Id}/reset-password", """{"newPassword":"a-long-reset-pw"}""", Admin),
+            """{"email":"new@flowops.local","displayName":"New Person","initialPassword":"a-long-initial-pw","departmentId":null,"managerId":null,"roles":["Employee"]}""", Admin) { Implemented = true },
+        new("PUT", "/api/users/{id}", $"/api/users/{Id}", """{"displayName":"Renamed","departmentId":null,"managerId":null,"isActive":true}""", Admin) { Implemented = true },
+        new("PUT", "/api/users/{id}/roles", $"/api/users/{Id}/roles", """{"roles":["Employee","HrOfficer"]}""", Admin) { Implemented = true },
+        new("POST", "/api/users/{id}/reset-password", $"/api/users/{Id}/reset-password", """{"newPassword":"a-long-reset-pw"}""", Admin) { Implemented = true },
         new("GET", "/api/admin/stalled-tasks", "/api/admin/stalled-tasks?page=2&pageSize=50", null, Admin),
     ];
 }

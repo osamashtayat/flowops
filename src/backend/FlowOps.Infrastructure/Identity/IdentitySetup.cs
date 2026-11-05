@@ -32,6 +32,7 @@ internal static class IdentitySetup
 
         services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = SessionRevalidationInterval);
         services.AddScoped<IIdentitySignIn, IdentitySignIn>();
+        services.AddScoped<IIdentityAdmin, IdentityAdmin>();
 
         services.Configure<BootstrapAdminOptions>(configuration.GetSection(BootstrapAdminOptions.Section));
         services.AddHostedService<BootstrapAdminSeeder>();

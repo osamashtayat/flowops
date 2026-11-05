@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using FlowOps.Application.Common;
 
@@ -64,6 +65,8 @@ public sealed record UpdateUserRequest
 
     public Guid? ManagerId { get; init; }
 
+    /// <summary>Required: a missing value must not silently deactivate.</summary>
+    [JsonRequired]
     public bool IsActive { get; init; }
 }
 

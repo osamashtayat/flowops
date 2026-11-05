@@ -215,15 +215,17 @@ type DashboardDto = {
 
 `type DepartmentDto = { id; name; code; isActive; memberCount: number }`
 
+As built (BE-08): `includeInactive=true` is honoured only for administrators; everyone else gets active departments. Sorted by name. `memberCount` counts **active** members. `code` is upper-cased. Duplicate name (case-insensitive) or code → 409 `department.duplicate`. Deactivating a department keeps its members; it just takes no new ones. `POST` returns `Location: /api/departments`, because there is no GET-by-id.
+
 ### Users
 | Method & path | Body | Success | Errors |
 |---|---|---|---|
 | `GET /api/users?search&departmentId&role&includeInactive&page&pageSize` | — | 200 `Paged<UserDto>` | |
 | `GET /api/users/{id}` | — | 200 `UserDto` | 404 |
-| `POST /api/users` | `CreateUserRequest` | 201 `UserDto` | 400 (password rules), 409 `user.duplicate_email`, 422 `user.manager_cycle`/`department.inactive` |
-| `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 404, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin) |
-| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 422 `user.last_admin` |
-| `POST /api/users/{id}/reset-password` | `{ newPassword }` | 204 (sets MustChangePassword) | 400 |
+| `POST /api/users` | `CreateUserRequest` | 201 `UserDto` + `Location` | 400 (password rules → `errors.initialPassword`; unknown department; unknown/inactive manager), 409 `user.duplicate_email`, 422 `department.inactive` |
+| `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 400 (unknown department, unknown/inactive manager), 404, 409 `concurrency.conflict`, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin), `department.inactive` (moving into an inactive department) |
+| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 404, 409 `concurrency.conflict`, 422 `user.last_admin` |
+| `POST /api/users/{id}/reset-password` | `{ newPassword }` | 204 (sets MustChangePassword, clears lockout, ends the user's sessions) | 400, 404, 409 `concurrency.conflict` |
 
 ```ts
 type UserDto = { id; email; displayName; isActive: boolean; mustChangePassword: boolean;
@@ -231,6 +233,18 @@ type UserDto = { id; email; displayName; isActive: boolean; mustChangePassword: 
 type CreateUserRequest = { email; displayName; initialPassword; departmentId: string | null; managerId: string | null; roles: Role[] };
 type UpdateUserRequest = { displayName; departmentId: string | null; managerId: string | null; isActive: boolean };
 ```
+
+As built (BE-08):
+- **List.** `search` is a case-insensitive substring match on display name or email. Sorted by display name. Inactive users are excluded unless `includeInactive=true`.
+- **Counts and roles.** `directReportCount` counts **active** direct reports, the same definition as `isManager`. `roles` is replaced as a set; duplicates are ignored.
+- **Manager.** Must be an existing, active user (otherwise 400 `errors.managerId`). It is checked only when the manager changes.
+- **Department.** An unknown department gives 400 `errors.departmentId`. An inactive one gives 422 `department.inactive`. Both are checked only when the department changes.
+- **Last administrator.** "Last admin" means the last **active** user with the `Administrator` role.
+- **Concurrent edits.** User edits carry no `version`, so between two administrators the last write wins. 409 `concurrency.conflict` appears only if the account changes during the request itself (e.g. the user changes their password at that moment).
+- **Required fields.** `isActive` is required on user and department `PUT`, so a missing value can't deactivate by accident. Enum values must be strings; numbers such as `0` give 400.
+- **Known races (accepted for Phase 1).** Two simultaneous demotions can remove the last administrator, and two simultaneous manager changes ("A reports to B" and "B reports to A") can create a cycle. Both rules are checked before acting, with no lock.
+- **Audit.** Every user change is logged with the acting admin's id (no passwords).
+- **Email.** It must also be a valid Identity user name: letters, digits and `-._@+`. Anything else gives 400 `errors.email`.
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`

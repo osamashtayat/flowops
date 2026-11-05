@@ -10,12 +10,15 @@ namespace FlowOps.Infrastructure.Persistence.Configurations;
 /// </summary>
 internal static class IdentityTableNames
 {
+    /// <summary>User name = email, so this unique index is what makes emails unique.</summary>
+    public const string UserNameIndex = "ux_users_normalized_user_name";
+
     public static void Apply(ModelBuilder builder)
     {
         builder.Entity<ApplicationUser>(b =>
         {
             b.ToTable("users");
-            b.HasIndex(u => u.NormalizedUserName).HasDatabaseName("ux_users_normalized_user_name");
+            b.HasIndex(u => u.NormalizedUserName).HasDatabaseName(UserNameIndex);
             b.HasIndex(u => u.NormalizedEmail).HasDatabaseName("ix_users_normalized_email");
         });
         builder.Entity<IdentityRole<Guid>>(b =>

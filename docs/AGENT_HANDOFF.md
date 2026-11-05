@@ -70,6 +70,7 @@ Use this list for cross-lane requests that can't be resolved inside one task. Re
 
 | Date | From | Item | Status |
 |---|---|---|---|
+| 2026-11-06 | Backend (BE-08 security review M1) | **Decision needed: may administrators give themselves process authority?** Admin powers alone let an admin grant themselves `FinanceOfficer`/`HrOfficer`, make themselves anyone's manager (and so read their leave reasons and decide their requests), or reset a user's password and sign in as them. That conflicts with the spirit of "Administrator grants no process authority" (AUTHORIZATION.md §2). BE-08 now logs every admin change with the actor id; it does not block anything. Options: forbid self-role/self-manager changes (new 422 code), or accept and rely on the audit log. | Open |
 
 ## 7. Ready-to-use prompts for the first sessions
 
