@@ -1,0 +1,97 @@
+/*
+ * FlowOps design tokens — the ONLY place colours, fonts, radii and shadows are defined.
+ * Documented (with verified contrast ratios) in docs/DESIGN_SYSTEM.md. Change both together.
+ */
+@import "tailwindcss";
+@import "@fontsource-variable/public-sans";
+
+@theme {
+  /* Remove Tailwind's default palette so off-brand colours (orange-500, black…) cannot be used. */
+  --color-*: initial;
+
+  /* Surfaces & text */
+  --color-canvas: #f7f4ef;
+  --color-sidebar: #eee9e1;
+  --color-sidebar-active: #e3dcd2;
+  --color-surface: #fffcf8;
+  --color-surface-muted: #f1ece5;
+  --color-border: #dad3ca;          /* decorative dividers only (1.35:1) */
+  --color-border-strong: #8c8378;   /* form control outlines (3.6:1 on surface) */
+  --color-ink: #343b36;
+  --color-ink-muted: #646a63;
+
+  /* Accent */
+  --color-primary: #526b5c;
+  --color-primary-hover: #405747;
+  --color-primary-soft: #e4ebe5;
+  --color-on-primary: #fffcf8;
+
+  /* Semantic pairs (text on matching -soft background) */
+  --color-info: #3d5a73;
+  --color-info-soft: #e2e9ef;
+  --color-success: #2f6b45;
+  --color-success-soft: #e3efe5;
+  --color-warning: #8a5a12;
+  --color-warning-soft: #f6ecd6;
+  --color-danger: #a1392f;
+  --color-danger-soft: #f7e3df;
+  --color-danger-hover: #87302a;
+  --color-neutral: #5b5f57;
+  --color-neutral-soft: #ece8e0;
+
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Typography */
+  --font-sans: "Public Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.625rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgb(52 59 54 / 0.06);
+  --shadow-overlay: 0 8px 24px rgb(52 59 54 / 0.12);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

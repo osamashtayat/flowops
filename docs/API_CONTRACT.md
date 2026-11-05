@@ -1,0 +1,261 @@
+# API Contract — FlowOps Phase 1
+
+**Purpose:** the authoritative HTTP + SignalR contract between backend and frontend.
+**Status:** v1 design. Once task BE-03 lands, `contracts/openapi.json` (generated from code) becomes the *executable* contract; this document stays the *design* contract. They must agree — see §8 for the change process.
+
+Conventions: JSON camelCase; enums as strings; ids are UUID strings; timestamps ISO-8601 UTC (`2026-11-05T07:43:00Z`); dates `yyyy-MM-dd`; money `{ "amount": "1250.500", "currency": "JOD" }` with amount as a **string** (avoids JS float rounding).
+
+All endpoints are under `/api` and require authentication unless marked **public**. All unsafe methods require the `X-XSRF-TOKEN` header (except login).
+
+---
+
+## 1. Common shapes
+
+```ts
+type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number };
+// Query: ?page=1&pageSize=20   (page ≥ 1, 1 ≤ pageSize ≤ 100, default 20)
+
+type Money = { amount: string; currency: "JOD" };
+
+type UserRef = { id: string; displayName: string };
+
+type RequestType   = "EquipmentPurchase" | "Leave";
+type RequestStatus = "InReview" | "Approved" | "Completed" | "Rejected";
+type RequestStage  = "ManagerApproval" | "FinanceApproval" | "HrConfirmation" | "ProcurementFulfillment" | "Closed";
+type WorkTaskKind  = "Approval" | "Fulfillment";
+type WorkTaskStatus  = "Open" | "Done";
+type WorkTaskOutcome = "Approved" | "Rejected" | "Fulfilled";
+type LeaveType     = "Annual" | "Sick" | "Unpaid" | "Other";
+type Role          = "Administrator" | "Employee" | "FinanceOfficer" | "HrOfficer" | "ProcurementOfficer";
+type Capability    = "requests.submit" | "tasks.view" | "admin.manage";
+```
+
+`version` fields are **opaque strings** (the server serialises PostgreSQL `xmin`). Clients echo them back unchanged; they never parse or compare them.
+
+## 2. Errors (RFC 9457 ProblemDetails)
+
+```json
+{
+  "type": "https://flowops.local/problems/task.already_decided",
+  "title": "Task already decided",
+  "status": 409,
+  "detail": "This task was already handled by someone else.",
+  "code": "task.already_decided",
+  "traceId": "00-…"
+}
+```
+Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase field paths (`estimatedCost.amount`).
+
+| Status | When | `code` examples |
+|---|---|---|
+| 400 | Malformed body / DataAnnotations failure | `validation` |
+| 401 | No/expired session | `auth.unauthenticated` |
+| 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision` |
+| 404 | Not found **or not visible** to caller | `not_found` |
+| 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email` |
+| 423 | Account locked out (login only) | `auth.locked_out` |
+| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `department.inactive` |
+| 500 | Unhandled | `server.error` (no internals in `detail`) |
+
+The full code list lives in `FlowOps.Domain/Errors/ErrorCodes.cs` and `src/frontend/src/lib/api/problem.ts` maps codes to user messages. Adding a code = update both + this table.
+
+---
+
+## 3. Auth
+
+| Method & path | Access | Body | Success | Errors |
+|---|---|---|---|---|
+| `POST /api/auth/login` | **public** | `{ email, password }` | 200 `CurrentUserDto` + session cookie + XSRF cookie | 400, 401 `auth.invalid_credentials`, 423 `auth.locked_out` |
+| `POST /api/auth/logout` | auth | — | 204 | — |
+| `GET /api/auth/me` | auth (allowed during must-change-password) | — | 200 `CurrentUserDto`; refreshes XSRF cookie | 401 |
+| `POST /api/auth/change-password` | auth (allowed during must-change-password) | `{ currentPassword, newPassword }` | 204 | 400 `validation` (Identity password rules mapped to `errors.newPassword`) |
+
+```ts
+type CurrentUserDto = {
+  id: string; email: string; displayName: string;
+  department: { id: string; name: string } | null;
+  manager: UserRef | null;
+  roles: Role[];
+  capabilities: Capability[];
+  mustChangePassword: boolean;
+};
+```
+Note: 423 is used only for lockout so the UI can show a distinct message.
+
+## 4. Requests
+
+### `POST /api/requests/purchase` — policy `CanSubmit`
+```ts
+type SubmitPurchaseRequest = {
+  itemName: string;        // 1–150
+  description: string;     // 1–2000
+  estimatedCost: Money;    // amount > 0, ≤ 1000000, ≤ 3 decimals; currency "JOD"
+  justification: string;   // 1–2000
+};
+```
+→ **201** `RequestDetailsDto`, `Location: /api/requests/{id}`. Errors: 400, 422 `request.manager_not_assigned` / `request.department_not_assigned`.
+No `department`, `requesterId` or `submittedAt` field is accepted — unknown properties are ignored, and those values come from the server.
+
+### `POST /api/requests/leave` — policy `CanSubmit`
+```ts
+type SubmitLeaveRequest = {
+  startDate: string; endDate: string;  // yyyy-MM-dd; start ≥ today (company TZ); end ≥ start; ≤ 90 days
+  leaveType: LeaveType;
+  reason?: string | null;              // ≤ 1000
+};
+```
+→ **201** `RequestDetailsDto`. Errors as above.
+
+### `GET /api/requests` — auth
+Query: `scope=mine|visible` (default `mine`), `status?`, `type?`, `search?` (number prefix or item name, ≤ 100 chars), `page`, `pageSize`. Sorted `submittedAt desc`.
+`scope=visible` returns everything the caller can see under `AUTHORIZATION.md` §4 (managers use it for "Team requests").
+→ 200 `Paged<RequestSummaryDto>`
+
+```ts
+type RequestSummaryDto = {
+  id: string; number: string; type: RequestType;
+  title: string;                 // purchase: itemName; leave: "Annual leave · 12–14 Nov"
+  requester: UserRef; department: { id: string; name: string };
+  status: RequestStatus; stage: RequestStage;
+  submittedAt: string; closedAt: string | null;
+};
+```
+
+### `GET /api/requests/{id}` — auth + visibility
+→ 200 `RequestDetailsDto` · 404 if not visible.
+```ts
+type RequestDetailsDto = RequestSummaryDto & {
+  purchase: { itemName: string; description: string; estimatedCost: Money; justification: string } | null;
+  leave: { startDate: string; endDate: string; days: number; leaveType: LeaveType;
+           reason: string | null; reasonHidden: boolean } | null;
+  tasks: WorkTaskDto[];           // chronological
+  availableActions: { taskId: string; actions: ("approve"|"reject"|"fulfill")[]; version: string } | null;
+  canComment: boolean;
+};
+type WorkTaskDto = {
+  id: string; kind: WorkTaskKind; stage: RequestStage; status: WorkTaskStatus;
+  assignee: { user: UserRef } | { role: Role };
+  outcome: WorkTaskOutcome | null; decidedBy: UserRef | null; decidedAt: string | null;
+  comment: string | null; createdAt: string;
+};
+```
+`availableActions` is computed by the server with the same `TaskEligibility` used for decisions; the UI renders buttons from it and does not re-derive permissions.
+
+### `GET /api/requests/{id}/activity` — auth + visibility
+→ 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments, cap 500).
+```ts
+type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded";
+  actor: UserRef | null; stage: RequestStage | null; body: string | null; occurredAt: string };
+```
+
+### `POST /api/requests/{id}/comments` — auth + visibility
+Body `{ body: string }` (1–2000). → 201 `ActivityDto` · 400 · 404.
+Comments are allowed on closed requests (follow-up notes), so there is no `request.closed` error here. Users who can't see the request (including admin-only users) get 404.
+
+## 5. Tasks (inbox and decisions)
+
+### `GET /api/tasks` — capability `tasks.view`
+Query: `status=Open|Done` (default `Open`), `page`, `pageSize`.
+- `Open`: tasks the caller is **eligible** to decide (assigned user or role queue, excluding own requests), oldest first.
+- `Done`: tasks the caller decided, newest first.
+→ 200 `Paged<InboxItemDto>`
+```ts
+type InboxItemDto = {
+  taskId: string; kind: WorkTaskKind; stage: RequestStage; createdAt: string; version: string;
+  status: WorkTaskStatus; outcome: WorkTaskOutcome | null; decidedAt: string | null;
+  request: RequestSummaryDto & { keyDetail: string };   // "JOD 1,250.500" or "3 days · Annual"
+};
+```
+
+### Decisions — auth + visibility + eligibility
+| Method & path | Body | Success |
+|---|---|---|
+| `POST /api/tasks/{taskId}/approve` | `{ version: string; comment?: string \| null }` (comment ≤ 2000) | 204 |
+| `POST /api/tasks/{taskId}/reject` | `{ version: string; reason: string }` (reason 1–2000, not whitespace) | 204 |
+| `POST /api/tasks/{taskId}/fulfill` | `{ version: string; note?: string \| null }` | 204 |
+
+Errors: 400, 403 `task.not_eligible` / `task.self_decision`, 404, 409 `task.already_decided` / `task.not_current` / `task.invalid_action` / `request.closed` / `concurrency.conflict`, 422 (next-step assignee unresolvable — not expected in Phase 1 since role queues always resolve).
+
+Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
+
+## 6. Notifications
+
+| Method & path | Notes | Success |
+|---|---|---|
+| `GET /api/notifications?unreadOnly=false&page&pageSize` | own only, newest first | 200 `Paged<NotificationDto>` |
+| `GET /api/notifications/unread-count` | | 200 `{ count: number }` |
+| `POST /api/notifications/{id}/read` | idempotent; others' ids → 404 | 204 |
+| `POST /api/notifications/read-all` | | 204 |
+
+```ts
+type NotificationDto = { id: string; type: "TaskAssigned"|"RequestApproved"|"RequestRejected"|"RequestCompleted"|"StepApproved"|"CommentAdded";
+  title: string; body: string; requestId: string | null; taskId: string | null; createdAt: string; readAt: string | null };
+```
+
+## 7. Dashboard
+
+`GET /api/dashboard` — auth → 200 `DashboardDto`. Sections the caller lacks capability for are `null`.
+```ts
+type DashboardDto = {
+  myRequests: { inReview: number; approved: number; completed: number; rejected: number; recent: RequestSummaryDto[] /* ≤5 */ };
+  myTasks: { open: number; oldestOpenCreatedAt: string | null; decidedLast7Days: number } | null; // tasks.view
+  recentActivity: (ActivityDto & { requestId: string; requestNumber: string })[];                // ≤10, on requests visible to me
+  admin: { activeUsers: number; departments: number; stalledTasks: number } | null;               // admin.manage
+};
+```
+
+## 8. Administration — policy `Admin`
+
+### Departments
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /api/departments?includeInactive=false` | — | 200 `DepartmentDto[]` (any authenticated user may list active ones — used in filters) | |
+| `POST /api/departments` | `{ name, code }` | 201 `DepartmentDto` | 409 `department.duplicate` |
+| `PUT /api/departments/{id}` | `{ name, code, isActive }` | 200 `DepartmentDto` | 404, 409 |
+
+`type DepartmentDto = { id; name; code; isActive; memberCount: number }`
+
+### Users
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /api/users?search&departmentId&role&includeInactive&page&pageSize` | — | 200 `Paged<UserDto>` | |
+| `GET /api/users/{id}` | — | 200 `UserDto` | 404 |
+| `POST /api/users` | `CreateUserRequest` | 201 `UserDto` | 400 (password rules), 409 `user.duplicate_email`, 422 `user.manager_cycle`/`department.inactive` |
+| `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 404, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin) |
+| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 422 `user.last_admin` |
+| `POST /api/users/{id}/reset-password` | `{ newPassword }` | 204 (sets MustChangePassword) | 400 |
+
+```ts
+type UserDto = { id; email; displayName; isActive: boolean; mustChangePassword: boolean;
+  department: { id; name } | null; manager: UserRef | null; roles: Role[]; directReportCount: number; createdAt: string };
+type CreateUserRequest = { email; displayName; initialPassword; departmentId: string | null; managerId: string | null; roles: Role[] };
+type UpdateUserRequest = { displayName; departmentId: string | null; managerId: string | null; isActive: boolean };
+```
+
+### Stalled tasks
+`GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
+`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef } | { role: Role }; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
+No request details (privacy): admins see metadata only.
+
+## 9. Real-time (SignalR)
+
+Hub: `/hubs/notifications` (cookie auth; same origin). Users are mapped to their own connection group by user id. Server → client only; clients never invoke hub methods in Phase 1.
+
+| Event | Payload | Client reaction |
+|---|---|---|
+| `notificationCreated` | `{ notificationId: string; requestId: string \| null }` | invalidate `notifications.*`, `dashboard` |
+| `requestChanged` | `{ requestId: string }` | invalidate `requests.detail(id)`, `requests.activity(id)`, `requests.lists`, `dashboard` |
+| `tasksChanged` | `{}` | invalidate `tasks.*`, `dashboard` |
+
+Payloads are **hints**: never render data from them. Sent only after the database commit. On reconnect the client invalidates everything listed above.
+
+`requestChanged` goes to everyone who can currently see the request **and is connected**; `tasksChanged` goes to the decider, the next assignee(s), and members of affected role queues.
+
+---
+
+## 10. Changing this contract
+
+1. The agent who needs the change edits this file **and** the DTO/controller in the same PR, regenerates `contracts/openapi.json` (`./scripts/export-openapi.sh`, created in BE-03), and regenerates frontend types (`npm run api:types` in `src/frontend`).
+2. Breaking changes (rename/remove field, change type, new required input) require noting it in the PR description under **Contract change** and updating every frontend usage in the same PR, or splitting into additive-then-remove PRs.
+3. Never add a field to the frontend types by hand. `schema.d.ts` is generated and lint-protected.
+4. CI fails if `contracts/openapi.json` differs from what the API produces.
