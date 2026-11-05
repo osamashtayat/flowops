@@ -45,14 +45,14 @@ describe('sign in', () => {
     setMockUser(null)
     renderRoutes(routes, '/login')
     await signIn('employee@flowops.test', MOCK_PASSWORD)
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
   })
 
   it('ignores a returnTo that points off-site', async () => {
     setMockUser(null)
     const { router } = renderRoutes(routes, '/login?returnTo=%2F%2Fevil.example')
     await signIn('employee@flowops.test', MOCK_PASSWORD)
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
   })
 
@@ -89,7 +89,7 @@ describe('sign in', () => {
     renderRoutes(routes, '/login')
     await userEvent.type(await screen.findByLabelText(/^Email/), 'manager@flowops.test')
     await userEvent.type(screen.getByLabelText(/^Password/), `${MOCK_PASSWORD}{Enter}`)
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
   })
 
   it('has autocomplete hints and no register link', async () => {
@@ -102,7 +102,7 @@ describe('sign in', () => {
 
   it('sends a signed-in user away from /login', async () => {
     renderRoutes(routes, '/login')
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
   })
 
   it('shows a retryable error when the session cannot be read (server down)', async () => {
@@ -112,7 +112,7 @@ describe('sign in', () => {
     expect(message.closest('[role="alert"]')).not.toBeNull()
     server.resetHandlers()
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
   })
 })
 
@@ -161,9 +161,11 @@ describe('forced password change', () => {
     await userEvent.type(newPasswordInput(), 'a-brand-new-password')
     await userEvent.type(confirmInput(), 'a-brand-new-password')
     await userEvent.click(screen.getByRole('button', { name: 'Change password' }))
-    expect(await heading('FlowOps foundation')).toBeInTheDocument()
+    expect(await heading('Dashboard')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/')
-    expect(screen.getByRole('status')).toHaveTextContent('Password changed.')
+    // (The dashboard's own loading indicator is also a status, so find the toast by its text.)
+    await screen.findByText('Password changed.')
+    expect(screen.getAllByRole('status').some((el) => el.textContent?.includes('Password changed.'))).toBe(true)
   })
 
   it('lets a must-change user sign out', async () => {

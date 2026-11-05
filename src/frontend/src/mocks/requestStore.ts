@@ -1,6 +1,7 @@
 import type {
   ActivityDto,
   CurrentUserDto,
+  DashboardDto,
   RequestDetailsDto,
   RequestStage,
   RequestStatus,
@@ -302,4 +303,40 @@ export function addMockLeave(user: CurrentUserDto, body: SubmitLeaveRequest): Re
   }
   created = [request, ...created]
   return request
+}
+
+/** The dashboard as the server would build it for this user (counts and lists from the mock store). */
+export function buildMockDashboard(user: CurrentUserDto): DashboardDto {
+  const mine = mockRequests().filter((request) => request.requester.id === user.id)
+  const count = (status: RequestStatus) => mine.filter((request) => request.status === status).length
+  const sorted = (requests: readonly RequestDetailsDto[]) => requests.toSorted((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+
+  const workQueue = user.capabilities.includes('tasks.view')
+  const open = mockRequests().flatMap((request) =>
+    request.tasks.filter((task) => mockEligibleActions(user, request, task).length > 0),
+  )
+  const visible = sorted(mockRequests().filter((request) => canSeeMockRequest(user, request)))
+  const recentActivity = visible
+    .flatMap((request) => mockActivities(request).map((entry) => ({ ...entry, requestId: request.id, requestNumber: request.number })))
+    .toSorted((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .slice(0, 10)
+
+  return {
+    myRequests: {
+      inReview: count('InReview'),
+      approved: count('Approved'),
+      completed: count('Completed'),
+      rejected: count('Rejected'),
+      recent: sorted(mine).slice(0, 5).map(toSummary),
+    },
+    myTasks: workQueue
+      ? {
+          open: open.length,
+          oldestOpenCreatedAt: open.map((task) => task.createdAt).toSorted()[0] ?? null,
+          decidedLast7Days: 0,
+        }
+      : null,
+    recentActivity,
+    admin: user.capabilities.includes('admin.manage') ? { activeUsers: 5, departments: 3, stalledTasks: 2 } : null,
+  }
 }

@@ -1,10 +1,10 @@
 import type { RouteObject } from 'react-router'
-import { FoundationPage } from '@/app/FoundationPage'
 import { PlaceholderPage } from '@/app/PlaceholderPage'
 import { RootLayout } from '@/app/RootLayout'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { AppShell } from '@/components/layout/AppShell'
+import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { MyRequestsPage } from '@/features/requests/pages/MyRequestsPage'
 import { NewLeavePage } from '@/features/requests/pages/NewLeavePage'
 import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
@@ -34,7 +34,7 @@ export const routes: RouteObject[] = [
           {
             element: <AppShell />,
             children: [
-              { index: true, element: <FoundationPage /> },
+              { index: true, element: <DashboardPage /> },
               { path: '/requests', element: <MyRequestsPage /> },
               { path: '/notifications', element: <PlaceholderPage title="Notifications" task="FE-11" /> },
               { path: '/requests/:id', element: <RequestDetailsPage /> },

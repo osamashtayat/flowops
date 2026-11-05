@@ -7,6 +7,7 @@ import type {
   PagedInboxItems,
   ActivityDto,
   AddCommentRequest,
+  DashboardDto,
   PagedRequestSummaries,
   RequestDetailsDto,
   SubmitLeaveRequest,
@@ -20,6 +21,7 @@ import {
   addMockComment,
   addMockLeave,
   addMockPurchase,
+  buildMockDashboard,
   getMockRequestFor,
   listMockRequests,
   mockActivities,
@@ -176,6 +178,12 @@ function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | n
 const NOT_FOUND = () => problem(404, 'not_found')
 
 export const dataHandlers = [
+  http.get<never, never, DashboardDto | Failure>('/api/dashboard', async () => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    return HttpResponse.json(buildMockDashboard(user))
+  }),
+
   http.get<{ id: string }, never, RequestDetailsDto | Failure>('/api/requests/:id', async ({ params }) => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')

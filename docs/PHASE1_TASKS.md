@@ -193,7 +193,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).
 - **Deps:** FE-04 (+ BE-13/14). **Tests:** invalidation mapping per event; optimistic mark-read rollback on error.
 
-### FE-12 — Dashboard · `Todo`
+### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).
 
 ### FE-13 — Administration screens · `Todo`
