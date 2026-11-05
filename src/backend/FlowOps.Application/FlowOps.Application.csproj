@@ -7,6 +7,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- AccessRules.ContextForAsync(userId): the table-driven access tests evaluate the rules for many users. -->
+    <InternalsVisibleTo Include="FlowOps.Api.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FlowOps.Domain\FlowOps.Domain.csproj" />
   </ItemGroup>
 

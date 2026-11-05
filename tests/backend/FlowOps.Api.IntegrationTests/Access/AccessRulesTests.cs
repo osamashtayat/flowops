@@ -173,7 +173,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         {
             var me = await rules.ContextForAsync(org.Users[user], Ct);
             var loaded = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests[request], Ct);
-            var actual = TaskEligibility.FailureCode(loaded, loaded.OpenTask!, me);
+            var actual = TaskEligibility.FailureCode(loaded.RequesterId, loaded.OpenTask!, me);
             if (actual != code)
             {
                 wrong.Add($"{user}/{request}: expected {code ?? "eligible"} but got {actual ?? "eligible"}");
@@ -193,8 +193,8 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         var hana = await rules.ContextForAsync(org.Users["hana"], Ct);
         var pf = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["PF"], Ct);
 
-        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf, pf.OpenTask!, finny)).Code.ShouldBe(ErrorCodes.TaskSelfDecision);
-        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf, pf.OpenTask!, hana)).Code.ShouldBe(ErrorCodes.TaskNotEligible);
+        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf.RequesterId, pf.OpenTask!, finny)).Code.ShouldBe(ErrorCodes.TaskSelfDecision);
+        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf.RequesterId, pf.OpenTask!, hana)).Code.ShouldBe(ErrorCodes.TaskNotEligible);
     }
 
     [Fact]
@@ -209,8 +209,8 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         foreach (var (user, expected) in Decidable)
         {
             var me = await rules.ContextForAsync(org.Users[user], Ct);
-            var fromSql = await TaskEligibility.DecidableBy(db.Requests, me).Select(t => t.RequestId).ToListAsync(Ct);
-            var inMemory = all.Where(r => TaskEligibility.FailureCode(r, r.OpenTask!, me) is null).Select(r => r.Id);
+            var fromSql = await TaskEligibility.DecidableBy(db.Requests, me).Select(d => d.Request.Id).ToListAsync(Ct);
+            var inMemory = all.Where(r => TaskEligibility.FailureCode(r.RequesterId, r.OpenTask!, me) is null).Select(r => r.Id);
             var sqlNames = fromSql.Select(org.RequestName).Order(StringComparer.Ordinal).ToArray();
             var memoryNames = inMemory.Select(org.RequestName).Order(StringComparer.Ordinal).ToArray();
             if (!sqlNames.SequenceEqual(expected.Order(StringComparer.Ordinal)) || !memoryNames.SequenceEqual(sqlNames))
@@ -231,7 +231,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         async Task<AvailableActionsDto?> For(string user, string request)
         {
             var loaded = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests[request], Ct);
-            return TaskEligibility.AvailableActions(loaded, await rules.ContextForAsync(org.Users[user], Ct));
+            return TaskEligibility.AvailableActions(loaded.RequesterId, loaded.OpenTask, await rules.ContextForAsync(org.Users[user], Ct));
         }
 
         var karimP1 = (await For("karim", "P1")).ShouldNotBeNull();
@@ -242,6 +242,132 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         (await For("finny", "PF")).ShouldBeNull("own request");
         (await For("lina", "P1")).ShouldBeNull("requester");
         (await For("gone", "P2")).ShouldBeNull("inactive");
+    }
+
+    [Fact]
+    public async Task DecidableBy_ProjectsTaskAndRequestInOneQuery()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, rules) = Services(scope);
+        var fiona = await rules.ContextForAsync(org.Users["fiona"], Ct);
+
+        var rows = await TaskEligibility.DecidableBy(db.Requests, fiona)
+            .OrderBy(d => d.Task.CreatedAt).ThenBy(d => d.Task.Id)
+            .Select(d => new { TaskId = d.Task.Id, Number = d.Request.Number, d.Request.RequesterId })
+            .ToListAsync(Ct);
+
+        rows.Count.ShouldBe(2);
+        rows.ShouldAllBe(r => r.TaskId != Guid.Empty && r.Number.Value.StartsWith("FO-2026-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task InactiveManagerAndInactiveRequester_SeeNothing()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await SetActiveAsync(org.Users["karim"], false);
+        await SetActiveAsync(org.Users["lina"], false);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, rules) = Services(scope);
+
+        foreach (var user in new[] { "karim", "lina" })
+        {
+            var me = await rules.ContextForAsync(org.Users[user], Ct);
+            (await rules.VisibleTo(db.Requests, me).CountAsync(Ct)).ShouldBe(0, user);
+            (await TaskEligibility.DecidableBy(db.Requests, me).CountAsync(Ct)).ShouldBe(0, user);
+        }
+    }
+
+    [Fact]
+    public async Task RoleRemovedInTheDatabase_TakesEffectImmediately()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using (var arrange = Factory.Services.CreateAsyncScope())
+        {
+            var db = arrange.ServiceProvider.GetRequiredService<AppDbContext>();
+            await db.UserRoles.Where(r => r.UserId == org.Users["hana"]).ExecuteDeleteAsync(Ct);
+        }
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (dbContext, rules) = Services(scope);
+        var hana = await rules.ContextForAsync(org.Users["hana"], Ct);
+
+        hana.Roles.ShouldBeEmpty();
+        (await rules.CanViewAsync(org.Requests["L1"], hana, Ct)).ShouldBeFalse();
+        (await TaskEligibility.DecidableBy(dbContext.Requests, hana).CountAsync(Ct)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task FormerManager_StaysEligibleForTheOpenManagerTask()
+    {
+        // WORKFLOWS.md: no reassignment in Phase 1, so a manager change leaves the open T1 with the old manager.
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using (var arrange = Factory.Services.CreateAsyncScope())
+        {
+            await arrange.ServiceProvider.GetRequiredService<AppDbContext>().Users.Where(u => u.Id == org.Users["lina"])
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.ManagerId, org.Users["boss"]), Ct);
+        }
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, rules) = Services(scope);
+        var p1 = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["P1"], Ct);
+
+        TaskEligibility.FailureCode(p1.RequesterId, p1.OpenTask!, await rules.ContextForAsync(org.Users["karim"], Ct)).ShouldBeNull();
+        TaskEligibility.FailureCode(p1.RequesterId, p1.OpenTask!, await rules.ContextForAsync(org.Users["boss"], Ct))
+            .ShouldBe(ErrorCodes.TaskNotEligible);
+    }
+
+    [Fact]
+    public async Task FailureCode_OnADecidedTaskOfTheAssignee_IsEligibleSoTheDomainAnswers409()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, rules) = Services(scope);
+        var p3 = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["P3"], Ct);
+        var financeTask = p3.Tasks.Single(t => t.Stage == FlowOps.Domain.Requests.RequestStage.FinanceApproval);
+        var fiona = await rules.ContextForAsync(org.Users["fiona"], Ct);
+
+        TaskEligibility.FailureCode(p3.RequesterId, financeTask, fiona).ShouldBeNull();
+        TaskEligibility.AvailableActions(p3.RequesterId, financeTask, fiona).ShouldBeNull("a decided task offers no buttons");
+    }
+
+    [Fact]
+    public async Task VisibleTo_ComposesWithTrackingAndIncludes()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, rules) = Services(scope);
+        var karim = await rules.ContextForAsync(org.Users["karim"], Ct);
+
+        var p1 = await rules.VisibleTo(db.Requests.Include(r => r.Tasks), karim).SingleOrDefaultAsync(r => r.Id == org.Requests["P1"], Ct);
+        var hidden = await rules.VisibleTo(db.Requests.Include(r => r.Tasks), await rules.ContextForAsync(org.Users["omar"], Ct))
+            .SingleOrDefaultAsync(r => r.Id == org.Requests["P1"], Ct);
+
+        p1.ShouldNotBeNull().Tasks.Count.ShouldBe(1);
+        db.Entry(p1).State.ShouldBe(EntityState.Unchanged);
+        hidden.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData(" 1")]
+    [InlineData("+1")]
+    [InlineData("1.0")]
+    [InlineData("4294967296")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void VersionToken_RejectsAnythingTheServerNeverIssued(string? token) =>
+        VersionToken.TryParse(token, out _).ShouldBeFalse();
+
+    [Fact]
+    public void VersionToken_RoundTrips() =>
+        (VersionToken.TryParse(VersionToken.Format(4294967295u), out var v) && v == 4294967295u).ShouldBeTrue();
+
+    private async Task SetActiveAsync(Guid userId, bool isActive)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<AppDbContext>().Users.Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, isActive), Ct);
     }
 
     private static (AppDbContext Db, AccessRules Rules) Services(AsyncServiceScope scope) =>

@@ -17,10 +17,11 @@ public sealed record AssigneeRule
 
     public static AssigneeRule RequesterManager { get; } = new((string?)null);
 
+    /// <summary>A role queue. Never Administrator: that role has no process authority (AUTHORIZATION.md §2).</summary>
     public static AssigneeRule ForRole(string role) =>
-        Roles.All.Contains(role, StringComparer.Ordinal)
+        Roles.All.Contains(role, StringComparer.Ordinal) && role != Roles.Administrator
             ? new AssigneeRule(role)
-            : throw new ArgumentException($"Unknown role '{role}'.", nameof(role));
+            : throw new ArgumentException($"'{role}' cannot be a process role queue.", nameof(role));
 
     /// <summary>Whether a resolved assignee is of the shape this rule demands.</summary>
     public bool Accepts(Assignee assignee)

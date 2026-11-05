@@ -39,4 +39,14 @@ public sealed class FixedProcessesTests
     [Fact]
     public void Next_ForStageNotInProcess_Throws() =>
         Should.Throw<ArgumentException>(() => FixedProcesses.Next(RequestType.Leave, RequestStage.FinanceApproval));
+
+    [Fact]
+    public void NoStep_IsAssignedToAdministrators()
+    {
+        var roles = Enum.GetValues<RequestType>().SelectMany(FixedProcesses.For).Select(s => s.Assignee.Role).OfType<string>();
+
+        roles.ShouldNotContain(FlowOps.Domain.Organization.Roles.Administrator);
+        Should.Throw<ArgumentException>(() => AssigneeRule.ForRole(FlowOps.Domain.Organization.Roles.Administrator));
+        Should.Throw<ArgumentException>(() => Assignee.ForRole(FlowOps.Domain.Organization.Roles.Administrator));
+    }
 }
