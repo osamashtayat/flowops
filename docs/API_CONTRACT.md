@@ -13,7 +13,7 @@ All endpoints are under `/api` and require authentication unless marked **public
 
 ```ts
 type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number };
-// Query: ?page=1&pageSize=20   (page ≥ 1, 1 ≤ pageSize ≤ 100, default 20)
+// Query: ?page=1&pageSize=20   (1 ≤ page ≤ 10000, 1 ≤ pageSize ≤ 100, default 20; out of range → 400)
 
 type Money = { amount: string; currency: "JOD" };
 

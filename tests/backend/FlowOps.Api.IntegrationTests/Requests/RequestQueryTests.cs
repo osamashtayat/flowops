@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FlowOps.Api.IntegrationTests.Access;
 using FlowOps.Api.IntegrationTests.Harness;
+using FlowOps.Application.Common;
 using FlowOps.Domain.Errors;
+using FlowOps.Domain.Organization;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Requests;
 using FlowOps.Infrastructure.Persistence;
@@ -178,6 +180,83 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
         asFormer.GetProperty("reason").ValueKind.ShouldBe(JsonValueKind.Null);
         asFormer.GetProperty("reasonHidden").GetBoolean().ShouldBeTrue();
         asCurrent.GetProperty("reason").GetString().ShouldBe("Family");
+    }
+
+    [Fact]
+    public async Task Get_Leave_FormerManagerWhoIsAlsoHrOfficer_StillDoesNotSeeTheReason()
+    {
+        // harry rejected nadia's leave at the manager step, so no HR task ever existed. HrOfficer + R3 only counts through
+        // the HR task (AUTHORIZATION.md §5); as a former manager he sees the request but not the reason.
+        var org = await AccessOrg.SeedAsync(Factory);
+        var harry = await Given.User("harry").WithRoles(Roles.Employee, Roles.HrOfficer).CreateAsync(Factory);
+        var nadia = await Given.User("nadia").ManagedBy(harry).CreateAsync(Factory);
+        var hr = await Given.DepartmentAsync(Factory, "People", "PPL");
+        var leaveId = await SeedLeaveRejectedByManagerAsync(nadia.Id, hr.Id, harry.Id);
+        await SetManagerAsync(nadia.Id, org.Users["boss"]);
+        using var client = await Factory.ClientFor(harry);
+
+        var leave = (await JsonBody.ReadAsync(await client.GetAsync(new Uri($"/api/requests/{leaveId}", UriKind.Relative), Ct))).GetProperty("leave");
+
+        leave.GetProperty("reason").ValueKind.ShouldBe(JsonValueKind.Null);
+        leave.GetProperty("reasonHidden").GetBoolean().ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("lina")]
+    [InlineData("karim")]
+    [InlineData("hana")]
+    public async Task ListAndActivity_NeverCarryTheLeaveReason(string user)
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        using var client = await ClientAsync(org, user);
+
+        using var list = await client.GetAsync(new Uri("/api/requests?scope=visible", UriKind.Relative), Ct);
+        using var activity = await client.GetAsync(RequestUri(org, "L1", "/activity"), Ct);
+
+        activity.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await list.Content.ReadAsStringAsync(Ct)).ShouldNotContain("Family");
+        (await activity.Content.ReadAsStringAsync(Ct)).ShouldNotContain("Family");
+    }
+
+    [Theory]
+    [InlineData("ada", false)]   // Administrator: no visibility
+    [InlineData("gone", true)]   // inactive, session still alive
+    [InlineData("boss", false)]  // second-level manager
+    public async Task Activity_ForAdminInactiveOrSecondLevelManager_Returns404(string user, bool allowInactive)
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        using var client = await ClientAsync(org, user, allowInactive);
+
+        using var response = await client.GetAsync(RequestUri(org, "L1", "/activity"), Ct);
+
+        await ProblemAssert.HasCode(response, 404, ErrorCodes.NotFound);
+    }
+
+    [Theory]
+    [InlineData("page=0")]
+    [InlineData("page=2147483647&pageSize=100")]
+    [InlineData("page=10001")]
+    [InlineData("pageSize=0")]
+    [InlineData("pageSize=101")]
+    public async Task List_PagingOutOfRange_Returns400(string query)
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        using var lina = await ClientAsync(org, "lina");
+
+        using var response = await lina.GetAsync(new Uri("/api/requests?" + query, UriKind.Relative), Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
+    public async Task List_LastAllowedPage_ReturnsEmptyPage()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        using var lina = await ClientAsync(org, "lina");
+
+        var page = await ListAsync(lina, $"page={PageRequest.MaxPage}&pageSize={PageRequest.MaxPageSize}");
+
+        page.GetProperty("items").GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
@@ -379,6 +458,21 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
             var at = Factory.Clock.GetUtcNow().AddMinutes(minute++);
             await db.Requests.Where(r => r.Id == org.Requests[name]).ExecuteUpdateAsync(s => s.SetProperty(r => r.SubmittedAt, at), Ct);
         }
+    }
+
+    private async Task<Guid> SeedLeaveRejectedByManagerAsync(Guid requesterId, Guid departmentId, Guid managerId)
+    {
+        var now = Factory.Clock.GetUtcNow();
+        var leave = Request.SubmitLeave(RequestNumber.Create(2026, 90), requesterId, departmentId,
+            LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Sick, "Surgery", now, TimeZoneInfo.Utc),
+            managerId, now);
+        leave.DecideTask(leave.OpenTask!.Id, managerId, TaskDecision.Reject("Too busy"),
+            step => step.Assignee.IsRequesterManager ? Assignee.ForUser(managerId) : Assignee.ForRole(step.Assignee.Role!), now);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Requests.Add(leave);
+        await db.SaveChangesAsync(Ct);
+        return leave.Id;
     }
 
     private async Task SetManagerAsync(Guid userId, Guid managerId)

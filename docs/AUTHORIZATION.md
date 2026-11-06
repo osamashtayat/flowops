@@ -142,7 +142,7 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
   - **`AvailableActions(requesterId, openTask, me)`** takes only what a projection supplies. It returns the task's `WorkTask.AllowedActions` plus its `version`, or `null` for a decided task or a non-eligible caller.
   - **Open/current/already-decided stay the domain's 409s**: a late decider gets `task.already_decided`, not 403.
 - **Administrator never gets a task.** The domain refuses Administrator as a role queue (`AssigneeRule`/`Assignee.ForRole`), which is what makes "admins see nothing" hold.
-- **Leave reason (BE-10/11).** `AccessRules.CanReadLeaveReasonAsync` is composed from the same R1/R2/R3 predicates as `VisibleTo`: R1, or R2, or HrOfficer + R3. A former manager who decided the step but is no longer the direct manager sees the request (R3) but not the reason.
+- **Leave reason (BE-10/11).** `AccessRules.CanReadLeaveReasonAsync` is composed from the same R1/R2/R3 predicates as `VisibleTo`: R1, or R2, or HrOfficer + R3 **through the HR task** (the request has an `HrOfficer` queue task). A former manager who decided the step but is no longer the direct manager sees the request (R3) but not the reason, even if they also hold `HrOfficer` (BE-11b).
 - **Commenting = visibility** (§3). There is no separate rule: `canComment` is `true` on every request the caller can see.
 - **`TaskEligibility.EligibleDeciders`** applies the same three conditions to address notifications: active, assigned, not the requester.
 
@@ -157,7 +157,7 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 
 | Data | Rule |
 |---|---|
-| Leave `Reason` | Returned only when the caller satisfies R1, R2, or holds `HrOfficer` with R3. `LeaveDetailsDto.Reason` is `null` otherwise; a boolean `reasonHidden` tells the UI to show "Restricted". |
+| Leave `Reason` | Returned only when the caller satisfies R1, R2, or holds `HrOfficer` and the request has an HR task (R3 through the HR queue). Decision comments, rejection reasons and request comments are **not** masked: they are visible to everyone who can see the request. `LeaveDetailsDto.Reason` is `null` otherwise; a boolean `reasonHidden` tells the UI to show "Restricted". |
 | Leave in notifications | Title/body mention "leave request FO-2026-000123" and dates only. |
 | Password hashes, security stamps, lockout data | Never in any DTO. Users endpoints return `UserDto` (explicit fields). |
 | Logs | Never log request bodies, reasons, comments or passwords. Log ids and outcomes. |

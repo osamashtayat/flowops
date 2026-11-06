@@ -127,6 +127,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `GET /requests`, `/requests/{id}`, `/activity`, `POST /comments`; `availableActions` via `TaskEligibility`; leave-reason masking.
 - **Deps:** BE-10. **AC:** projections only (no entity graphs to DTO in memory); filters/search/paging; 404 for invisible.
 - **Tests:** `TESTING.md` §3.3 visibility rows; reason masking; comment notifications.
+- **Follow-up BE-11b (`Done`, security review):** HR reads a leave reason only through the HR task (a former manager who also holds HrOfficer doesn't); `page` capped at 10,000 (was a 500 on overflow); extra negative tests. Open: #37 (activity cap / comment volume), #38 (frontend hint).
 
 ### BE-12 — Inbox & decisions (approve/reject/fulfill) · `Todo`
 - **Objective:** `TaskQueryService` (`GET /tasks`), `TaskDecisionService` (one pipeline, `CODE_STANDARDS.md` §2.4), concurrency mapping, decision notifications.
