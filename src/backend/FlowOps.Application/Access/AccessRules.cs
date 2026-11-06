@@ -46,12 +46,13 @@ public sealed class AccessRules(IAppDbContext db, ICurrentUser currentUser)
 
     /// <summary>
     /// §5: the leave reason goes to the requester (R1), their direct manager (R2) and HR officers who see the request
-    /// through a task (HrOfficer + R3). Everyone else gets <c>reason: null, reasonHidden: true</c>.
+    /// through its HR task (HrOfficer + R3 via the HR queue). Being a participant for another reason, such as having decided
+    /// the manager step as a former manager, doesn't count. Everyone else gets <c>reason: null, reasonHidden: true</c>.
     /// </summary>
     public Task<bool> CanReadLeaveReasonAsync(Guid requestId, AccessContext me, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(me);
-        var hrParticipant = me.Roles.Contains(Roles.HrOfficer) ? IsParticipant(me) : r => false;
+        var hrParticipant = me.Roles.Contains(Roles.HrOfficer) ? HasHrTask() : r => false;
         return db.Requests.Where(r => r.Id == requestId)
             .AnyAsync(Active(me, AnyOf(IsRequester(me), IsRequestersManager(me), hrParticipant)), ct);
     }
@@ -79,6 +80,9 @@ public sealed class AccessRules(IAppDbContext db, ICurrentUser currentUser)
             || (t.AssigneeRole != null && roles.Contains(t.AssigneeRole))
             || t.DecidedById == userId);
     }
+
+    // The part of R3 an HR officer gets through the HR queue.
+    private static Expression<Func<Request, bool>> HasHrTask() => r => r.Tasks.Any(t => t.AssigneeRole == Roles.HrOfficer);
 
     private static Expression<Func<Request, bool>> Active(AccessContext me, Expression<Func<Request, bool>> rule)
     {
