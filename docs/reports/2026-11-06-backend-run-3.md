@@ -8,7 +8,15 @@ Each follow-up had one branch in its own worktree and was rebased on the latest 
 
 **BE-12 was not started**, as instructed. No ADR change was needed.
 
-## Needs your decision
+## Update — your decisions on #31, #32, #37 (same day)
+
+| Issue | Decision | Result |
+|---|---|---|
+| #31 | Option 1: forbid self password reset | **Done.** https://github.com/osamashtayat/flowops/pull/41 (merged, closes #31). `POST /users/{own id}/reset-password` → 422 `user.self_administration`. Tests: Domain 103/103, Integration 433/433. |
+| #37 | Option 1 + comment rate limit | **Done.** https://github.com/osamashtayat/flowops/pull/45 (merged, closes #37). Activity returns the newest 500, oldest first. Comments are limited to 10 per minute per user (`FlowOps:CommentRateLimit`) → 429 `request.comment_rate_limited` + `Retry-After`. Rate-limiter middleware now runs after authentication. Limit options are validated at start-up. Contract: new code, 429 on comments, `openapi.json` and `schema.d.ts` regenerated, `problem.ts` message added. Tests after rebasing on #42: Domain 103/103, Integration 442/442, frontend 451/451 plus typecheck/lint/build. `security-reviewer`: no Critical, High or Medium. |
+| #32 | Option 3: two-person control | **Proposed, not implemented.** It needs a new ADR, so I stopped as the brief says. ADR-0012 (Proposed) is in https://github.com/osamashtayat/flowops/pull/44 (open). **Merge it to accept, or comment.** Its open questions: Phase 1 or 2; whether Employee-only creates need approval; 72 h expiry; the bootstrap exception for the second admin. It changes `POST /users` (generated passwords) and returns 202 on four admin endpoints, so FE-13 changes too. |
+
+## Needs your decision (original list; #31 and #37 are now resolved, #32 is waiting on ADR-0012)
 
 1. **#31: may an admin reset their own password through `POST /api/users/{id}/reset-password`?**
    - Today they can, without the current password that `change-password` requires.
