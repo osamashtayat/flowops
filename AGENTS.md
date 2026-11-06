@@ -59,8 +59,41 @@ This file is model-agnostic and is the shared source of truth for every agent. D
 - Do not silently change an architectural decision; flag conflicts (`docs/AGENT_HANDOFF.md` §4).
 - No unrelated refactoring; report it as a follow-up instead.
 - Never fabricate test results. Report exactly what you ran and what happened.
+- Follow the branch workflow (§4) and raise problems as GitHub issues (§5). Both are mandatory.
 
-## 4. Commands
+## 4. Branch workflow (mandatory, every task)
+
+Every backlog task, however large, follows exactly this flow:
+
+1. **One task = one branch.** Create a single branch from the latest `origin/main`, named `task/<ID>-short-name` (e.g. `task/BE-10-submit-requests`). Do all of the task's work on it. Don't split a task across several branches, don't stack branches on other unmerged branches, and don't put two tasks on one branch.
+2. **Use your own git worktree** for that branch (`git worktree add`). Never switch branches or commit in the main checkout; several agents share it.
+3. **Keep it current.** Before merging, update the branch with the latest `main` (merge or rebase) and fix any conflicts on the branch.
+4. **Finish = merged into `main`.** When the build and all required tests are green and the Definition of Done (§8) is met: push, open one PR into `main`, merge it (squash), and delete the branch. A task is not done while its work sits only on a branch.
+5. **If it can't be finished green:** leave the PR open and unmerged, open a GitHub issue explaining why (§5), and say so in your report. Never merge red, and never merge with tests you didn't run.
+
+Small fixes found during a task belong on that task's branch. Unrelated fixes get their own issue (§5) and, later, their own task branch.
+
+## 5. Raising problems: open a GitHub issue, never stay silent
+
+If you hit a bug, a blocker, a contract gap, a conflict with an ADR or doc, a failing or flaky test you can't fix, duplicated logic outside your scope, a security concern, or a decision that needs the owner, **open a GitHub issue**. Mentioning it only in chat, in a code comment or at the end of a long report is not enough.
+
+1. **Search first** so you don't duplicate: `gh issue list --state open --search "<keywords>"`. If one exists, add a comment with your new findings instead.
+2. **Create it:**
+   ```bash
+   gh issue create --title "[BE-10] Short, specific problem" --label "<labels>" --body-file <file>
+   ```
+   - **Title:** prefix with the task ID, or `[backend]` / `[frontend]` when there's no task.
+   - **Labels:** one area (`backend`, `frontend`, `contract`, `docs`, `infra`) and one kind (`bug`, `blocker`, `decision-needed`, `security`, `tech-debt`). Create missing labels with `gh label create`.
+   - **Body:** what happened · how to reproduce (commands, inputs) · expected vs actual · files and lines · the doc or ADR section involved · your proposed fix or options · whether it blocks your task.
+   - **Security issues:** describe the impact and the location, but don't paste credentials, tokens or a ready-to-use exploit.
+3. **Then act on it:**
+   - **Blocks your task:** stop that part, leave the PR open, and link the issue in it.
+   - **Doesn't block:** continue, and link the issue in your PR and report.
+   - **Fixed later:** close it from the fixing PR with `Fixes #<n>`.
+4. **List every issue you opened or updated** in your end-of-session report (`docs/AGENT_HANDOFF.md` §5).
+5. **If `gh` isn't available or isn't authenticated,** add the same content to `docs/AGENT_HANDOFF.md` §6 and state at the top of your report that the issue still needs to be filed. Never skip raising it.
+
+## 6. Commands
 
 ```bash
 docker compose up -d db                                   # PostgreSQL on localhost:5432
@@ -72,11 +105,11 @@ cd src/frontend && npm install && npm run dev             # SPA on http://localh
 cd src/frontend && npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-## 5. Conventions in one glance
+## 7. Conventions in one glance
 - Domain vocabulary exactly as `docs/DOMAIN_MODEL.md` §1 (`Request`, `WorkTask`, `Stage`, `Activity`…).
 - Error codes `area.snake_case`; DTO inputs `…Request`, outputs `…Dto`; async methods `…Async` with `CancellationToken`.
 - Time from `TimeProvider`; money as `Money` (JOD, 3 decimals); dates displayed in `Asia/Amman`.
-- Branches `task/<ID>-short-name`; one task per branch.
+- Branches `task/<ID>-short-name`: exactly one per task, merged into `main` when done (§4).
 
-## 6. Definition of Done
-A task is done only when: the behaviour works end to end · authorization is correct and tested · validation and errors follow the contract · API and frontend types match · required tests pass (and you ran them) · relevant docs are updated · no duplicated business logic was introduced · layers respect their responsibilities · UI follows the design system · `docs/PHASE1_TASKS.md` status is updated · the end-of-session report (`docs/AGENT_HANDOFF.md` §5) is written.
+## 8. Definition of Done
+A task is done only when: its single branch is merged into `main` (§4) · every problem found is raised as a GitHub issue (§5) · the behaviour works end to end · authorization is correct and tested · validation and errors follow the contract · API and frontend types match · required tests pass (and you ran them) · relevant docs are updated · no duplicated business logic was introduced · layers respect their responsibilities · UI follows the design system · `docs/PHASE1_TASKS.md` status is updated · the end-of-session report (`docs/AGENT_HANDOFF.md` §5) is written.
