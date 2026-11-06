@@ -25,7 +25,7 @@ function oneOf<T extends string>(allowed: readonly T[], value: string): T | '' {
 }
 
 const baseColumns: DataTableColumn<RequestSummaryDto>[] = [
-  { key: 'number', header: 'Number', cell: (r) => <span className="tabular-nums">{r.number}</span> },
+  { key: 'number', header: 'Number', cell: (r) => <span className="whitespace-nowrap tabular-nums">{r.number}</span> },
   {
     key: 'title',
     header: 'Title',

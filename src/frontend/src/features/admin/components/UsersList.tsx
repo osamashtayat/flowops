@@ -24,15 +24,18 @@ const SEARCH_MAX = 100
 const columns: DataTableColumn<UserDto>[] = [
   {
     key: 'name',
-    header: 'Name',
+    header: 'Name and email',
     isRowHeader: true,
+    // Name and email share a cell so six columns fit beside the sidebar.
     cell: (u) => (
-      <Link to={`/admin/users/${u.id}`} className="text-primary underline">
-        {u.displayName}
-      </Link>
+      <div>
+        <Link to={`/admin/users/${u.id}`} className="text-primary underline">
+          {u.displayName}
+        </Link>
+        <p className="text-xs text-ink-muted">{u.email}</p>
+      </div>
     ),
   },
-  { key: 'email', header: 'Email', cell: (u) => u.email },
   { key: 'department', header: 'Department', cell: (u) => u.department?.name ?? '—' },
   { key: 'manager', header: 'Manager', cell: (u) => u.manager?.displayName ?? '—' },
   {

@@ -35,7 +35,9 @@ export function RequestDetailsCard({ request }: { request: RequestDetailsDto }) 
             <Fact label="Leave type">{LEAVE_TYPE_LABELS[leave.leaveType]}</Fact>
             <Fact label="Dates">
               <span className="tabular-nums">
-                {formatDateOnly(leave.startDate)} – {formatDateOnly(leave.endDate)}
+                {leave.startDate === leave.endDate
+                  ? formatDateOnly(leave.startDate)
+                  : `${formatDateOnly(leave.startDate)} – ${formatDateOnly(leave.endDate)}`}
               </span>{' '}
               <span className="text-ink-muted">
                 ({leave.days} calendar {leave.days === 1 ? 'day' : 'days'})
