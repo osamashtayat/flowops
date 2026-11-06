@@ -15,6 +15,7 @@ import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
 import { NewRequestPage } from '@/features/requests/pages/NewRequestPage'
 import { RequestDetailsPage } from '@/features/requests/pages/RequestDetailsPage'
 import { TeamRequestsPage } from '@/features/requests/pages/TeamRequestsPage'
+import { InboxPage } from '@/features/tasks/pages/InboxPage'
 import { RequireAuth } from '@/features/session/components/RequireAuth'
 import { RequireCapability } from '@/features/session/components/RequireCapability'
 import { ChangePasswordPage } from '@/features/session/pages/ChangePasswordPage'
@@ -54,7 +55,7 @@ export const routes: RouteObject[] = [
                 element: <RequireCapability capability="tasks.view" />,
                 children: [
                   { path: '/requests/team', element: <TeamRequestsPage /> },
-                  { path: '/inbox', element: <PlaceholderPage title="Inbox" task="FE-10" /> },
+                  { path: '/inbox', element: <InboxPage /> },
                 ],
               },
               {

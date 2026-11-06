@@ -1,6 +1,8 @@
 import type {
   ActivityDto,
   CurrentUserDto,
+  InboxItemDto,
+  PagedInboxItems,
   DashboardDto,
   RequestDetailsDto,
   RequestStage,
@@ -14,6 +16,7 @@ import type {
   WorkTaskDto,
 } from '@/lib/api/types'
 import { calendarDaysInclusive, formatDateOnly } from '@/lib/format/date'
+import { formatMoney } from '@/lib/format/money'
 import { MOCK_USERS } from './users'
 
 /**
@@ -60,7 +63,10 @@ export function mockTask(init: {
   }
 }
 
-function seededTasks(id: string, status: RequestStatus, at: string): WorkTaskDto[] {
+/** Seeded in-review requests 4, 12 and 20 still wait for the manager; the rest wait for Finance. */
+const waitsForManager = (index: number, status: RequestStatus) => status === 'InReview' && index % 8 === 4
+
+function seededTasks(id: string, status: RequestStatus, at: string, atManager: boolean): WorkTaskDto[] {
   const task = (n: number, stage: RequestStage, assignee: WorkTaskDto['assignee'], decided?: { by: UserRef; comment?: string }) =>
     mockTask({
       id: `${id}-t${n}`,
@@ -73,6 +79,7 @@ function seededTasks(id: string, status: RequestStatus, at: string): WorkTaskDto
   const finance = { user: null, role: 'FinanceOfficer' as Role }
   switch (status) {
     case 'InReview':
+      if (atManager) return [task(1, 'ManagerApproval', manager)]
       return [task(1, 'ManagerApproval', manager, { by: MANAGER, comment: 'Looks reasonable.' }), task(2, 'FinanceApproval', finance)]
     case 'Approved':
       return [
@@ -101,10 +108,10 @@ function buildSeeded(): RequestDetailsDto[] {
       requester: EMPLOYEE,
       department: MOCK_USERS.employee.department ?? { id: '', name: '' },
       status,
-      stage: (status === 'InReview' ? 'FinanceApproval' : status === 'Approved' ? 'ProcurementFulfillment' : 'Closed') as RequestStage,
+      stage: (status === 'InReview' ? (waitsForManager(index, status) ? 'ManagerApproval' : 'FinanceApproval') : status === 'Approved' ? 'ProcurementFulfillment' : 'Closed') as RequestStage,
       submittedAt,
       closedAt: status === 'Completed' || status === 'Rejected' ? submittedAt : null,
-      tasks: seededTasks(id, status, submittedAt),
+      tasks: seededTasks(id, status, submittedAt, waitsForManager(index, status)),
       availableActions: null,
       canComment: true,
     }
@@ -195,6 +202,34 @@ export function getMockRequestFor(user: CurrentUserDto, id: string): RequestDeta
     leave: request.leave && !mayReadReason ? { ...request.leave, reason: null, reasonHidden: true } : request.leave,
     availableActions: openTask && actions.length > 0 ? { taskId: openTask.id, actions, version: MOCK_VERSION } : null,
   }
+}
+
+const SUMMARY_DETAIL = (request: RequestDetailsDto) =>
+  request.purchase ? formatMoney(request.purchase.estimatedCost) : request.leave ? `${request.leave.days} days · ${request.leave.leaveType}` : ''
+
+/**
+ * `GET /api/tasks`: Open = tasks the user could decide, oldest first; Done = tasks they decided,
+ * newest first (docs/API_CONTRACT.md §5). Eligibility is the mock's stand-in for `TaskEligibility`.
+ */
+export function listMockInbox(user: CurrentUserDto, query: { status: 'Open' | 'Done'; page: number; pageSize: number }): PagedInboxItems {
+  const rows = mockRequests().flatMap((request) =>
+    request.tasks
+      .filter((task) => (query.status === 'Open' ? mockEligibleActions(user, request, task).length > 0 : task.decidedBy?.id === user.id))
+      .map((task): InboxItemDto => ({
+        taskId: task.id,
+        kind: task.kind,
+        stage: task.stage,
+        createdAt: task.createdAt,
+        version: MOCK_VERSION,
+        status: task.status,
+        outcome: task.outcome,
+        decidedAt: task.decidedAt,
+        request: { ...toSummary(request), keyDetail: SUMMARY_DETAIL(request) },
+      })),
+  )
+  const sorted = rows.toSorted((a, b) => (query.status === 'Open' ? a.createdAt.localeCompare(b.createdAt) : (b.decidedAt ?? '').localeCompare(a.decidedAt ?? '')))
+  const start = (query.page - 1) * query.pageSize
+  return { items: sorted.slice(start, start + query.pageSize), page: query.page, pageSize: query.pageSize, totalCount: sorted.length }
 }
 
 export function findMockTask(taskId: string): { request: RequestDetailsDto; task: WorkTaskDto } | null {

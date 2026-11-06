@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
-import type { TaskAction } from '@/lib/api/types'
+import type { TaskAction, WorkTaskStatus } from '@/lib/api/types'
 
 const OPEN_COUNT_PARAMS = { status: 'Open', page: 1, pageSize: 1 } as const
 
@@ -17,6 +18,25 @@ export function useOpenTaskCount(enabled: boolean) {
       return data?.totalCount ?? 0
     },
     enabled,
+  })
+}
+
+export type InboxParams = {
+  status: WorkTaskStatus
+  page: number
+  pageSize: number
+}
+
+/** `GET /api/tasks`: Open = what the user can decide now, Done = what they decided. Keeps the previous page visible while the next loads. */
+export function useInbox(params: InboxParams) {
+  return useQuery({
+    queryKey: queryKeys.tasks.list(params),
+    queryFn: async () => {
+      const { data } = await api.GET('/api/tasks', { params: { query: params } })
+      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
+      return data
+    },
+    placeholderData: keepPreviousData,
   })
 }
 
