@@ -24,8 +24,12 @@ export const queryKeys = {
     unread: ['notifications', 'unread'] as const,
   },
   admin: {
+    all: ['admin'] as const,
+    /** Prefix of every user query (lists and details). */
+    usersAll: ['admin', 'users'] as const,
     users: (params: Params) => ['admin', 'users', params] as const,
     user: (id: string) => ['admin', 'users', 'detail', id] as const,
+    departmentsAll: ['admin', 'departments'] as const,
     departments: (params: Params) => ['admin', 'departments', params] as const,
     stalled: (params: Params) => ['admin', 'stalled', params] as const,
   },

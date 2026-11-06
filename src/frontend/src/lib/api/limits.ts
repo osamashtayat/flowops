@@ -32,3 +32,21 @@ export const REQUEST_LIMITS = {
 export function upToCharacters(max: number): string {
   return `Up to ${max} characters.`
 }
+
+/**
+ * Administration field limits (docs/API_CONTRACT.md §8, `contracts/openapi.json`; limits.test.ts
+ * fails if they drift).
+ */
+export const ADMIN_LIMITS = {
+  /** CreateUserRequest.email, 1–256 */
+  emailMax: 256,
+  /** CreateUserRequest/UpdateUserRequest.displayName, 1–100 */
+  displayNameMax: 100,
+  /** CreateUserRequest.initialPassword and ResetPasswordRequest.newPassword, 12–256 */
+  passwordMin: 12,
+  passwordMax: 256,
+  /** CreateDepartmentRequest.name, 1–100 */
+  departmentNameMax: 100,
+  /** CreateDepartmentRequest.code, 1–16, letters, digits and hyphens */
+  departmentCodeMax: 16,
+} as const
