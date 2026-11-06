@@ -216,6 +216,7 @@ export function listMockInbox(user: CurrentUserDto, query: { status: 'Open' | 'D
     request.tasks
       .filter((task) => (query.status === 'Open' ? mockEligibleActions(user, request, task).length > 0 : task.decidedBy?.id === user.id))
       .map((task): InboxItemDto => ({
+        actions: mockEligibleActions(user, request, task),
         taskId: task.id,
         kind: task.kind,
         stage: task.stage,

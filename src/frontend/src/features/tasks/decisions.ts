@@ -1,4 +1,4 @@
-import type { RequestStage, TaskAction, WorkTaskKind } from '@/lib/api/types'
+import type { RequestStage, TaskAction } from '@/lib/api/types'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
 
 /** What a decision button, its dialog and its text field look like. The one home for these words. */
@@ -57,22 +57,5 @@ export function decisionPresentation(action: TaskAction, stage: RequestStage): D
       }
     default:
       return action satisfies never
-  }
-}
-
-/**
- * The decisions an inbox row offers. `GET /api/tasks` lists only tasks the caller may decide but
- * does not name the actions, so this mirrors `WorkTask.AllowedActions` (docs/WORKFLOWS.md §3: an
- * approval task is approved or rejected, a fulfilment task is fulfilled). The server still
- * checks every decision. Raised as a contract gap: the item should carry its `actions`.
- */
-export function actionsForTaskKind(kind: WorkTaskKind): readonly TaskAction[] {
-  switch (kind) {
-    case 'Approval':
-      return ['approve', 'reject']
-    case 'Fulfillment':
-      return ['fulfill']
-    default:
-      return kind satisfies never
   }
 }

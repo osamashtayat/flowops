@@ -193,6 +193,7 @@ Query: `status=Open|Done` (default `Open`), `page`, `pageSize`.
 type InboxItemDto = {
   taskId: string; kind: WorkTaskKind; stage: RequestStage; createdAt: string; version: string;
   status: WorkTaskStatus; outcome: WorkTaskOutcome | null; decidedAt: string | null;
+  actions: ("approve"|"reject"|"fulfill")[];       // what the caller may do now; same source as `availableActions.actions`; [] for Done items
   request: RequestSummaryDto & { keyDetail: string };   // "JOD 1,250.500" or "3 days · Annual"
 };
 ```

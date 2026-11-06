@@ -2312,6 +2312,7 @@ export interface components {
             outcome: null | components["schemas"]["WorkTaskOutcome"];
             /** Format: date-time */
             decidedAt: null | string;
+            actions: components["schemas"]["TaskAction"][];
             request: components["schemas"]["InboxRequestDto"];
         };
         InboxRequestDto: {
