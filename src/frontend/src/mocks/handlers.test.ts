@@ -103,6 +103,6 @@ describe('mock inbox', () => {
     expect(data).toMatchObject({ page: 1, pageSize: 1, totalCount: 3 })
     expect(data?.items).toHaveLength(1)
     setMockUser('finance')
-    expect((await api.GET('/api/tasks')).data?.totalCount).toBe(5)
+    expect((await api.GET('/api/tasks')).data?.totalCount).toBe(3)
   })
 })

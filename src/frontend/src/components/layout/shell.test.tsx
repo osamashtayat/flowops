@@ -59,7 +59,7 @@ describe('sidebar per signed-in user', () => {
   const cases: Array<[MockUserKey, string[]]> = [
     ['employee', ['New request', 'Dashboard', 'My requests', 'Notifications']],
     ['manager', ['New request', 'Dashboard', 'My requests', 'Team requests', 'Inbox, 3 open', 'Notifications']],
-    ['finance', ['New request', 'Dashboard', 'My requests', 'Team requests', 'Inbox, 5 open', 'Notifications']],
+    ['finance', ['New request', 'Dashboard', 'My requests', 'Team requests', 'Inbox, 3 open', 'Notifications']],
     ['admin', ['Dashboard', 'My requests', 'Notifications', 'Users', 'Departments', 'Stalled tasks']],
   ]
 

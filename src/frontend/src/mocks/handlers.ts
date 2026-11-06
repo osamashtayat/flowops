@@ -2,7 +2,6 @@ import { http, HttpResponse } from 'msw'
 import type {
   ChangePasswordRequest,
   CurrentUserDto,
-  InboxItemDto,
   LoginRequest,
   PagedInboxItems,
   ActivityDto,
@@ -46,6 +45,7 @@ import {
   addMockPurchase,
   buildMockDashboard,
   getMockRequestFor,
+  listMockInbox,
   listMockRequests,
   mockActivities,
 } from './requestStore'
@@ -100,35 +100,6 @@ function setXsrfCookie() {
 function currentUser(key: MockUserKey): CurrentUserDto {
   const user = MOCK_USERS[key]
   return { ...user, mustChangePassword: user.mustChangePassword && !hasChangedMockPassword(key) }
-}
-
-function inboxItems(user: CurrentUserDto): InboxItemDto[] {
-  const finance = user.roles.includes('FinanceOfficer')
-  const count = finance ? 5 : 3
-  const stage: InboxItemDto['stage'] = finance ? 'FinanceApproval' : 'ManagerApproval'
-  return Array.from({ length: count }, (_, index) => ({
-    taskId: `7a1e0000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-    kind: 'Approval',
-    stage,
-    createdAt: new Date(Date.UTC(2026, 10, 2 + index)).toISOString(),
-    version: `v${index + 1}`,
-    status: 'Open',
-    outcome: null,
-    decidedAt: null,
-    request: {
-      id: `9b2f0000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-      number: `FO-2026-${String(100 + index).padStart(6, '0')}`,
-      type: 'EquipmentPurchase',
-      title: 'Dell XPS 15 laptop',
-      requester: { id: MOCK_USERS.employee.id, displayName: MOCK_USERS.employee.displayName },
-      department: { id: '3f0c5a2e-0000-4000-8000-000000000001', name: 'Engineering' },
-      status: 'InReview',
-      stage,
-      submittedAt: new Date(Date.UTC(2026, 10, 2 + index)).toISOString(),
-      closedAt: null,
-      keyDetail: '1,250.500 JOD',
-    },
-  }))
 }
 
 /** Every handler may answer with its success body or a problem; the generics keep both typed. */
@@ -357,14 +328,8 @@ export const pendingHandlers = [
     const query = queryParam(request)
     const page = Number(query('page') ?? 1)
     const pageSize = Number(query('pageSize') ?? 20)
-    const open = query('status') === 'Done' ? [] : inboxItems(user)
-    const body: PagedInboxItems = {
-      items: open.slice((page - 1) * pageSize, page * pageSize),
-      page,
-      pageSize,
-      totalCount: open.length,
-    }
-    return HttpResponse.json(body)
+    const status = query('status') === 'Done' ? 'Done' : 'Open'
+    return HttpResponse.json(listMockInbox(user, { status, page, pageSize }))
   }),
 
   http.get<never, never, PagedStalledTasks | Failure>('/api/admin/stalled-tasks', async ({ request }) => {
