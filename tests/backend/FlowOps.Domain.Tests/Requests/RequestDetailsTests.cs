@@ -35,6 +35,19 @@ public sealed class RequestDetailsTests
         ShouldFailWith(() => LeaveDetails.Create(Nov5.AddDays(3), Nov5.AddDays(2), LeaveType.Annual, null, AmmanMidnight, Amman), ErrorCodes.Validation);
 
     [Fact]
+    public void Leave_SameDay_CountsAsOneDay() =>
+        LeaveDetails.Create(Nov5, Nov5, LeaveType.Annual, null, AmmanMidnight, Amman).Days.ShouldBe(1);
+
+    [Fact]
+    public void Leave_EightyNineDays_IsAccepted() =>
+        LeaveDetails.Create(Nov5, Nov5.AddDays(88), LeaveType.Unpaid, null, AmmanMidnight, Amman).Days.ShouldBe(89);
+
+    [Fact]
+    public void Leave_MaximumComesFromRequestLimits() =>
+        LeaveDetails.Create(Nov5, Nov5.AddDays(RequestLimits.LeaveMaxDays - 1), LeaveType.Unpaid, null, AmmanMidnight, Amman)
+            .Days.ShouldBe(RequestLimits.LeaveMaxDays);
+
+    [Fact]
     public void Leave_ExactlyNinetyDays_IsAccepted() =>
         LeaveDetails.Create(Nov5, Nov5.AddDays(89), LeaveType.Unpaid, null, AmmanMidnight, Amman).Days.ShouldBe(90);
 

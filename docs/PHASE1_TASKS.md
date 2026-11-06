@@ -121,6 +121,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `RequestSubmissionService`, `TaskAssigneeResolver`, `NotificationFactory` (TaskAssigned), endpoints `POST /requests/purchase|leave`.
 - **Deps:** BE-08, BE-09. **AC:** server-side requester/department; 422s for missing manager/department; one transaction; returns `RequestDetailsDto` 201 with `Location`.
 - **Tests:** `TESTING.md` §3.2 submission rows; validation limits (boundary values); company-TZ "today".
+- **Follow-up BE-10b (`Done`):** leave days counted inclusively, `days = (end − start) + 1`, max `RequestLimits.LeaveMaxDays` = 90; tests at 89/90/91 days and same-day = 1 (domain and API).
 
 ### BE-11 — Request queries & comments · `Done`
 - **Objective:** `GET /requests`, `/requests/{id}`, `/activity`, `POST /comments`; `availableActions` via `TaskEligibility`; leave-reason masking.

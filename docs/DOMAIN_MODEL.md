@@ -92,6 +92,7 @@ All ids are `Guid` (UUIDv7 via `Guid.CreateVersion7()` for index locality). All 
 |---|---|---|
 | StartDate | DateOnly | required, ≥ today (company time zone, see below) |
 | EndDate | DateOnly | required, ≥ StartDate, span ≤ 90 calendar days |
+| Days (derived) | int | counted inclusively: `Days = (EndDate − StartDate) + 1`, so a same-day leave is 1 day; at most `RequestLimits.LeaveMaxDays` = 90 (EndDate − StartDate ≤ 89) |
 | LeaveType | `LeaveType` | `Annual` \| `Sick` \| `Unpaid` \| `Other` |
 | Reason | string(1000)? | optional; **sensitive** (see `AUTHORIZATION.md` §5) |
 
