@@ -3695,6 +3695,7 @@
           "status",
           "outcome",
           "decidedAt",
+          "actions",
           "request"
         ],
         "type": "object",
@@ -3735,6 +3736,12 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskAction"
+            }
           },
           "request": {
             "$ref": "#/components/schemas/InboxRequestDto"

@@ -133,6 +133,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `TaskQueryService` (`GET /tasks`), `TaskDecisionService` (one pipeline, `CODE_STANDARDS.md` §2.4), concurrency mapping, decision notifications.
 - **Deps:** BE-11. **AC:** `WORKFLOWS.md` §2–5 behaviour exactly.
 - **Tests:** `TESTING.md` §3.2 full paths, §3.3 decision rows, §3.4 all concurrency tests.
+- **Contract:** `InboxItemDto.actions` is in the contract (DTO, openapi, API_CONTRACT §5). `GET /tasks` must fill it from the same eligibility source as `availableActions.actions` (`[]` for Done items), with a test.
 - **Note:** highest-risk task — request an `architecture-reviewer` and `security-reviewer` pass before merging.
 
 ### BE-13 — Notifications API · `Todo`
@@ -193,7 +194,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ### FE-10 — Inbox · `Done` (against MSW mocks; real integration waits for BE-12)
 - **Objective:** `UI_SPEC.md` §4.6 reusing `DecisionDialog`/`useDecideTask` from FE-09. **Deps:** FE-09 (+ BE-12).
-- **Notes:** inline actions come from the task kind until `InboxItemDto` carries `actions` (#29).
+- **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29).
 
 ### FE-11 — Notifications & realtime · `Todo`
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).

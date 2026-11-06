@@ -8,7 +8,6 @@ import type { InboxItemDto } from '@/lib/api/types'
 import { formatDate, formatRelative } from '@/lib/format/date'
 import { requestStageLabel, taskStatusPresentation } from '@/lib/format/status'
 import { useInbox } from '../api'
-import { actionsForTaskKind } from '../decisions'
 import { DecisionActions } from './DecisionActions'
 import type { InboxView } from './InboxTabs'
 
@@ -55,7 +54,7 @@ const openColumns: DataTableColumn<InboxItemDto>[] = [
         version={item.version}
         stage={item.stage}
         requestNumber={item.request.number}
-        actions={actionsForTaskKind(item.kind)}
+        actions={item.actions}
       />
     ),
   },

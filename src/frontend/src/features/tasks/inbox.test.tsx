@@ -12,6 +12,31 @@ const heading = () => screen.findByRole('heading', { level: 1, name: 'Inbox' })
 const openTable = () => screen.findByRole('table', { name: 'Open tasks' })
 const bodyRows = (grid: HTMLElement) => within(grid).getAllByRole('row').slice(1)
 
+const ITEM: InboxItemDto = {
+  taskId: 'f1',
+  kind: 'Fulfillment',
+  stage: 'ProcurementFulfillment',
+  createdAt: '2026-11-01T09:00:00Z',
+  version: 'v1',
+  status: 'Open',
+  outcome: null,
+  decidedAt: null,
+  actions: ['fulfill'],
+  request: {
+    id: 'r1',
+    number: 'FO-2026-000900',
+    type: 'EquipmentPurchase',
+    title: 'Standing desk',
+    requester: { id: 'u1', displayName: 'Layla Haddad' },
+    department: { id: 'd1', name: 'Engineering' },
+    status: 'Approved',
+    stage: 'ProcurementFulfillment',
+    submittedAt: '2026-10-30T09:00:00Z',
+    closedAt: null,
+    keyDetail: '300.000 JOD',
+  },
+}
+
 function financeInbox(path = '/inbox') {
   setMockUser('finance')
   return renderRoutes(routes, path)
@@ -41,34 +66,25 @@ describe('Inbox — Open', () => {
   })
 
   it('offers only Fulfill on a fulfilment task', async () => {
-    const item: InboxItemDto = {
-      taskId: 'f1',
-      kind: 'Fulfillment',
-      stage: 'ProcurementFulfillment',
-      createdAt: '2026-11-01T09:00:00Z',
-      version: 'v1',
-      status: 'Open',
-      outcome: null,
-      decidedAt: null,
-      request: {
-        id: 'r1',
-        number: 'FO-2026-000900',
-        type: 'EquipmentPurchase',
-        title: 'Standing desk',
-        requester: { id: 'u1', displayName: 'Layla Haddad' },
-        department: { id: 'd1', name: 'Engineering' },
-        status: 'Approved',
-        stage: 'ProcurementFulfillment',
-        submittedAt: '2026-10-30T09:00:00Z',
-        closedAt: null,
-        keyDetail: '300.000 JOD',
-      },
-    }
-    server.use(http.get('/api/tasks', () => HttpResponse.json({ items: [item], page: 1, pageSize: 20, totalCount: 1 })))
+    server.use(http.get('/api/tasks', () => HttpResponse.json({ items: [ITEM], page: 1, pageSize: 20, totalCount: 1 })))
     financeInbox()
     const grid = await openTable()
     expect(await within(grid).findByRole('button', { name: 'Fulfill' })).toBeInTheDocument()
     expect(within(grid).queryByRole('button', { name: 'Approve' })).toBeNull()
+    expect(within(grid).queryByRole('button', { name: 'Reject' })).toBeNull()
+  })
+
+  it('shows exactly the actions the server lists, nothing derived from the task kind', async () => {
+    server.use(
+      http.get('/api/tasks', ({ request }) => {
+        const only = { ...ITEM, actions: ['approve' as const] }
+        const empty = new URL(request.url).searchParams.get('pageSize') === '1'
+        return HttpResponse.json({ items: empty ? [] : [only], page: 1, pageSize: 20, totalCount: empty ? 0 : 1 })
+      }),
+    )
+    financeInbox()
+    const grid = await openTable()
+    expect(await within(grid).findByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(within(grid).queryByRole('button', { name: 'Reject' })).toBeNull()
   })
 
