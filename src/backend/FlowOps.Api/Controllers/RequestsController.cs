@@ -1,8 +1,10 @@
 using FlowOps.Api.Auth;
 using FlowOps.Application.Common;
+using FlowOps.Api.Requests;
 using FlowOps.Application.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FlowOps.Api.Controllers;
 
@@ -50,9 +52,11 @@ public sealed class RequestsController(
         Ok(await queries.GetActivityAsync(id, ct));
 
     [HttpPost("{id:guid}/comments")]
+    [EnableRateLimiting(CommentRateLimitPolicy.Name)]
     [ProducesResponseType<ActivityDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<ActivityDto>> AddComment(Guid id, AddCommentRequest body, CancellationToken ct) =>
         CreatedAtAction(nameof(Activity), new { id }, await comments.AddAsync(id, body, ct));
 

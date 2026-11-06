@@ -2,6 +2,7 @@ using FlowOps.Api;
 using FlowOps.Api.Auth;
 using FlowOps.Api.Errors;
 using FlowOps.Api.OpenApi;
+using FlowOps.Api.Requests;
 using FlowOps.Application;
 using FlowOps.Application.Common;
 using FlowOps.Infrastructure;
@@ -33,6 +34,7 @@ builder.Services.AddFlowOpsProblemDetails();
 builder.Services.AddFlowOpsOpenApi();
 builder.Services.AddFlowOpsAuthorization();
 builder.Services.AddFlowOpsLoginRateLimiting(builder.Configuration);
+builder.Services.AddFlowOpsCommentRateLimiting(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -57,9 +59,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseRateLimiter();
-
 app.UseAuthentication();
+// After authentication so the comment limit can partition by user id; login's per-IP limit doesn't need the user.
+app.UseRateLimiter();
 app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 

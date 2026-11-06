@@ -38,6 +38,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.DepartmentInactive] = StatusCodes.Status422UnprocessableEntity,
 
         [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,
+        [ErrorCodes.RequestCommentRateLimited] = StatusCodes.Status429TooManyRequests,
 
         [ErrorCodes.ServerError] = StatusCodes.Status500InternalServerError,
     };

@@ -26,6 +26,7 @@ public static class ErrorCodes
     public const string RequestClosed = "request.closed";
     public const string RequestManagerNotAssigned = "request.manager_not_assigned";
     public const string RequestDepartmentNotAssigned = "request.department_not_assigned";
+    public const string RequestCommentRateLimited = "request.comment_rate_limited";
 
     public const string DepartmentDuplicate = "department.duplicate";
     public const string DepartmentInactive = "department.inactive";
