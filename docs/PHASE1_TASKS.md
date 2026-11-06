@@ -107,6 +107,9 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-05, BE-07. **AC:** cycle/self-manager prevention (I13); last-admin protection; duplicate email/department → 409; inactive department can't receive members.
 - **Tests:** each error code; non-admin → 403; paging/search.
 
+### BE-08b — Admin self-authority (follow-up) · `Done`
+- **Objective:** an admin can't change their own roles or manager link, make themselves anyone's manager (incl. by reactivating a report) or deactivate themselves → 422 `user.self_administration`; resetting another user's password stays allowed and is audit-logged with the actor id. #24, #27. Open decisions: #31, #32.
+
 ## Requests and process
 
 ### BE-09 — Access rules & task eligibility · `Done`
