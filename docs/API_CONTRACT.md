@@ -99,7 +99,7 @@ No `department`, `requesterId` or `submittedAt` field is accepted — unknown pr
 ### `POST /api/requests/leave` — policy `CanSubmit`
 ```ts
 type SubmitLeaveRequest = {
-  startDate: string; endDate: string;  // yyyy-MM-dd; start ≥ today (company TZ); end ≥ start; ≤ 90 days
+  startDate: string; endDate: string;  // yyyy-MM-dd; start ≥ today (company TZ); end ≥ start; days = end − start + 1 ≤ 90
   leaveType: LeaveType;
   reason?: string | null;              // ≤ 1000
 };
@@ -114,7 +114,7 @@ As built (BE-10), for both submit endpoints:
 
   Nothing is saved on any failure.
 - **400 `errors` keys.** Rule failures that the domain finds (e.g. `estimatedCost.amount` > 1,000,000, `startDate` in the past, `endDate` beyond 90 days) also come back as `errors.{field}`, like DataAnnotations failures.
-- **Leave length.** The 90-day limit counts **both** start and end day (`days` = end − start + 1). "Today" is the date in `FlowOps:CompanyTimeZone`.
+- **Leave length.** Days are counted inclusively: `days` = (end − start) + 1, so a same-day leave is 1 day. The maximum is 90 days (end − start ≤ 89); 91 or more gives 400 `errors.endDate`. "Today" is the date in `FlowOps:CompanyTimeZone`.
 - **Number.** `FO-{company year}-{seq:000000}` from one database sequence. Failed submissions may leave gaps.
 - **Title.** The item name for purchases. For leave, e.g. `Annual leave · 10–12 Mar` (`30 Nov – 2 Dec` across months, with years when they differ).
 - **Notifications.** The manager gets one `TaskAssigned` notification. It names the number, type and title, never the reason.

@@ -274,12 +274,13 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
     }
 
     [Theory]
-    [InlineData(0, 0, null)]                // today, one day
-    [InlineData(0, 89, null)]               // 90 calendar days, counting both ends
-    [InlineData(0, 90, "endDate")]          // 91 days
-    [InlineData(-1, 0, "startDate")]        // starts yesterday
-    [InlineData(5, 4, "endDate")]           // ends before it starts
-    public async Task SubmitLeave_DateRules(int startOffset, int endOffset, string? failingField)
+    [InlineData(0, 0, null, 1)]             // same day counts as one day
+    [InlineData(0, 88, null, 89)]           // 89 days
+    [InlineData(0, 89, null, 90)]           // 90 calendar days, counting both ends: the maximum
+    [InlineData(0, 90, "endDate", 0)]       // 91 days
+    [InlineData(-1, 0, "startDate", 0)]     // starts yesterday
+    [InlineData(5, 4, "endDate", 0)]        // ends before it starts
+    public async Task SubmitLeave_DateRules(int startOffset, int endOffset, string? failingField, int expectedDays)
     {
         var org = await OrgAsync();
         using var client = await Factory.ClientFor(org.Lina);
@@ -289,6 +290,7 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         if (failingField is null)
         {
             response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+            (await JsonBody.ReadAsync(response)).GetProperty("leave").GetProperty("days").GetInt32().ShouldBe(expectedDays);
             return;
         }
 
