@@ -63,3 +63,8 @@ export function requestStageLabel(stage: RequestStage): string {
       return stage satisfies never
   }
 }
+
+/** Active / Inactive for users and departments. */
+export function activeStatusPresentation(isActive: boolean): StatusPresentation {
+  return isActive ? { label: 'Active', tone: 'success', icon: 'check' } : { label: 'Inactive', tone: 'neutral', icon: 'x-circle' }
+}

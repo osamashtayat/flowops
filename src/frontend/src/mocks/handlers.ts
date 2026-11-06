@@ -15,8 +15,31 @@ import type {
   ProblemDetails,
   UnreadCountDto,
   ValidationProblemDetails,
+  CreateDepartmentRequest,
+  CreateUserRequest,
+  DepartmentDto,
+  PagedStalledTasks,
+  PagedUsers,
+  Role,
+  UpdateDepartmentRequest,
+  UpdateUserRequest,
+  UserDto,
 } from '@/lib/api/types'
 import { currentActor } from './actor'
+import {
+  createMockDepartment,
+  createMockUser,
+  getMockUser,
+  isAdminFailure,
+  listMockDepartments,
+  listMockStalledTasks,
+  listMockUsers,
+  resetMockPassword,
+  updateMockDepartment,
+  updateMockRoles,
+  updateMockUser,
+  type AdminFailure,
+} from './adminStore'
 import {
   addMockComment,
   addMockLeave,
@@ -238,6 +261,69 @@ export const requestHandlers = [
   }),
 ]
 
+/** A mock admin call: 401 when signed out, 403 for anyone without `admin.manage`, else `run`'s result. */
+async function asAdmin<T>(run: (admin: CurrentUserDto) => T | AdminFailure | Promise<T | AdminFailure>, success: (value: T) => Response): Promise<Response> {
+  const user = await currentActor()
+  if (!user) return problem(401, 'auth.unauthenticated')
+  if (!user.capabilities.includes('admin.manage')) return problem(403, 'auth.forbidden')
+  const result = await run(user)
+  if (isAdminFailure(result)) {
+    return result.field ? validationProblem({ [result.field]: ['Not valid.'] }) : problem(result.status, result.code)
+  }
+  return success(result)
+}
+
+/** Departments and users — real in the backend since BE-08, so only tests use these. */
+export const adminHandlers = [
+  http.get<never, never, DepartmentDto[] | Failure>('/api/departments', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const includeInactive = queryParam(request)('includeInactive') === 'true' && user.capabilities.includes('admin.manage')
+    return HttpResponse.json(listMockDepartments(includeInactive))
+  }),
+  http.post<never, CreateDepartmentRequest>('/api/departments', async ({ request }) => {
+    const body = await request.json()
+    return asAdmin(() => createMockDepartment(body), (d) => HttpResponse.json(d, { status: 201 }))
+  }),
+  http.put<{ id: string }, UpdateDepartmentRequest>('/api/departments/:id', async ({ params, request }) => {
+    const body = await request.json()
+    return asAdmin(() => updateMockDepartment(params.id, body), (d) => HttpResponse.json(d))
+  }),
+  http.get('/api/users', ({ request }) => {
+    const query = queryParam(request)
+    return asAdmin(
+      () =>
+        listMockUsers({
+          search: query('search') ?? '',
+          departmentId: query('departmentId') ?? '',
+          role: query('role') ?? '',
+          includeInactive: query('includeInactive') === 'true',
+          page: Number(query('page') ?? 1),
+          pageSize: Number(query('pageSize') ?? 20),
+        }) satisfies PagedUsers,
+      (page) => HttpResponse.json(page),
+    )
+  }),
+  http.get<{ id: string }>('/api/users/:id', ({ params }) =>
+    asAdmin(() => getMockUser(params.id) ?? ({ status: 404, code: 'not_found' } satisfies AdminFailure), (u: UserDto) => HttpResponse.json(u)),
+  ),
+  http.post<never, CreateUserRequest>('/api/users', async ({ request }) => {
+    const body = await request.json()
+    return asAdmin((admin) => createMockUser(admin.id, body), (u) => HttpResponse.json(u, { status: 201 }))
+  }),
+  http.put<{ id: string }, UpdateUserRequest>('/api/users/:id', async ({ params, request }) => {
+    const body = await request.json()
+    return asAdmin((admin) => updateMockUser(admin.id, params.id, body), (u) => HttpResponse.json(u))
+  }),
+  http.put<{ id: string }, { roles: Role[] }>('/api/users/:id/roles', async ({ params, request }) => {
+    const body = await request.json()
+    return asAdmin((admin) => updateMockRoles(admin.id, params.id, body.roles), (u) => HttpResponse.json(u))
+  }),
+  http.post<{ id: string }>('/api/users/:id/reset-password', ({ params }) =>
+    asAdmin(() => resetMockPassword(params.id) ?? true, () => new HttpResponse(null, { status: 204 })),
+  ),
+]
+
 /** Approve / reject / fulfil — backend BE-12 not merged, but these act on the mock requests above, so only tests use them. */
 export const decisionHandlers = [
   ...(['approve', 'reject', 'fulfill'] as const).map((action) =>
@@ -281,6 +367,11 @@ export const pendingHandlers = [
     return HttpResponse.json(body)
   }),
 
+  http.get<never, never, PagedStalledTasks | Failure>('/api/admin/stalled-tasks', async ({ request }) => {
+    const query = queryParam(request)
+    return asAdmin(() => listMockStalledTasks(Number(query('page') ?? 1), Number(query('pageSize') ?? 20)), (page) => HttpResponse.json(page))
+  }),
+
   http.get<never, never, UnreadCountDto | Failure>('/api/notifications/unread-count', async () => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
@@ -288,4 +379,4 @@ export const pendingHandlers = [
   }),
 ]
 
-export const handlers = [...authHandlers, ...requestHandlers, ...decisionHandlers, ...pendingHandlers]
+export const handlers = [...authHandlers, ...adminHandlers, ...requestHandlers, ...decisionHandlers, ...pendingHandlers]

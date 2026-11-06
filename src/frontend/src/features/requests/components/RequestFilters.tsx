@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { FilterBar } from '@/components/ui/FilterBar'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
@@ -7,9 +6,7 @@ import { requestStatusPresentation } from '@/lib/format/status'
 import type { RequestStatus, RequestType } from '@/lib/api/types'
 import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '../labels'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
-
-/** How long typing must pause before the search reaches the URL (docs/UI_SPEC.md §4.3). */
-const SEARCH_DEBOUNCE_MS = 300
+import { useDebouncedUrlSearch } from '@/lib/useDebouncedUrlSearch'
 
 export interface RequestFilterValues {
   status: RequestStatus | ''
@@ -25,21 +22,7 @@ export interface RequestFiltersProps {
 
 /** Status, type and search. The URL is the source of truth; the search box keeps its own text only while the user is typing. */
 export function RequestFilters({ values, onChange, onClear }: RequestFiltersProps) {
-  // `typed` is what the user has typed since the URL last changed; null means "show the URL's value".
-  const [typed, setTyped] = useState<string | null>(null)
-  const [seenUrlSearch, setSeenUrlSearch] = useState(values.search)
-  if (seenUrlSearch !== values.search) {
-    // The URL changed (our own debounced push, Clear filters, back button): follow it.
-    setSeenUrlSearch(values.search)
-    setTyped(null)
-  }
-  const shown = typed ?? values.search
-
-  useEffect(() => {
-    if (typed === null || typed.trim() === values.search) return
-    const timer = setTimeout(() => onChange({ search: typed.trim() }), SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [typed, values.search, onChange])
+  const search = useDebouncedUrlSearch(values.search, (value) => onChange({ search: value }))
 
   return (
     <FilterBar
@@ -71,7 +54,7 @@ export function RequestFilters({ values, onChange, onClear }: RequestFiltersProp
       </FormField>
       <FormField label="Search" helperText="Request number or item name.">
         {(c) => (
-          <Input {...c} type="search" value={shown} maxLength={REQUEST_LIMITS.searchMax} onChange={(e) => setTyped(e.target.value)} />
+          <Input {...c} type="search" value={search.value} maxLength={REQUEST_LIMITS.searchMax} onChange={(e) => search.onChange(e.target.value)} />
         )}
       </FormField>
     </FilterBar>

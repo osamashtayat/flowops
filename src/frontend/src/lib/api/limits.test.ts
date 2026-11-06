@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import contractJson from '../../../../../contracts/openapi.json'
-import { REQUEST_LIMITS, upToCharacters } from './limits'
+import { ADMIN_LIMITS, REQUEST_LIMITS, upToCharacters } from './limits'
 
 interface Property {
   maxLength?: number
@@ -34,6 +34,24 @@ describe('REQUEST_LIMITS match contracts/openapi.json', () => {
     ['FulfillTaskRequest', 'note', REQUEST_LIMITS.fulfillNoteMax],
   ] as const)('%s.%s max length', (schema, property, limit) => {
     expect(maxLength(schema, property)).toBe(limit)
+  })
+
+  it.each([
+    ['CreateUserRequest', 'email', ADMIN_LIMITS.emailMax],
+    ['CreateUserRequest', 'displayName', ADMIN_LIMITS.displayNameMax],
+    ['UpdateUserRequest', 'displayName', ADMIN_LIMITS.displayNameMax],
+    ['CreateUserRequest', 'initialPassword', ADMIN_LIMITS.passwordMax],
+    ['ResetPasswordRequest', 'newPassword', ADMIN_LIMITS.passwordMax],
+    ['CreateDepartmentRequest', 'name', ADMIN_LIMITS.departmentNameMax],
+    ['UpdateDepartmentRequest', 'name', ADMIN_LIMITS.departmentNameMax],
+    ['CreateDepartmentRequest', 'code', ADMIN_LIMITS.departmentCodeMax],
+  ] as const)('admin %s.%s max length', (schema, property, limit) => {
+    expect(maxLength(schema, property)).toBe(limit)
+  })
+
+  it('password minimum matches the contract', () => {
+    const initial = contract.components.schemas['CreateUserRequest']?.properties['initialPassword'] as { minLength?: number } | undefined
+    expect(initial?.minLength).toBe(ADMIN_LIMITS.passwordMin)
   })
 
   it('item name allows 150 characters (not 120)', () => {

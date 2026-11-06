@@ -4,6 +4,10 @@ import { RootLayout } from '@/app/RootLayout'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { AppShell } from '@/components/layout/AppShell'
+import { DepartmentsPage } from '@/features/admin/pages/DepartmentsPage'
+import { StalledTasksPage } from '@/features/admin/pages/StalledTasksPage'
+import { EditUserPage, NewUserPage } from '@/features/admin/pages/UserFormPage'
+import { UsersPage } from '@/features/admin/pages/UsersPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { MyRequestsPage } from '@/features/requests/pages/MyRequestsPage'
 import { NewLeavePage } from '@/features/requests/pages/NewLeavePage'
@@ -56,9 +60,11 @@ export const routes: RouteObject[] = [
               {
                 element: <RequireCapability capability="admin.manage" />,
                 children: [
-                  { path: '/admin/users', element: <PlaceholderPage title="Users" task="FE-13" /> },
-                  { path: '/admin/departments', element: <PlaceholderPage title="Departments" task="FE-13" /> },
-                  { path: '/admin/stalled-tasks', element: <PlaceholderPage title="Stalled tasks" task="FE-13" /> },
+                  { path: '/admin/users', element: <UsersPage /> },
+                  { path: '/admin/users/new', element: <NewUserPage /> },
+                  { path: '/admin/users/:id', element: <EditUserPage /> },
+                  { path: '/admin/departments', element: <DepartmentsPage /> },
+                  { path: '/admin/stalled-tasks', element: <StalledTasksPage /> },
                 ],
               },
             ],

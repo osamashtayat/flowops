@@ -196,8 +196,9 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).
 
-### FE-13 — Administration screens · `Todo`
+### FE-13 — Administration screens · `Done` (users and departments run against the real API; stalled tasks stay on MSW until BE-15)
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
+- **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
 ## Operations & quality
 
