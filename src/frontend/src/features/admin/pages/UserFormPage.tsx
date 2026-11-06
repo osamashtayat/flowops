@@ -47,8 +47,9 @@ export function EditUserPage() {
     <div className="space-y-6">
       <PageHeader title={user.displayName} subtitle={user.email} />
       <Card>
-        {/* Remounts when the server's copy changes, e.g. after a save whose roles step failed, so the form shows what is really stored. */}
-        <UserForm key={`${user.id}-${user.displayName}-${user.isActive}-${user.roles.join()}`} user={user} />
+        {/* No `key` on the user's fields: a refetch after saving must not remount the form, or the
+            mutation's success handler (navigate + toast) and a failed second step's error vanish with it. */}
+        <UserForm user={user} />
       </Card>
       <Card title="Reset password" headingLevel={2}>
         <p className="mb-4 text-base text-ink-muted">Set a temporary password if they are locked out or forgot it. They must change it at next sign-in.</p>

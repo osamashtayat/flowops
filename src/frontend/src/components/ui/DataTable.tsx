@@ -46,7 +46,7 @@ export function DataTable<Row>({
   empty = <EmptyState message="Nothing to show." />,
   skeletonRows = 5,
 }: DataTableProps<Row>) {
-  const shell = 'overflow-hidden rounded-md border border-border bg-surface shadow-card'
+  const shell = 'overflow-x-auto rounded-md border border-border bg-surface shadow-card'
 
   if (error) {
     return (

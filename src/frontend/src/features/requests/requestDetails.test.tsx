@@ -69,6 +69,18 @@ describe('request details', () => {
     expect(await heading(/FO-2026-000800/)).toBeInTheDocument()
   })
 
+  it('shows a one-day leave as a single date, not "3 May – 3 May"', async () => {
+    server.use(
+      http.get('/api/requests/:id', ({ params }) => {
+        const request = getMockRequestFor(MOCK_USERS.employee, String(params.id))
+        return HttpResponse.json(request?.leave ? { ...request, leave: { ...request.leave, startDate: '2027-05-03', endDate: '2027-05-03', days: 1 } } : request)
+      }),
+    )
+    renderRoutes(routes, `/requests/${LEAVE}`)
+    const dates = await screen.findByText(/^3 May 2027$/)
+    expect(dates.parentElement).toHaveTextContent('3 May 2027 (1 calendar day)')
+  })
+
   describe('leave reason', () => {
     it('shows the reason to the requester', async () => {
       renderRoutes(routes, `/requests/${LEAVE}`)

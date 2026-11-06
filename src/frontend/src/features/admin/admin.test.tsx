@@ -21,7 +21,7 @@ describe('Users list', () => {
     asAdmin('/admin/users')
     await heading('Users')
     const grid = await screen.findByRole('table', { name: 'Users' })
-    expect(within(grid).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Email', 'Department', 'Manager', 'Roles', 'Status'])
+    expect(within(grid).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name and email', 'Department', 'Manager', 'Roles', 'Status'])
     const row = (await within(grid).findByRole('link', { name: 'Layla Haddad' })).closest('tr')
     expect(row).not.toBeNull()
     const cells = within(row as HTMLElement)
@@ -124,6 +124,8 @@ describe('Edit user', () => {
     await userEvent.click(screen.getByLabelText('HR officer'))
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     expect(await screen.findByText('Layla H. was updated.')).toBeInTheDocument()
+    // The refetch after saving must not swallow the redirect (found against the real API).
+    await heading('Users')
   })
 
   it("locks the administrator's own roles, manager and active switch and explains why", async () => {

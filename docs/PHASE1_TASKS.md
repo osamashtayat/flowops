@@ -175,14 +175,14 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `Dialog`, `ConfirmDialog`, `Toast` provider (accessible, focus management).
 - **Deps:** FE-00. **Tests:** focus trap/return, Esc, roles for toasts.
 
-### FE-07 — New request flow · `Done` (against MSW mocks; real integration waits for BE-10)
+### FE-07 — New request flow · `Done` (real API since BE-10; checked in the browser 2026-11-06)
 - **Objective:** `UI_SPEC.md` §4.4. **Deps:** FE-04, FE-02, FE-06 (+ BE-10 for real integration).
 - **Tests:** `TESTING.md` §3.6 form rows.
 
-### FE-08 — My requests & Team requests · `Done` (against MSW mocks; real integration waits for BE-11)
+### FE-08 — My requests & Team requests · `Done` (real API since BE-11; checked in the browser 2026-11-06)
 - **Objective:** `UI_SPEC.md` §4.3. **Deps:** FE-04, FE-05 (+ BE-11).
 
-### FE-09 — Request details · `Done` (against MSW mocks; real integration waits for BE-11/12)
+### FE-09 — Request details · `Done` (details, activity and comments on the real API since BE-11; decisions wait for BE-12)
 - **Objective:** `UI_SPEC.md` §4.5 incl. `ActivityTimeline`, comment box, `DecisionDialog` + `useDecideTask`.
 - **Deps:** FE-08, FE-06 (+ BE-11/12). **Tests:** actions only from `availableActions`; 409 path; restricted reason display.
 
@@ -197,7 +197,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).
 
-### FE-13 — Administration screens · `Done` (users and departments run against the real API; stalled tasks stay on MSW until BE-15)
+### FE-13 — Administration screens · `Done` (users and departments on the real API, checked in the browser 2026-11-06; stalled tasks stay on MSW until BE-15)
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
 - **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
