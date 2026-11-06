@@ -131,6 +131,12 @@ public sealed partial class UserAdministrationService(
     {
         ArgumentNullException.ThrowIfNull(body);
         await EnsureExistsAsync(id, ct);
+        if (id == currentUser.Id)
+        {
+            // Decided 2026-11-06 (#31): the admin reset skips the current-password check that change-password requires.
+            throw SelfAdministration("Use change password to change your own password.");
+        }
+
         await EnsurePasswordAcceptedAsync(body.NewPassword, "newPassword", ct);
         await identity.StagePasswordResetAsync(id, body.NewPassword, ct);
         await SaveAsync(ct);
