@@ -71,7 +71,7 @@ public sealed partial class UserAdministrationService(
             body.ManagerId, RoleNames(body.Roles), time.GetUtcNow());
         var id = await identity.StageNewUserAsync(account, ct);
         await db.SaveChangesAsync(ct);
-        LogCreated(logger, currentUser.Id, id, account.Roles);
+        LogCreated(logger, currentUser.Id, id, account.Roles, body.DepartmentId, body.ManagerId);
         return await GetAsync(id, ct);
     }
 
@@ -87,11 +87,7 @@ public sealed partial class UserAdministrationService(
             await EnsureDepartmentCanReceiveAsync(body.DepartmentId, ct);
         }
 
-        if (body.ManagerId != current.ManagerId)
-        {
-            EnsureNotSelfManagerAssignment(id, body.ManagerId);
-        }
-
+        EnsureNoSelfManagerLink(id, current.ManagerId, current.IsActive, body);
         if (body.ManagerId is { } managerId && managerId != current.ManagerId)
         {
             await ManagerAssignmentRules.EnsureNoCycleAsync(db, id, managerId, ct);
@@ -101,6 +97,7 @@ public sealed partial class UserAdministrationService(
         if (current.IsActive && !body.IsActive)
         {
             await EnsureNotLastAdministratorAsync(id, ct);
+            EnsureNotSelfDeactivation(id);
         }
 
         await identity.StageProfileAsync(id, new UserProfile(body.DisplayName.Trim(), body.DepartmentId, body.ManagerId, body.IsActive), ct);
@@ -167,6 +164,28 @@ public sealed partial class UserAdministrationService(
         if (newManagerId == currentUser.Id)
         {
             throw SelfAdministration("You cannot make yourself someone's manager. Ask another administrator.");
+        }
+    }
+
+    private void EnsureNoSelfManagerLink(Guid id, Guid? currentManagerId, bool wasActive, UpdateUserRequest body)
+    {
+        if (body.ManagerId != currentManagerId)
+        {
+            EnsureNotSelfManagerAssignment(id, body.ManagerId);
+        }
+        else if (!wasActive && body.IsActive && body.ManagerId == currentUser.Id)
+        {
+            // Reactivating someone who still reports to the caller would make the caller their manager again.
+            throw SelfAdministration("You cannot reactivate someone who reports to you. Ask another administrator.");
+        }
+    }
+
+    /// <summary>Decided 2026-11-06 (issue #27): another administrator has to deactivate an admin's account.</summary>
+    private void EnsureNotSelfDeactivation(Guid userId)
+    {
+        if (userId == currentUser.Id)
+        {
+            throw SelfAdministration("You cannot deactivate your own account. Ask another administrator.");
         }
     }
 
@@ -245,8 +264,9 @@ public sealed partial class UserAdministrationService(
         u.CreatedAt));
 
     // Audit trail of administrative changes (who changed whom, and what): ids, role names and flags only, never passwords.
-    [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} created user {UserId} with roles {Roles}")]
-    private static partial void LogCreated(ILogger logger, Guid actorId, Guid userId, IEnumerable<string> roles);
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Admin {ActorId} created user {UserId} with roles {Roles}, department {DepartmentId}, manager {ManagerId}")]
+    private static partial void LogCreated(ILogger logger, Guid actorId, Guid userId, IEnumerable<string> roles, Guid? departmentId, Guid? managerId);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Admin {ActorId} updated user {UserId}: department {DepartmentId}, manager {ManagerId}, active {IsActive}")]

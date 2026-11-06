@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -16,7 +17,7 @@ namespace FlowOps.Api.IntegrationTests.Harness;
 /// <summary>
 /// The real Api on a real PostgreSQL (TESTING.md §2). One container per test collection
 /// (<see cref="DatabaseCollectionDefinition"/>); migrations are applied once, and <see cref="ResetAsync"/>
-/// empties the data between tests while keeping reference rows the app seeds (roles).
+/// empties the data (and captured logs) between tests while keeping reference rows the app seeds (roles).
 /// </summary>
 public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -28,6 +29,9 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     /// <summary>The app's <see cref="TimeProvider"/>. Rewound to <see cref="TestClock.Start"/> before every test.</summary>
     public TestClock Clock { get; } = new();
+
+    /// <summary>Everything the app logged since the last <see cref="ResetAsync"/>.</summary>
+    public LogSink Logs { get; } = new();
 
     public string ConnectionString => _database.GetConnectionString();
 
@@ -63,6 +67,7 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         }
 
         Clock.Reset();
+        Logs.Clear();
     }
 
     /// <summary>An HTTPS client (the auth cookie is <c>__Host-</c>/Secure) that never follows redirects.</summary>
@@ -108,6 +113,7 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            services.AddSingleton<ILoggerProvider>(Logs);
         });
     }
 
