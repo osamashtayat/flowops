@@ -10,7 +10,7 @@ namespace FlowOps.Api.IntegrationTests.Organization;
 
 /// <summary>
 /// Admins can't use admin powers to gain process authority (decided 2026-11-06, AUTHORIZATION.md §2): no changing their
-/// own roles or manager link, no making themselves anyone's manager, no deactivating themselves (issue #27). Other admins
+/// own roles or manager link, no making themselves anyone's manager, no deactivating themselves (issue #27), no resetting their own password (issue #31). Other admins
 /// still can, and every admin change (including a password reset) is audit-logged with the actor's id.
 /// </summary>
 public sealed class SelfAdministrationTests(FlowOpsApiFactory factory) : DatabaseTest(factory)
@@ -208,6 +208,22 @@ public sealed class SelfAdministrationTests(FlowOpsApiFactory factory) : Databas
         audit.Values["ActorId"].ShouldBe(ada.Id);
         audit.Values["UserId"].ShouldBe(lina.Id);
         audit.Values["IsActive"].ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task ResetPassword_OnSelf_Returns422AndKeepsThePassword()
+    {
+        await Given.User("bea").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        using var admin = await Factory.ClientFor(ada);
+
+        using var response = await admin.PostAsJsonAsync(ById(ada.Id, "/reset-password"), new { newPassword = "Self-Reset-Pa55!" }, Ct);
+
+        await ProblemAssert.HasCode(response, 422, ErrorCodes.UserSelfAdministration);
+        using var fresh = Factory.CreateHttpsClient();
+        using var login = await FlowOpsApiFactory.LoginAsync(fresh, ada.Email, ada.Password);
+        login.StatusCode.ShouldBe(HttpStatusCode.OK);
+        AuditEntries("reset the password").ShouldBeEmpty();
     }
 
     [Fact]
