@@ -29,7 +29,7 @@ Before writing new code, **search for existing implementations** of the shared k
 | `docs/decisions/*` | Anyone, by new ADR only | |
 | `AGENTS.md`, `CLAUDE.md`, `.claude/**` | Architecture changes only (explicit task) | |
 
-Parallel sessions work on separate branches named `task/<ID>-short-name` (e.g. `task/BE-10-submit-requests`). Never two sessions on the same task ID.
+Each task gets exactly one branch, `task/<ID>-short-name`, in its own worktree, merged into `main` when finished (`AGENTS.md` §4). Never two sessions on the same task ID.
 
 ## 3. API contract changes
 
@@ -55,6 +55,8 @@ Status: Done | Partially done | Blocked
 - none | description + regenerated openapi.json
 ### Decisions taken
 - … (link ADR if any)
+### Issues opened or updated
+- #<n> title (labels) | none
 ### Tests
 - Command(s) run and exact results (e.g. "dotnet test …: 41 passed, 0 failed")
 - Not run: … and why
@@ -66,7 +68,7 @@ Status: Done | Partially done | Blocked
 Update the task's status line in `PHASE1_TASKS.md` in the same change.
 
 ## 6. Open coordination items
-Use this list for cross-lane requests that can't be resolved inside one task. Remove entries when resolved.
+Problems and decisions are raised as **GitHub issues** (see `AGENTS.md` §5). Use this table only as a fallback when `gh` isn't available, and file each entry as an issue as soon as possible. Remove entries once they're filed or resolved.
 
 | Date | From | Item | Status |
 |---|---|---|---|

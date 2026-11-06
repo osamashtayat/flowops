@@ -5,7 +5,7 @@
 
 Status values: `Todo` · `In progress` · `Done` · `Blocked (reason)`.
 
-Every task inherits the **Definition of Done** (`AGENTS.md` §6). "Tests" lists the minimum; add more when behaviour warrants.
+Every task inherits the **Definition of Done** (`AGENTS.md` §8). "Tests" lists the minimum; add more when behaviour warrants.
 
 ---
 
