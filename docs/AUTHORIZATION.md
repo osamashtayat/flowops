@@ -77,7 +77,7 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 |---|---|
 | `isManager` | user has ≥ 1 active direct report |
 
-Users may hold several roles. **Administrator grants no request visibility and no process authority.** Admin powers can't be used to get it either (decided 2026-11-06): an admin can't change their own roles or manager link, or make themselves anyone's manager (422 `user.self_administration`). Another administrator has to make those changes, and every admin change is logged with the actor's id.
+Users may hold several roles. **Administrator grants no request visibility and no process authority.** Admin powers can't be used to get it either (decided 2026-11-06): an admin can't change their own roles or manager link, make themselves anyone's manager, or deactivate themselves (422 `user.self_administration`). Another administrator has to make those changes. Resetting another user's password stays allowed; every admin change, password resets included, is logged with the actor's id.
 
 The server returns the capability set from `GET /api/auth/me` (`capabilities: string[]`). The frontend uses that list to show navigation and buttons; it never derives permissions from role names itself.
 
@@ -105,6 +105,7 @@ Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `
 | Comment on a request | ⚙ R1 | ⚙ R2 | ⚙ R3 | ⚙ R3 | ⚙ R3 | ⛔ |
 | Read leave `Reason` | own | ⚙ R2 | ⛔ | ⚙ R3 | — | ⛔ |
 | Manage users / departments / roles / managers | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
+| …on **their own** account: change roles or manager link, make themselves anyone's manager (including by reactivating a report), deactivate themselves | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ 422 `user.self_administration` (another admin must) |
 | View stalled tasks (number, type, stage, age only) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
 | Own notifications | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
