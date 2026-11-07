@@ -104,6 +104,8 @@ describe('Role changes list', () => {
     expect(await within(grid).findByText('Nadia Admin')).toBeInTheDocument()
     expect(within(grid).getByText('Employee, Finance officer')).toBeInTheDocument()
     expect(within(grid).getByText('Now: Administrator')).toBeInTheDocument()
+    // A change that expires in the future must not read "just now" (the proposal is 72 h from expiry).
+    expect(within(grid).getByText(/^Expires in [23] d$/)).toBeInTheDocument()
     expect(within(grid).getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(within(grid).getByRole('button', { name: 'Reject' })).toBeInTheDocument()
     expect(within(grid).queryByRole('button', { name: 'Cancel change' })).toBeNull()

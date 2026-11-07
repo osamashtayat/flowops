@@ -8,7 +8,7 @@ import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { RoleChangeDto, RoleChangeStatus } from '@/lib/api/types'
 import { toUserMessage } from '@/lib/api/problem'
-import { formatDateTime, formatRelative } from '@/lib/format/date'
+import { formatDateTime, formatTimeUntil } from '@/lib/format/date'
 import { roleChangeStatusPresentation } from '@/lib/format/status'
 import { useUrlState } from '@/lib/useUrlState'
 import { useRoleChanges } from '../api'
@@ -22,7 +22,7 @@ const URL_DEFAULTS = { page: 1, pageSize: 20, status: 'Pending' }
 function decision(change: RoleChangeDto) {
   if (change.status === 'Pending') {
     // The server offers `cancel` only to the proposer, so it is also what tells us this one is ours.
-    return change.availableActions.includes('cancel') ? 'Waiting for another administrator' : `Expires ${formatRelative(change.expiresAt)}`
+    return change.availableActions.includes('cancel') ? 'Waiting for another administrator' : `Expires ${formatTimeUntil(change.expiresAt)}`
   }
   const by = change.decidedBy?.displayName
   const at = change.decidedAt ? formatDateTime(change.decidedAt) : ''

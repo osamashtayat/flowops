@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarDaysInclusive, formatDate, formatDateOnly, formatDateTime, formatRelative, todayInCompanyZone } from './date'
+import { calendarDaysInclusive, formatDate, formatDateOnly, formatDateTime, formatRelative, formatTimeUntil, todayInCompanyZone } from './date'
 import { formatAmount, formatMoney } from './money'
 
 describe('formatMoney', () => {
@@ -81,5 +81,18 @@ describe('formatRelative', () => {
     ['2026-09-01T12:00:00Z', '1 Sep 2026'],
   ])('%s → %s', (timestamp, expected) => {
     expect(formatRelative(timestamp, now)).toBe(expected)
+  })
+})
+
+describe('formatTimeUntil', () => {
+  const now = new Date('2026-11-05T12:00:00Z')
+  it.each([
+    ['2026-11-05T12:00:30Z', 'in under a min'],
+    ['2026-11-05T12:05:00Z', 'in 5 min'],
+    ['2026-11-05T15:00:00Z', 'in 3 h'],
+    ['2026-11-08T12:00:00Z', 'in 3 d'],
+    ['2026-11-05T11:00:00Z', 'now'],
+  ])('%s → %s', (timestamp, expected) => {
+    expect(formatTimeUntil(timestamp, now)).toBe(expected)
   })
 })

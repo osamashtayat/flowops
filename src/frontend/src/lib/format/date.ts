@@ -92,3 +92,15 @@ export function formatRelative(timestamp: string, now: Date = new Date()): strin
   if (age < 30 * DAY) return `${Math.floor(age / DAY)} d ago`
   return formatDate(timestamp)
 }
+
+/** "in under a min", "in 5 min", "in 3 h", "in 2 d" for a future moment (role-change expiry); a moment already passed reads "now". */
+export function formatTimeUntil(timestamp: string, now: Date = new Date()): string {
+  const then = new Date(timestamp).getTime()
+  if (Number.isNaN(then)) return timestamp
+  const left = then - now.getTime()
+  if (left <= 0) return 'now'
+  if (left < MINUTE) return 'in under a min'
+  if (left < HOUR) return `in ${Math.floor(left / MINUTE)} min`
+  if (left < DAY) return `in ${Math.floor(left / HOUR)} h`
+  return `in ${Math.floor(left / DAY)} d`
+}
