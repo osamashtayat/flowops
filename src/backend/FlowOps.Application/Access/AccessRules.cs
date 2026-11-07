@@ -57,6 +57,21 @@ public sealed class AccessRules(IAppDbContext db, ICurrentUser currentUser)
             .AnyAsync(Active(me, AnyOf(IsRequester(me), IsRequestersManager(me), hrParticipant)), ct);
     }
 
+    /// <summary>
+    /// The users who can currently see <paramref name="requestId"/>: R1–R3 read from the request's side, for addressing
+    /// <c>requestChanged</c> (API_CONTRACT.md §9). It must stay the same set as <see cref="VisibleTo"/>; a table test over the
+    /// seeded org checks every user against <see cref="CanViewAsync"/>. Active users only; administrators get nothing.
+    /// </summary>
+    public IQueryable<Guid> ViewerIds(Guid requestId) =>
+        db.Users
+            .Where(u => u.IsActive)
+            .Where(u => db.Requests.Where(r => r.Id == requestId).Any(r =>
+                r.RequesterId == u.Id // R1
+                || db.Users.Any(q => q.Id == r.RequesterId && q.ManagerId == u.Id) // R2
+                || r.Tasks.Any(t => t.AssigneeUserId == u.Id || t.DecidedById == u.Id // R3
+                    || (t.AssigneeRole != null && db.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleName == t.AssigneeRole)))))
+            .Select(u => u.Id);
+
     // R1
     private static Expression<Func<Request, bool>> IsRequester(AccessContext me)
     {

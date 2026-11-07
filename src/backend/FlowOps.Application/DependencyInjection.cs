@@ -17,6 +17,7 @@ public static class DependencyInjection
         // All time comes from TimeProvider so tests can substitute FakeTimeProvider (TESTING.md §2).
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<AccessRules>();
+        services.AddScoped<PostCommitPublisher>();
         services.AddSingleton<CompanyCalendar>();
         services.AddScoped<RequestDetailsReader>();
         services.AddScoped<RequestSubmissionService>();

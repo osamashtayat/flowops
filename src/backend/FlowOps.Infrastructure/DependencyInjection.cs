@@ -2,6 +2,7 @@ using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
+using FlowOps.Infrastructure.Realtime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +31,14 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IRequestNumberSequence, RequestNumberSequence>();
         services.AddFlowOpsIdentity(configuration);
+        // Clients send nothing but the handshake and pings; detailed errors stay off (no internals to clients).
+        services.AddSignalR(options =>
+        {
+            options.MaximumReceiveMessageSize = 1024;
+            options.EnableDetailedErrors = false;
+        });
+        services.AddSingleton<HubConnectionRegistry>();
+        services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
         return services;
     }
 }

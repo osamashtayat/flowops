@@ -108,6 +108,28 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
     }
 
     [Fact]
+    public async Task ViewerIds_AreExactlyTheUsersWhoCanViewEachRequest()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (_, rules) = Services(scope);
+        var wrong = new List<string>();
+
+        foreach (var (name, id) in org.Requests)
+        {
+            var expected = Visible.Where(v => v.Value.Contains(name)).Select(v => v.Key).Order(StringComparer.Ordinal).ToArray();
+            var actual = (await rules.ViewerIds(id).ToListAsync(Ct))
+                .Select(u => org.Users.Single(x => x.Value == u).Key).Order(StringComparer.Ordinal).ToArray();
+            if (!actual.SequenceEqual(expected))
+            {
+                wrong.Add($"{name}: expected [{string.Join(",", expected)}] but got [{string.Join(",", actual)}]");
+            }
+        }
+
+        wrong.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task VisibleTo_SecondLevelManagerLosesAndGainsR2WithTheManagerLink()
     {
         var org = await AccessOrg.SeedAsync(Factory);

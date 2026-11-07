@@ -14,7 +14,7 @@ namespace FlowOps.Application.Organization;
 /// </summary>
 public sealed partial class UserAdministrationService(
     IAppDbContext db, IIdentityAdmin identity, RoleChangeReader roleChanges, ICurrentUser currentUser, TimeProvider time,
-    ILogger<UserAdministrationService> logger)
+    PostCommitPublisher realtime, ILogger<UserAdministrationService> logger)
 {
     public async Task<PagedResult<UserDto>> ListAsync(UserListQuery query, CancellationToken ct)
     {
@@ -106,6 +106,11 @@ public sealed partial class UserAdministrationService(
         await identity.StageProfileAsync(id, new UserProfile(body.DisplayName.Trim(), body.DepartmentId, body.ManagerId, body.IsActive), ct);
         await SaveAsync(ct);
         LogProfileUpdated(logger, currentUser.Id, id, body.DepartmentId, body.ManagerId, body.IsActive);
+        if (current.IsActive && !body.IsActive)
+        {
+            await realtime.SessionsEndedAsync(id);
+        }
+
         return await GetAsync(id, ct);
     }
 
@@ -153,6 +158,7 @@ public sealed partial class UserAdministrationService(
         await identity.StagePasswordResetAsync(id, body.NewPassword, ct);
         await SaveAsync(ct);
         LogPasswordReset(logger, currentUser.Id, id);
+        await realtime.SessionsEndedAsync(id);
     }
 
     private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(IReadOnlyList<string> currentRoles, string[] roles, CancellationToken ct)
@@ -174,9 +180,11 @@ public sealed partial class UserAdministrationService(
         var change = RoleChange.Propose(currentUser.Id, currentRoles, roles, now);
         db.RoleChanges.Add(change);
         var proposerName = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.DisplayName).SingleAsync(ct);
-        db.Notifications.AddRange(NotificationFactory.RoleChangePending(change, proposerName, reviewers, now));
+        var notifications = NotificationFactory.RoleChangePending(change, proposerName, reviewers, now).ToList();
+        db.Notifications.AddRange(notifications);
         await SaveAsync(ct);
         LogRoleChangeProposed(logger, currentUser.Id, change.Id, roles);
+        await realtime.NotificationsAsync(notifications);
         return await roleChanges.GetAsync(change.Id, ct);
     }
 

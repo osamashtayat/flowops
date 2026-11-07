@@ -6,6 +6,7 @@ using FlowOps.Api.Requests;
 using FlowOps.Application;
 using FlowOps.Application.Common;
 using FlowOps.Infrastructure;
+using FlowOps.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -59,6 +60,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseWhen(c => c.Request.Path.StartsWithSegments(SameOriginHubGuard.HubPathPrefix), hub => hub.UseMiddleware<SameOriginHubGuard>());
 app.UseAuthentication();
 // After authentication so the comment limit can partition by user id; login's per-IP limit doesn't need the user.
 app.UseRateLimiter();
@@ -66,5 +68,9 @@ app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 
 app.MapControllers();
+// Composition root: the hub lives with the SignalR adapter in Infrastructure (ARCHITECTURE.md §3).
+// Hub connections end with the cookie; logout, password changes and deactivation close them earlier (BE-14).
+var realtime = builder.Configuration.GetSection(RealtimeHubOptions.SectionName).Get<RealtimeHubOptions>() ?? new RealtimeHubOptions();
+app.MapHub<NotificationsHub>(NotificationsHub.Path, options => options.CloseOnAuthenticationExpiration = realtime.CloseOnAuthenticationExpiration);
 
 app.Run();

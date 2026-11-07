@@ -14,6 +14,13 @@ public sealed class AntiforgeryCoverageTests(ContractApiFactory factory) : IClas
 {
     private static readonly string[] SafeMethods = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
+    /// <summary>
+    /// The SignalR hub (BE-14, AUTHORIZATION.md §1.3): negotiate and the long-polling send are POSTs outside MVC. They take
+    /// no XSRF header (browsers can't add one to a WebSocket), which is safe because the hub has no client-callable methods,
+    /// only ever sends id hints to the signed-in user themselves, and the session cookie is SameSite=Strict.
+    /// </summary>
+    private static readonly string[] HubEndpoints = ["/hubs/notifications/negotiate", "/hubs/notifications"];
+
     [Fact]
     public void EveryUnsafeEndpoint_IsAnMvcAction()
     {
@@ -21,7 +28,7 @@ public sealed class AntiforgeryCoverageTests(ContractApiFactory factory) : IClas
 
         unsafeEndpoints.ShouldNotBeEmpty();
         unsafeEndpoints.Where(e => e.Metadata.GetMetadata<ControllerActionDescriptor>() is null)
-            .Select(e => e.RoutePattern.RawText).ShouldBeEmpty();
+            .Select(e => e.RoutePattern.RawText).Order(StringComparer.Ordinal).ShouldBe(HubEndpoints.Order(StringComparer.Ordinal));
     }
 
     [Fact]
