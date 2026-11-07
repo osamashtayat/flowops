@@ -35,4 +35,12 @@ public static class ErrorCodes
     public const string UserManagerCycle = "user.manager_cycle";
     public const string UserLastAdmin = "user.last_admin";
     public const string UserSelfAdministration = "user.self_administration";
+    public const string UserAdminRoleOnCreateOnly = "user.admin_role_on_create_only";
+
+    public const string RoleChangeNoReviewer = "role_change.no_reviewer";
+    public const string RoleChangeAlreadyPending = "role_change.already_pending";
+    public const string RoleChangeSelfApproval = "role_change.self_approval";
+    public const string RoleChangeNotPending = "role_change.not_pending";
+    public const string RoleChangeStale = "role_change.stale";
+    public const string RoleChangeNotProposer = "role_change.not_proposer";
 }

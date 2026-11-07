@@ -72,7 +72,6 @@ Problems and decisions are raised as **GitHub issues** (see `AGENTS.md` §5). Us
 
 | Date | From | Item | Status |
 |---|---|---|---|
-| 2026-11-07 | FE-13b | **Contract request, BE-08d.** FE-13b is built from ADR-0012 §6 with provisional types in `src/frontend/src/lib/api/pendingRoleChangeContract.ts` (no change to `schema.d.ts`). BE-08d must publish exactly: `PUT /users/{id}/roles` → 200 `UserDto` / 202 `RoleChangeDto`; `GET /api/admin/role-changes?status&page&pageSize` → paged `RoleChangeDto`; `POST /api/admin/role-changes/{id}/{approve,reject,cancel}` (`{version}`; reject also `{reason}`); `RoleChangeDto` = `{id, user, proposedRoles, previousRoles, status, proposedAt, expiresAt, decidedBy, decidedAt, rejectionReason, version, availableActions}`; codes `user.admin_role_on_create_only`, `role_change.{no_reviewer,already_pending,self_approval,not_pending,stale,not_proposer}`. Open questions for BE: schema names for `RoleChangeStatus`/`RoleChangeAction`, and whether `reason` has a max length (the dialog sets none). After BE-08d merges: `npm run api:types`, replace the provisional file with aliases in `types.ts`, move the messages into `PROBLEM_MESSAGES`, switch `pendingApi` calls to `api`, delete the provisional file, verify against the real API. | Open |
 
 ## 7. Ready-to-use prompts for the first sessions
 

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toastContext'
-import type { RoleChangeAction, RoleChangeDto } from '@/lib/api/pendingRoleChangeContract'
+import type { RoleChangeAction, RoleChangeDto } from '@/lib/api/types'
+import { ADMIN_LIMITS } from '@/lib/api/limits'
 import { toUserMessage } from '@/lib/api/problem'
 import { useDecideRoleChange } from '../api'
 
@@ -69,7 +70,7 @@ export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
           tone={PRESENTATION[open].tone}
           confirmLabel={open === 'cancel' ? 'Cancel change' : `${PRESENTATION[open].button} change`}
           cancelLabel={open === 'cancel' ? 'Keep it' : 'Back'}
-          reason={open === 'reject' ? { label: 'Reason', required: true, helperText: 'Shown to the administrator who proposed the change.' } : undefined}
+          reason={open === 'reject' ? { label: 'Reason', required: true, helperText: 'Shown to the administrator who proposed the change.', maxLength: ADMIN_LIMITS.roleChangeReasonMax } : undefined}
           loading={decide.isPending}
           error={decide.error ? toUserMessage(decide.error) : undefined}
           onCancel={close}

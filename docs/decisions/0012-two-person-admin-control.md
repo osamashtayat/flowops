@@ -41,7 +41,7 @@ The owner's rules (2026-11-07):
      - at most one `Pending` change per user (partial unique index).
 5. **Expiry: 72 hours, without a background job** (ADR-0010).
    - Reads compute "expired" from `ExpiresAt <= now`, so `?status=Pending` excludes expired rows.
-   - Deciding an expired change marks it `Expired` and returns 409 `role_change.not_pending`.
+   - Deciding an expired change returns 409 `role_change.not_pending`; it reads as `Expired` with `decidedAt = expiresAt`.
    - A new proposal first marks the user's expired `Pending` row as `Expired` in the same transaction, so the unique index doesn't block it. A live pending change returns 409 `role_change.already_pending`.
 6. **API** (contract change, AGENT_HANDOFF §3):
    - `PUT /users/{id}/roles`:
@@ -51,7 +51,7 @@ The owner's rules (2026-11-07):
      - 422 `role_change.no_reviewer`;
      - 409 `role_change.already_pending`;
      - plus the existing 404, 409 `concurrency.conflict` and 422 `user.last_admin`.
-   - `GET /api/admin/role-changes?status=&page=&pageSize=` (Admin policy) returns paged `RoleChangeDto`. Every admin sees every role change.
+   - `GET /api/admin/role-changes?status=&page=&pageSize=` (Admin policy) returns paged `RoleChangeDto`, and `GET /api/admin/role-changes/{id}` one of them (the 202's `Location`). Every admin sees every role change.
    - `POST /api/admin/role-changes/{id}/approve` `{ version }` returns 200 `RoleChangeDto`. Errors: 422 `role_change.self_approval`, 409 `role_change.not_pending`, 409 `role_change.stale`, 409 `concurrency.conflict`, and 422 `user.last_admin` / `user.admin_role_on_create_only` when re-validation fails.
    - `POST /api/admin/role-changes/{id}/reject` `{ version, reason }` returns 200, with the same `self_approval` / `not_pending` / `concurrency` errors.
    - `POST /api/admin/role-changes/{id}/cancel` `{ version }`, proposer only, returns 200. 403 `role_change.not_proposer`.
@@ -59,7 +59,7 @@ The owner's rules (2026-11-07):
    - All new error codes go into `ErrorCodes` + `ErrorStatusCodes` and the frontend message map (`problem.test.ts` enforces this).
 7. **Notifications.**
    - A new type `RoleChangePending` goes to every other active admin, through `NotificationFactory`, in the same transaction (ADR-0009).
-   - Approval or rejection notifies the proposer.
+   - Approval or rejection notifies the proposer (`RoleChangeApproved` / `RoleChangeRejected`).
    - Notifications and logs carry ids and the status only. The rejection reason is shown only in `RoleChangeDto`, never logged.
 8. **Frontend (FE-13b).**
    - The edit-roles form for an existing user doesn't offer to *add* `Administrator`; it can only keep it or remove it. This mirrors the contract rule in point 2, like the limits in `lib/api/limits.ts`; it is not a permission check. The server enforces the rule with 422 `user.admin_role_on_create_only`. The create form still offers `Administrator`.
@@ -74,7 +74,7 @@ The owner's rules (2026-11-07):
    - PHASE1_TASKS (BE-08d, FE-13b).
 
 ## Consequences
-- \+ No admin can give themselves process roles alone, and no existing account can be promoted to administrator.
+- \+ An admin's own role change needs a second, active admin account, and no existing account can be promoted to administrator. This does not stop one person who controls two admin accounts: an admin can create a second admin account alone (see the residual risks below and #48 for a possible approver rule).
 - \+ Small scope: one aggregate, one migration, 4 new endpoints, a 202 on one existing endpoint for one case, and new 4xx codes. Create, edit and reset password keep today's contract.
 - − **Residual risks accepted by the owner.** One admin can still, alone and with only the audit log as control:
   - grant process roles to another account they control;

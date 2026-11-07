@@ -1,13 +1,15 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
-import { api, pendingApi } from '@/lib/api/client'
-import type { RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
+import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type {
   CreateDepartmentRequest,
   CreateUserRequest,
   DepartmentDto,
   Role,
+  RoleChangeAction,
+  RoleChangeDto,
+  RoleChangeStatus,
   UpdateDepartmentRequest,
   UpdateUserRequest,
   UserDto,
@@ -123,9 +125,9 @@ export function useSaveUser() {
       const params = { path: { id } }
       const saved = required((await api.PUT('/api/users/{id}', { params, body: profile })).data)
       if (!roles) return { user: saved, roleChange: null }
-      const { data, response } = await pendingApi.PUT('/api/users/{id}/roles', { params, body: { roles } })
-      if (response.status === 202) return { user: saved, roleChange: required(data) as RoleChangeDto }
-      return { user: required(data) as UserDto, roleChange: null }
+      const { data, response } = await api.PUT('/api/users/{id}/roles', { params, body: { roles } })
+      if (response.status === 202) return { user: saved, roleChange: required(data as RoleChangeDto | undefined) }
+      return { user: required(data as UserDto | undefined), roleChange: null }
     },
     onSettled: async () => {
       await refresh()
@@ -199,7 +201,7 @@ export function useRoleChanges(params: RoleChangeListParams) {
     queryKey: queryKeys.admin.roleChanges(params),
     queryFn: async () => {
       const query = { status: params.status || undefined, page: params.page, pageSize: params.pageSize }
-      const { data } = await pendingApi.GET('/api/admin/role-changes', { params: { query } })
+      const { data } = await api.GET('/api/admin/role-changes', { params: { query } })
       return required(data)
     },
     placeholderData: keepPreviousData,
@@ -227,10 +229,10 @@ export function useDecideRoleChange() {
       const params = { path: { id } }
       const result =
         action === 'approve'
-          ? await pendingApi.POST('/api/admin/role-changes/{id}/approve', { params, body: { version } })
+          ? await api.POST('/api/admin/role-changes/{id}/approve', { params, body: { version } })
           : action === 'cancel'
-            ? await pendingApi.POST('/api/admin/role-changes/{id}/cancel', { params, body: { version } })
-            : await pendingApi.POST('/api/admin/role-changes/{id}/reject', { params, body: { version, reason: reason ?? '' } })
+            ? await api.POST('/api/admin/role-changes/{id}/cancel', { params, body: { version } })
+            : await api.POST('/api/admin/role-changes/{id}/reject', { params, body: { version, reason: reason ?? '' } })
       return required(result.data)
     },
     onSettled: () =>

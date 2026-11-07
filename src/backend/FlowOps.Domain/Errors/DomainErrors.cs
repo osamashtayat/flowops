@@ -28,4 +28,13 @@ public static class DomainErrors
 
     public static DomainException ManagerNotAssigned() =>
         new(ErrorCodes.RequestManagerNotAssigned, "The requester has no manager who can approve this request.");
+
+    public static DomainException RoleChangeSelfApproval() =>
+        new(ErrorCodes.RoleChangeSelfApproval, "Another administrator has to decide on your own role change.");
+
+    public static DomainException RoleChangeNotPending() =>
+        new(ErrorCodes.RoleChangeNotPending, "This role change is no longer pending.");
+
+    public static DomainException RoleChangeNotProposer() =>
+        new(ErrorCodes.RoleChangeNotProposer, "Only the administrator who asked for this role change can cancel it.");
 }

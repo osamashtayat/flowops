@@ -69,9 +69,9 @@ describe('Edit roles form (ADR-0012)', () => {
   })
 
   it.each([
-    ['role_change.no_reviewer', /no other active administrator/i],
+    ['role_change.no_reviewer', /only active administrator/i],
     ['role_change.already_pending', /already have a role change waiting/i],
-    ['user.admin_role_on_create_only', /only be given when an account is created/i],
+    ['user.admin_role_on_create_only', /only be given when a new account is created/i],
   ])('maps %s into the banner', async (code, message) => {
     server.use(http.put('/api/users/:id/roles', () => problem(code === 'role_change.already_pending' ? 409 : 422, code)))
     asAdmin(editPath('employee'))
@@ -86,7 +86,7 @@ describe('Edit roles form (ADR-0012)', () => {
     await heading('Sami Qasem')
     await userEvent.click(screen.getByLabelText('HR officer'))
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-    expect(await screen.findByText(/no other active administrator/i)).toBeInTheDocument()
+    expect(await screen.findByText(/only active administrator/i)).toBeInTheDocument()
   })
 })
 
@@ -145,9 +145,9 @@ describe('Role changes list', () => {
 
   it.each([
     [409, 'role_change.stale', /roles changed after the request was made/i],
-    [409, 'role_change.not_pending', /already decided, cancelled or has expired/i],
+    [409, 'role_change.not_pending', /no longer waiting for a decision/i],
     [409, 'concurrency.conflict', /changed by someone else/i],
-    [422, 'role_change.self_approval', /can't approve or reject your own/i],
+    [422, 'role_change.self_approval', /decide on your own role change/i],
     [422, 'user.last_admin', /At least one active administrator/i],
   ])('shows the mapped message for %i %s and refetches the list', async (status, code, message) => {
     otherAdminProposal()

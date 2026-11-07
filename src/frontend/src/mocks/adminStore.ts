@@ -9,7 +9,7 @@ import type {
   UpdateUserRequest,
   UserDto,
 } from '@/lib/api/types'
-import type { PagedRoleChanges, RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
+import type { PagedRoleChanges, RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/types'
 import { MOCK_USERS, type MockUserKey } from './users'
 
 /**

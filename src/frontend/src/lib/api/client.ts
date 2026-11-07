@@ -1,6 +1,5 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 import { ApiError, NETWORK_ERROR_CODE, apiErrorFromResponse } from './apiError'
-import type { PendingRoleChangePaths } from './pendingRoleChangeContract'
 import type { paths } from './schema'
 
 /**
@@ -51,8 +50,8 @@ async function fetchOrThrowApiError(request: Request): Promise<Response> {
   }
 }
 
-export function createApiClient<P extends object = paths>() {
-  const client = createClient<P>({
+export function createApiClient() {
+  const client = createClient<paths>({
     // Same origin (the dev proxy / reverse proxy forwards /api). An absolute base keeps `Request`
     // construction valid outside the browser, e.g. in tests.
     baseUrl: window.location.origin,
@@ -65,9 +64,3 @@ export function createApiClient<P extends object = paths>() {
 
 /** Typed client for contracts/openapi.json. Resolves with `data`; rejects with `ApiError`. */
 export const api = createApiClient()
-
-/**
- * PROVISIONAL (FE-13b, remove when BE-08d merges): the same client typed for the ADR-0012 role-change
- * endpoints that are not in the generated contract yet. See lib/api/pendingRoleChangeContract.ts.
- */
-export const pendingApi = createApiClient<PendingRoleChangePaths>()

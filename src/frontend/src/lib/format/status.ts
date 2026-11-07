@@ -1,4 +1,4 @@
-import type { RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
+import type { RoleChangeStatus } from '@/lib/api/types'
 import type { RequestStage, RequestStatus, WorkTaskOutcome } from '@/lib/api/types'
 
 /**

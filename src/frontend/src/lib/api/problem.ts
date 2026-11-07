@@ -1,5 +1,4 @@
 import { ApiError, NETWORK_ERROR_CODE } from './apiError'
-import { PENDING_PROBLEM_MESSAGES } from './pendingRoleChangeContract'
 
 /**
  * User-facing text for every error `code` the API can return. The code list lives in
@@ -36,17 +35,26 @@ export const PROBLEM_MESSAGES = {
   'user.manager_cycle': "A person can't report to themselves or to someone who reports to them.",
   'user.last_admin': 'At least one active administrator is required.',
   'user.self_administration': 'Another administrator has to make this change.',
+  'user.admin_role_on_create_only':
+    'The Administrator role can only be given when a new account is created.',
+  'role_change.no_reviewer':
+    'You are the only active administrator, so nobody could approve a change to your own roles.',
+  'role_change.already_pending': 'You already have a role change waiting for approval.',
+  'role_change.self_approval': 'Another administrator has to decide on your own role change.',
+  'role_change.not_pending': 'This role change is no longer waiting for a decision.',
+  'role_change.stale':
+    "This administrator's roles changed after the request was made. Reject it and ask for a new one.",
+  'role_change.not_proposer': 'Only the administrator who asked for this role change can cancel it.',
 } as const satisfies Record<string, string>
 
-/** PROVISIONAL (FE-13b): ADR-0012 codes until the backend defines them; then merged into PROBLEM_MESSAGES. */
-const ALL_MESSAGES: Record<string, string> = { ...PROBLEM_MESSAGES, ...PENDING_PROBLEM_MESSAGES }
+export type ProblemCode = keyof typeof PROBLEM_MESSAGES
 
 const NETWORK_MESSAGE = "Can't reach the server. Check your connection and try again."
 const GENERIC_MESSAGE = 'Something went wrong. Try again.'
 const NOT_AVAILABLE_MESSAGE = "This feature isn't available yet."
 
-function isKnownCode(code: string): boolean {
-  return Object.hasOwn(ALL_MESSAGES, code)
+function isKnownCode(code: string): code is ProblemCode {
+  return Object.hasOwn(PROBLEM_MESSAGES, code)
 }
 
 /** The text to show a user for any thrown value. Mapped from `code`, with a status-based fallback. */
@@ -56,7 +64,7 @@ export function toUserMessage(error: unknown): string {
   // 501: the endpoint exists in the contract but its backend task isn't done. Checked before the
   // code because the server may label it `server.error`; retrying won't help.
   if (error.status === 501) return NOT_AVAILABLE_MESSAGE
-  if (isKnownCode(error.code)) return ALL_MESSAGES[error.code] ?? GENERIC_MESSAGE
+  if (isKnownCode(error.code)) return PROBLEM_MESSAGES[error.code]
   if (error.status === 401) return PROBLEM_MESSAGES['auth.unauthenticated']
   if (error.status === 403) return PROBLEM_MESSAGES['auth.forbidden']
   if (error.status === 404) return PROBLEM_MESSAGES.not_found

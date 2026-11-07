@@ -110,9 +110,9 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### BE-08b — Admin self-authority (follow-up) · `Done`
 - **Objective:** an admin can't change their own roles or manager link, make themselves anyone's manager (incl. by reactivating a report) or deactivate themselves → 422 `user.self_administration`; resetting another user's password stays allowed and is audit-logged with the actor id. #24, #27. Self password reset via the admin endpoint → 422 too (BE-08c, #31). #32 → ADR-0012 (accepted), implemented by BE-08d.
 
-### BE-08d — Role-change rules (ADR-0012) · `Todo`
+### BE-08d — Role-change rules (ADR-0012) · `Done`
 - **Objective:** `Administrator` can't be added by `PUT /users/{id}/roles` (422 `user.admin_role_on_create_only`); an admin's own role change becomes a pending `RoleChange` (202) that another active admin approves, rejects or the proposer cancels; 72 h expiry; `RoleChangePending` notifications. ADR-0012 §1–7.
-- **Deps:** BE-08, BE-13. **AC:** approver checked against the database; stale and expired changes refused; one `SaveChangesAsync` per use case; contract and openapi updated.
+- **Deps:** BE-08. (Notifications are written with the existing `Notification` entity; users read them once BE-13 lands.) **AC:** approver checked against the database; stale and expired changes refused; one `SaveChangesAsync` per use case; contract and openapi updated.
 - **Tests:** each new error code; self-approval; only-admin refusal; stale after a direct change; expiry with `FakeTimeProvider`; approve/cancel race (≥ 20 runs); notifications.
 
 ## Requests and process
@@ -212,7 +212,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
 - **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
-### FE-13b — Role-change screens (ADR-0012) · `Done` (against MSW mocks and provisional types from ADR-0012 §6; real integration and the type swap wait for BE-08d — see AGENT_HANDOFF §6)
+### FE-13b — Role-change screens (ADR-0012) · `Done` (generated types from BE-08d's contract; checked against mocks and contract/source only — **real-API browser check still outstanding**)
 - **Objective:** ADR-0012 §8: the edit-roles form can't add `Administrator`; "Waiting for another administrator" after a 202 on your own roles; a pending/decided "Role changes" list with approve, reject and cancel from `availableActions`. **Deps:** FE-13, BE-08d (contract).
 
 ## Operations & quality

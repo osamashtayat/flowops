@@ -40,6 +40,13 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
         { ErrorCodes.UserSelfAdministration, 422 },
         { ErrorCodes.RequestCommentRateLimited, 429 },
         { ErrorCodes.DepartmentInactive, 422 },
+        { ErrorCodes.UserAdminRoleOnCreateOnly, 422 },
+        { ErrorCodes.RoleChangeNoReviewer, 422 },
+        { ErrorCodes.RoleChangeSelfApproval, 422 },
+        { ErrorCodes.RoleChangeAlreadyPending, 409 },
+        { ErrorCodes.RoleChangeNotPending, 409 },
+        { ErrorCodes.RoleChangeStale, 409 },
+        { ErrorCodes.RoleChangeNotProposer, 403 },
         { ErrorCodes.AuthRateLimited, 429 },
         { ErrorCodes.ServerError, 500 },
     };

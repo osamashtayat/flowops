@@ -24,7 +24,7 @@ import type {
   UpdateUserRequest,
   UserDto,
 } from '@/lib/api/types'
-import type { RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
+import type { RoleChangeStatus } from '@/lib/api/types'
 import { currentActor } from './actor'
 import {
   createMockDepartment,
