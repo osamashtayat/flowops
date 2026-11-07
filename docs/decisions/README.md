@@ -17,3 +17,4 @@ To change a decision, add a new ADR that supersedes the old one; never rewrite a
 | [0009](0009-notifications.md) | Notifications persisted in the business transaction; SignalR as post-commit hint |
 | [0010](0010-background-processing.md) | No background job framework in Phase 1 |
 | [0011](0011-design-system.md) | Token-first Tailwind v4 design system with disabled default palette |
+| [0012](0012-two-person-admin-control.md) | Administrator role only on new accounts; own role change needs a second admin (#32) |
