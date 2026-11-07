@@ -54,7 +54,7 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 | 404 | Not found **or not visible** to caller | `not_found` |
 | 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email` |
 | 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `department.inactive` |
-| 429 | Too many login attempts from this address or for this email (login only); sends `Retry-After` (seconds) | `auth.rate_limited` |
+| 429 | Too many attempts; sends `Retry-After` (seconds). Login: per address or email. Comments: per user (#37) | `auth.rate_limited`, `request.comment_rate_limited` |
 | 500 | Unhandled | `server.error` (no internals in `detail`) |
 
 The full code list lives in `FlowOps.Domain/Errors/ErrorCodes.cs` and `src/frontend/src/lib/api/problem.ts` maps codes to user messages. Adding a code = update both + this table.
@@ -156,14 +156,14 @@ type WorkTaskDto = {
 `availableActions` is computed by the server with the same `TaskEligibility` used for decisions; the UI renders buttons from it and does not re-derive permissions.
 
 ### `GET /api/requests/{id}/activity` — auth + visibility
-→ 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments, cap 500).
+→ 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments). Over 500 entries, the **most recent 500** are returned, still oldest first, so the latest decisions always show (#37).
 ```ts
 type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded";
   actor: UserRef | null; stage: RequestStage | null; body: string | null; occurredAt: string };
 ```
 
 ### `POST /api/requests/{id}/comments` — auth + visibility
-Body `{ body: string }` (1–2000). → 201 `ActivityDto` · 400 · 404.
+Body `{ body: string }` (1–2000). → 201 `ActivityDto` · 400 · 404 · 429 `request.comment_rate_limited` (more than 10 comments per minute by the same user, configurable under `FlowOps:CommentRateLimit`; `Retry-After` sent; nothing saved).
 Comments are allowed on closed requests (follow-up notes), so there is no `request.closed` error here. Users who can't see the request (including admin-only users) get 404.
 
 As built (BE-11):

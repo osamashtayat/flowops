@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Threading.RateLimiting;
 using FlowOps.Api.Errors;
 using FlowOps.Application.Organization;
@@ -36,7 +35,11 @@ public static class LoginRateLimiting
 
     public static IServiceCollection AddFlowOpsLoginRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<LoginRateLimitOptions>(configuration.GetSection(LoginRateLimitOptions.SectionName));
+        services.AddOptions<LoginRateLimitOptions>()
+            .Bind(configuration.GetSection(LoginRateLimitOptions.SectionName))
+            .Validate(o => o.PerIpPermitLimit > 0 && o.PerIpWindow > TimeSpan.Zero && o.PerEmailPermitLimit > 0 && o.PerEmailWindow > TimeSpan.Zero,
+                "FlowOps:LoginRateLimit needs positive limits and windows.")
+            .ValidateOnStart();
         services.AddSingleton<LoginEmailRateLimitFilter>();
         services.AddRateLimiter(options =>
         {
@@ -47,6 +50,8 @@ public static class LoginRateLimiting
                 var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 return RateLimitPartition.GetFixedWindowLimiter(ip, _ => Window(limits.PerIpPermitLimit, limits.PerIpWindow));
             });
+            // Global fallback, used only by policies without their own OnRejected: today that's just the login per-IP
+            // policy. A new policy must bring its own (see CommentRateLimitPolicy), or it would answer auth.rate_limited.
             options.OnRejected = (context, _) => new ValueTask(WriteRejectionAsync(context.HttpContext, context.Lease));
         });
         return services;
@@ -60,24 +65,8 @@ public static class LoginRateLimiting
         AutoReplenishment = true,
     };
 
-    internal static Task WriteRejectionAsync(HttpContext http, RateLimitLease lease)
-    {
-        if (lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-        {
-            http.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
-        }
-
-        http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        var problem = new ProblemDetails
-        {
-            Status = StatusCodes.Status429TooManyRequests,
-            Detail = "Too many sign-in attempts. Please wait a few minutes and try again.",
-        };
-        problem.Extensions[ProblemDetailsSetup.CodeKey] = ErrorCodes.AuthRateLimited;
-        return http.RequestServices.GetRequiredService<IProblemDetailsService>()
-            .WriteAsync(new ProblemDetailsContext { HttpContext = http, ProblemDetails = problem })
-            .AsTask();
-    }
+    internal static Task WriteRejectionAsync(HttpContext http, RateLimitLease lease) =>
+        RateLimitRejection.WriteAsync(http, lease, ErrorCodes.AuthRateLimited, "Too many sign-in attempts. Please wait a few minutes and try again.");
 }
 
 /// <summary>Per-email login limit. Singleton: it owns the in-memory limiter for the app's lifetime.</summary>

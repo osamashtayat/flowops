@@ -4,6 +4,7 @@ using System.Text.Json;
 using FlowOps.Api.IntegrationTests.Access;
 using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Application.Common;
+using FlowOps.Application.Requests;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Notifications;
@@ -260,6 +261,21 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
     }
 
     [Fact]
+    public async Task Activity_OverTheCap_KeepsTheNewestEntriesInChronologicalOrder()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await AddCommentsAsync(org.Requests["L1"], org.Users["lina"], RequestQueryService.ActivityCap + 5);
+        using var lina = await ClientAsync(org, "lina");
+
+        var items = (await JsonBody.ReadAsync(await lina.GetAsync(RequestUri(org, "L1", "/activity"), Ct))).EnumerateArray().ToList();
+
+        items.Count.ShouldBe(RequestQueryService.ActivityCap);
+        items[^1].GetProperty("body").GetString().ShouldBe($"c{RequestQueryService.ActivityCap + 4}");
+        items.ShouldNotContain(i => i.GetProperty("type").GetString() == "Submitted"); // the oldest entries fell off
+        items.Select(i => i.GetProperty("occurredAt").GetDateTimeOffset()).ShouldBeInOrder(SortDirection.Ascending);
+    }
+
+    [Fact]
     public async Task Get_AvailableActionsAndTasks()
     {
         var org = await AccessOrg.SeedAsync(Factory);
@@ -473,6 +489,20 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
         db.Requests.Add(leave);
         await db.SaveChangesAsync(Ct);
         return leave.Id;
+    }
+
+    private async Task AddCommentsAsync(Guid requestId, Guid authorId, int count)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var request = await db.Requests.SingleAsync(r => r.Id == requestId, Ct);
+        var start = Factory.Clock.GetUtcNow();
+        for (var i = 0; i < count; i++)
+        {
+            request.AddComment(authorId, $"c{i}", start.AddSeconds(i + 1));
+        }
+
+        await db.SaveChangesAsync(Ct);
     }
 
     private async Task SetManagerAsync(Guid userId, Guid managerId)

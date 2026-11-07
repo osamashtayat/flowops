@@ -44,10 +44,11 @@ public sealed class RequestQueryService(IAppDbContext db, AccessRules access, Re
             throw new NotFoundException();
         }
 
-        return await db.Requests.AsNoTracking()
+        var newestFirst = await db.Requests.AsNoTracking()
             .Where(r => r.Id == id)
             .SelectMany(r => r.Activities)
-            .OrderBy(a => a.OccurredAt).ThenBy(a => a.Id)
+            // The newest entries win the cap (#37), so the latest decisions always show; returned oldest first.
+            .OrderByDescending(a => a.OccurredAt).ThenByDescending(a => a.Id)
             .Take(ActivityCap)
             .Select(a => new ActivityDto(
                 a.Id,
@@ -57,6 +58,8 @@ public sealed class RequestQueryService(IAppDbContext db, AccessRules access, Re
                 a.Body,
                 a.OccurredAt))
             .ToListAsync(ct);
+        newestFirst.Reverse();
+        return newestFirst;
     }
 
     private static IQueryable<Request> Filter(IQueryable<Request> requests, RequestListQuery query)

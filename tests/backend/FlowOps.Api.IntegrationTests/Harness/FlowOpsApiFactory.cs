@@ -109,6 +109,7 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         // The whole suite signs in from one address with the same few emails; LoginRateLimitTests sets real limits.
         builder.UseSetting("FlowOps:LoginRateLimit:PerIpPermitLimit", "100000");
         builder.UseSetting("FlowOps:LoginRateLimit:PerEmailPermitLimit", "100000");
+        builder.UseSetting("FlowOps:CommentRateLimit:PermitLimit", "100000"); // CommentRateLimitTests sets a real limit
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<TimeProvider>();
