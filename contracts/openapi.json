@@ -4102,6 +4102,8 @@
         "type": "object",
         "properties": {
           "version": {
+            "maxLength": 20,
+            "minLength": 0,
             "type": "string"
           },
           "comment": {
@@ -4440,6 +4442,8 @@
         "type": "object",
         "properties": {
           "version": {
+            "maxLength": 20,
+            "minLength": 0,
             "type": "string"
           },
           "note": {
@@ -5043,6 +5047,8 @@
         "type": "object",
         "properties": {
           "version": {
+            "maxLength": 20,
+            "minLength": 0,
             "type": "string"
           },
           "reason": {
@@ -5060,6 +5066,8 @@
         "type": "object",
         "properties": {
           "version": {
+            "maxLength": 20,
+            "minLength": 0,
             "type": "string"
           },
           "reason": {
@@ -5284,6 +5292,8 @@
         "type": "object",
         "properties": {
           "version": {
+            "maxLength": 20,
+            "minLength": 0,
             "type": "string"
           }
         }

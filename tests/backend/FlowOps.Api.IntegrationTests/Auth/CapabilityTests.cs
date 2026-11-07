@@ -60,7 +60,7 @@ public sealed class CapabilityTests(FlowOpsApiFactory factory) : DatabaseTest(fa
 
         using var response = await client.GetAsync(Tasks, Ct);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NotImplemented, "past the policy: the inbox is still a BE-12 stub");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]

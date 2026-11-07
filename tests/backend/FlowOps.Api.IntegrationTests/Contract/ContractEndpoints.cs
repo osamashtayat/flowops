@@ -31,11 +31,11 @@ internal static class ContractEndpoints
         new("GET", "/api/requests/{id}/activity", $"/api/requests/{Id}/activity", null, Employee) { Implemented = true },
         new("POST", "/api/requests/{id}/comments", $"/api/requests/{Id}/comments", """{"body":"Which model?"}""", Employee) { Implemented = true },
 
-        // §5 Tasks
-        new("GET", "/api/tasks", "/api/tasks?status=Done", null, Finance),
-        new("POST", "/api/tasks/{taskId}/approve", $"/api/tasks/{Id}/approve", """{"version":"7","comment":null}""", Finance),
-        new("POST", "/api/tasks/{taskId}/reject", $"/api/tasks/{Id}/reject", """{"version":"7","reason":"Over budget"}""", Finance),
-        new("POST", "/api/tasks/{taskId}/fulfill", $"/api/tasks/{Id}/fulfill", """{"version":"7","note":"PO-77"}""", "ProcurementOfficer"),
+        // §5 Tasks: implemented in BE-12 (behaviour: Tasks/DecisionTests).
+        new("GET", "/api/tasks", "/api/tasks?status=Done", null, Finance) { Implemented = true },
+        new("POST", "/api/tasks/{taskId}/approve", $"/api/tasks/{Id}/approve", """{"version":"7","comment":null}""", Finance) { Implemented = true },
+        new("POST", "/api/tasks/{taskId}/reject", $"/api/tasks/{Id}/reject", """{"version":"7","reason":"Over budget"}""", Finance) { Implemented = true },
+        new("POST", "/api/tasks/{taskId}/fulfill", $"/api/tasks/{Id}/fulfill", """{"version":"7","note":"PO-77"}""", "ProcurementOfficer") { Implemented = true },
 
         // §6 Notifications
         new("GET", "/api/notifications", "/api/notifications?unreadOnly=true", null, Employee),

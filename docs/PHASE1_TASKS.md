@@ -134,7 +134,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** `TESTING.md` §3.3 visibility rows; reason masking; comment notifications.
 - **Follow-up BE-11b (`Done`, security review):** HR reads a leave reason only through the HR task (a former manager who also holds HrOfficer doesn't); `page` capped at 10,000 (was a 500 on overflow); extra negative tests. Activity returns the newest 500 entries and comments are rate-limited per user (BE-11c, #37). Open: #38 (frontend hint).
 
-### BE-12 — Inbox & decisions (approve/reject/fulfill) · `Todo`
+### BE-12 — Inbox & decisions (approve/reject/fulfill) · `Done`
 - **Objective:** `TaskQueryService` (`GET /tasks`), `TaskDecisionService` (one pipeline, `CODE_STANDARDS.md` §2.4), concurrency mapping, decision notifications.
 - **Deps:** BE-11. **AC:** `WORKFLOWS.md` §2–5 behaviour exactly.
 - **Tests:** `TESTING.md` §3.2 full paths, §3.3 decision rows, §3.4 all concurrency tests.

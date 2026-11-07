@@ -209,6 +209,13 @@ Errors: 400, 403 `task.not_eligible` / `task.self_decision`, 404, 409 `task.alre
 
 Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
 
+As built (BE-12):
+- **Order of checks.** Not visible → 404; visible but not assigned → 403 `task.not_eligible`; your own request → 403 `task.self_decision`; stale `version` on an **open** task → 409 `concurrency.conflict` before any work; then the domain's 409s. A task that is already decided answers `task.already_decided` whatever `version` is sent, so a second click says what happened.
+- **`version`** is required and at most 20 characters (400 otherwise); any other value the server never issued is a stale version (409).
+- **Races.** Of two simultaneous decisions exactly one gets 204. The other gets 409: `concurrency.conflict` if it raced the save, or `task.already_decided` if it loaded after the winner committed.
+- **Inbox.** `Open` lists only tasks the caller may decide now (the same `TaskEligibility` source as `availableActions`), so a role-queue member never sees their own request. `Done` lists tasks the caller decided. `keyDetail` is `"JOD 1,250.500"` (currency, thousands separator, 3 decimals) or `"3 days · Annual"` (`"1 day"` when it's one).
+- **Notifications** (WORKFLOWS.md §1.4): the next task's eligible deciders get `TaskAssigned`; the requester gets `StepApproved`, `RequestApproved` (purchase ready for procurement), `RequestCompleted` or `RequestRejected`. The rejection notice repeats the decider's reason (cut to 500 characters); no notification contains a leave reason. Logs hold ids and the outcome only.
+
 ## 6. Notifications
 
 | Method & path | Notes | Success |

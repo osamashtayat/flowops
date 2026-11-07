@@ -1,3 +1,4 @@
+using System.Globalization;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
 
@@ -20,6 +21,8 @@ public static class RequestSummaries
             Number = r.Number,
             Type = r.Type,
             ItemName = r.Purchase != null ? r.Purchase.ItemName : null,
+            EstimatedAmount = r.Purchase != null ? r.Purchase.EstimatedCost.Amount : null,
+            EstimatedCurrency = r.Purchase != null ? r.Purchase.EstimatedCost.Currency : null,
             LeaveType = r.Leave != null ? r.Leave.LeaveType : null,
             LeaveStart = r.Leave != null ? r.Leave.StartDate : null,
             LeaveEnd = r.Leave != null ? r.Leave.EndDate : null,
@@ -43,6 +46,10 @@ public static class RequestSummaries
 
         public string? ItemName { get; init; }
 
+        public decimal? EstimatedAmount { get; init; }
+
+        public string? EstimatedCurrency { get; init; }
+
         public LeaveType? LeaveType { get; init; }
 
         public DateOnly? LeaveStart { get; init; }
@@ -64,6 +71,14 @@ public static class RequestSummaries
         public string Title => ItemName is not null
             ? RequestTitle.ForPurchase(ItemName)
             : RequestTitle.ForLeave(LeaveType!.Value, LeaveStart!.Value, LeaveEnd!.Value);
+
+        /// <summary>The inbox's one-line detail: <c>"JOD 1,250.500"</c> or <c>"3 days · Annual"</c> (API_CONTRACT.md §5).</summary>
+        public string KeyDetail => EstimatedAmount is { } amount
+            ? string.Create(CultureInfo.InvariantCulture, $"{EstimatedCurrency} {amount:#,0.000}")
+            : string.Create(CultureInfo.InvariantCulture,
+                $"{LeaveDays} {(LeaveDays == 1 ? "day" : "days")} · {LeaveType}");
+
+        private int LeaveDays => LeaveDetails.DaysBetween(LeaveStart!.Value, LeaveEnd!.Value);
 
         public RequestSummaryDto ToDto() =>
             new(Id, Number.Value, Type, Title, Requester, Department, Status, Stage, SubmittedAt, ClosedAt);

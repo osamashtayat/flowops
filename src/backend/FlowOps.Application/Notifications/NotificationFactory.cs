@@ -40,6 +40,34 @@ public static class NotificationFactory
             Notification.Create(recipient, NotificationType.CommentAdded, title, body, request.Id, taskId: null, now));
     }
 
+    /// <summary>
+    /// Tells the requester what a decision did (WORKFLOWS.md §1.4): rejected (with the decider's reason, which is not the
+    /// leave reason), completed, approved (purchase, before procurement) or one step approved.
+    /// </summary>
+    public static Notification DecisionOutcome(Request request, DecisionResult result, string deciderName, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(result);
+        var what = $"your {TypeLabel(request)}: {Title(request)}";
+        var (type, title, body) = result switch
+        {
+            { DecidedTask.Outcome: WorkTaskOutcome.Rejected } =>
+                (NotificationType.RequestRejected, $"{request.Number} was rejected",
+                    $"{deciderName} rejected {what}. Reason: {result.DecidedTask.Comment}"),
+            { Status: RequestStatus.Completed } =>
+                (NotificationType.RequestCompleted, $"{request.Number} is complete", $"{deciderName} completed {what}."),
+            { Status: RequestStatus.Approved } =>
+                (NotificationType.RequestApproved, $"{request.Number} was approved", $"{deciderName} approved {what}. Procurement is next."),
+            _ =>
+                (NotificationType.StepApproved, $"{request.Number}: a step was approved", $"{deciderName} approved a step of {what}."),
+        };
+        return Notification.Create(request.RequesterId, type, title, Truncate(body), request.Id, result.DecidedTask.Id, now);
+    }
+
+    /// <summary>A rejection reason can be up to 2000 characters; the notification body holds 500.</summary>
+    private static string Truncate(string body) =>
+        body.Length <= Notification.BodyMaxLength ? body : string.Concat(body.AsSpan(0, Notification.BodyMaxLength - 1), "…");
+
     /// <summary>An administrator's own role change waiting for one of <paramref name="recipients"/> (ADR-0012 §7).</summary>
     public static IEnumerable<Notification> RoleChangePending(
         RoleChange change, string proposerName, IEnumerable<Guid> recipients, DateTimeOffset now)
