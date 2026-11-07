@@ -4,6 +4,7 @@ import type {
   CurrentUserDto,
   LoginRequest,
   PagedInboxItems,
+  PagedNotifications,
   ActivityDto,
   AddCommentRequest,
   DashboardDto,
@@ -49,6 +50,12 @@ import {
   listMockRequests,
   mockActivities,
 } from './requestStore'
+import {
+  countMockUnread,
+  listMockNotifications,
+  markAllMockRead,
+  markMockRead,
+} from './notificationStore'
 import { decideMockTask } from './requestWorkflow'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
@@ -313,7 +320,7 @@ export const decisionHandlers = [
   ),
 ]
 
-/** Endpoints whose backend task isn't merged yet (dashboard BE-15, tasks BE-12, notifications BE-13). Also mocked in the dev browser. */
+/** Endpoints whose backend task isn't merged yet (dashboard BE-15, tasks BE-12). Also mocked in the dev browser. */
 export const pendingHandlers = [
   http.get<never, never, DashboardDto | Failure>('/api/dashboard', async () => {
     const user = await currentActor()
@@ -336,12 +343,41 @@ export const pendingHandlers = [
     const query = queryParam(request)
     return asAdmin(() => listMockStalledTasks(Number(query('page') ?? 1), Number(query('pageSize') ?? 20)), (page) => HttpResponse.json(page))
   }),
+]
+
+/** BE-13 is merged: the dev server uses the real endpoints, so these answer in tests only. */
+const notificationHandlers = [
+  http.get<never, never, PagedNotifications | Failure>('/api/notifications', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    const query = queryParam(request)
+    return HttpResponse.json(
+      listMockNotifications(user.id, {
+        unreadOnly: query('unreadOnly') === 'true',
+        page: Number(query('page') ?? 1),
+        pageSize: Number(query('pageSize') ?? 20),
+      }),
+    )
+  }),
 
   http.get<never, never, UnreadCountDto | Failure>('/api/notifications/unread-count', async () => {
     const user = await currentActor()
     if (!user) return problem(401, 'auth.unauthenticated')
-    return HttpResponse.json({ count: user.roles.includes('Employee') && !user.capabilities.includes('tasks.view') ? 2 : 0 })
+    return HttpResponse.json({ count: countMockUnread(user.id) })
+  }),
+
+  http.post<{ id: string }, never, Failure | null>('/api/notifications/:id/read', async ({ params }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    return markMockRead(user.id, params.id) ? new HttpResponse(null, { status: 204 }) : problem(404, 'notification.not_found')
+  }),
+
+  http.post<never, never, Failure | null>('/api/notifications/read-all', async () => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    markAllMockRead(user.id)
+    return new HttpResponse(null, { status: 204 })
   }),
 ]
 
-export const handlers = [...authHandlers, ...adminHandlers, ...requestHandlers, ...decisionHandlers, ...pendingHandlers]
+export const handlers = [...authHandlers, ...adminHandlers, ...requestHandlers, ...decisionHandlers, ...notificationHandlers, ...pendingHandlers]
