@@ -1,5 +1,6 @@
 using FlowOps.Application.Access;
 using FlowOps.Application.Common;
+using FlowOps.Application.Dashboard;
 using FlowOps.Application.Requests;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Organization;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<RequestCommentService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<TaskQueryService>();
+        services.AddScoped<StalledTaskService>();
+        services.AddScoped<DashboardService>();
         services.AddScoped<TaskDecisionService>();
         services.AddScoped<AuthService>();
         services.AddScoped<DepartmentService>();

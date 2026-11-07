@@ -14,7 +14,6 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
 
     public static TheoryData<string> Endpoints => [.. ContractEndpoints.All.Select(e => e.ToString())];
 
-    public static TheoryData<string> Stubs => [.. ContractEndpoints.All.Where(e => !e.Implemented).Select(e => e.ToString())];
 
     public static TheoryData<string> Protected => [.. ContractEndpoints.All.Where(e => !e.Anonymous).Select(e => e.ToString())];
 
@@ -50,18 +49,6 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
         var actual = paths.SelectMany(p => p.Value!.AsObject().Select(op => $"{op.Key.ToUpperInvariant()} {p.Key}"));
 
         actual.Where(e => !documented.Contains(e)).ShouldBeEmpty("every endpoint must be in docs/API_CONTRACT.md first");
-    }
-
-    [Theory]
-    [MemberData(nameof(Stubs))]
-    public async Task Endpoint_WithAuthorizedCallerAndValidInput_Returns501Stub(string endpoint)
-    {
-        var e = ContractEndpoints.All.Single(x => x.ToString() == endpoint);
-        using var client = factory.ClientWithRoles(e.Roles);
-
-        using var response = await SendAsync(client, e);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.NotImplemented, await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     [Theory]

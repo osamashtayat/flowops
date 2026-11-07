@@ -41,6 +41,9 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
     /// <summary>Lets a test make the next database save fail.</summary>
     public SaveFailureInterceptor SaveFailures { get; } = new();
 
+    /// <summary>Counts SQL commands between <c>Start()</c> and <c>Stop()</c>.</summary>
+    public SqlCommandCounter Sql { get; } = new();
+
     public string ConnectionString => _database.GetConnectionString();
 
     public async ValueTask InitializeAsync()
@@ -78,6 +81,7 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         Logs.Clear();
         Realtime.Reset();
         SaveFailures.Reset();
+        Sql.Stop();
     }
 
     /// <summary>An HTTPS client (the auth cookie is <c>__Host-</c>/Secure) that never follows redirects.</summary>
@@ -131,7 +135,7 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
             services.AddSingleton<SignalRRealtimePublisher>();
             services.AddSingleton(Realtime);
             services.AddSingleton<IRealtimePublisher, RecordingRealtimePublisher>();
-            services.ConfigureDbContext<AppDbContext>(options => options.AddInterceptors(SaveFailures));
+            services.ConfigureDbContext<AppDbContext>(options => options.AddInterceptors(SaveFailures, Sql));
         });
     }
 

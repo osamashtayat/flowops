@@ -250,6 +250,14 @@ type DashboardDto = {
 };
 ```
 
+As built (BE-15):
+- **myRequests** counts the caller's own requests by status; `recent` is the newest 5 (by submission). An administrator without `Employee` gets zeros and `[]`, not `null`.
+- **myTasks** (`tasks.view`): `open` and `oldestOpenCreatedAt` cover exactly the tasks in the caller's Open inbox (§5). `decidedLast7Days` counts tasks the caller decided in the last 7 × 24 hours.
+- **recentActivity**: the 10 newest activity entries on requests the caller can see (R1–R3), newest first, comments included. It is the same data `GET /requests/{id}/activity` returns, so administrators get `[]`.
+- **admin** (`admin.manage`): `activeUsers` counts active accounts, `departments` counts active departments, and `stalledTasks` counts the same tasks as `GET /admin/stalled-tasks`.
+- **Cost:** four SQL round trips (access context, one statement with every count, recent requests, recent activity). A test checks this.
+- **Freshness:** the client refetches the dashboard on every realtime event (§9). Admin numbers have no event of their own and refresh on refetch.
+
 ## 8. Administration — policy `Admin`
 
 ### Departments
@@ -328,6 +336,8 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
 `type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
 No request details (privacy): admins see metadata only.
+
+As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.
 
 ## 9. Real-time (SignalR)
 

@@ -55,6 +55,23 @@ public static class TaskEligibility
             .Select(u => u.Id);
     }
 
+    /// <summary>
+    /// Open tasks nobody may decide right now (WORKFLOWS.md §1.1, §4): the negation of <see cref="EligibleDeciders"/>, with
+    /// the same three conditions (active, assigned user or role holder, not the requester). A test over the seeded org
+    /// checks the two agree. A user assignee can only fail by being inactive, so that is the reason; otherwise the role
+    /// queue has no eligible member.
+    /// </summary>
+    public static IQueryable<StalledTask> Stalled(IAppDbContext db)
+    {
+        ArgumentNullException.ThrowIfNull(db);
+        return db.Requests
+            .SelectMany(r => r.Tasks.Where(t => t.Status == WorkTaskStatus.Open), (r, t) => new { Request = r, Task = t })
+            .Where(x => !db.Users.Any(u => u.IsActive && u.Id != x.Request.RequesterId
+                && (u.Id == x.Task.AssigneeUserId
+                    || (x.Task.AssigneeRole != null && db.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleName == x.Task.AssigneeRole)))))
+            .Select(x => new StalledTask { Request = x.Request, Task = x.Task });
+    }
+
     /// <summary>Why <paramref name="me"/> may not decide <paramref name="task"/> of a request by <paramref name="requesterId"/>, or <c>null</c>.</summary>
     public static string? FailureCode(Guid requesterId, WorkTask task, AccessContext me)
     {
@@ -97,6 +114,14 @@ public static class TaskEligibility
         TaskDecisionAction.Fulfill => TaskAction.Fulfill,
         _ => throw new UnreachableException($"Unknown decision action {action}."),
     };
+}
+
+/// <summary>An open task nobody can decide, with its request; project both in one query.</summary>
+public sealed class StalledTask
+{
+    public required Request Request { get; init; }
+
+    public required WorkTask Task { get; init; }
 }
 
 /// <summary>An open task the caller may decide, with its request; project both in one query.</summary>

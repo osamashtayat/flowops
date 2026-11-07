@@ -48,7 +48,7 @@ public sealed class PasswordChangeTests(FlowOpsApiFactory factory) : DatabaseTes
 
         change.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         using var dashboard = await client.GetAsync(Dashboard, Ct);
-        dashboard.StatusCode.ShouldBe(HttpStatusCode.NotImplemented, "past the gate: the dashboard is still a BE-15 stub");
+        dashboard.StatusCode.ShouldBe(HttpStatusCode.OK, "past the gate");
         using var json = JsonDocument.Parse(await client.GetStringAsync(Me, Ct));
         json.RootElement.GetProperty("mustChangePassword").GetBoolean().ShouldBeFalse();
     }
