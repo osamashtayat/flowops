@@ -31,7 +31,13 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IRequestNumberSequence, RequestNumberSequence>();
         services.AddFlowOpsIdentity(configuration);
-        services.AddSignalR();
+        // Clients send nothing but the handshake and pings; detailed errors stay off (no internals to clients).
+        services.AddSignalR(options =>
+        {
+            options.MaximumReceiveMessageSize = 1024;
+            options.EnableDetailedErrors = false;
+        });
+        services.AddSingleton<HubConnectionRegistry>();
         services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
         return services;
     }

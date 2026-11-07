@@ -59,9 +59,9 @@ public sealed partial class TaskDecisionService(
         LogDecided(logger, me.UserId, task.Id, request.Id, result.DecidedTask.Outcome);
 
         // After commit only (ADR-0009): the decided task left its deciders' inboxes, the next one entered others'.
-        await realtime.NotificationsAsync(notifications, ct);
-        await realtime.RequestChangedAsync(request.Id, ct);
-        await realtime.TasksChangedAsync(request, result.NextTask is { } next ? [task, next] : [task], [me.UserId], ct);
+        await realtime.NotificationsAsync(notifications);
+        await realtime.RequestChangedAsync(request.Id);
+        await realtime.TasksChangedAsync(request, result.NextTask is { } next ? [task, next] : [task], [me.UserId]);
     }
 
     /// <summary>Phase 1 only assigns the first step to the manager, so a manager lookup here is not expected to fail.</summary>

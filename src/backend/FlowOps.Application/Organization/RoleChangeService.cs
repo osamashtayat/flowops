@@ -47,7 +47,7 @@ public sealed partial class RoleChangeService(
         db.Notifications.Add(notification);
         await SaveAsync(ct);
         LogApproved(logger, currentUser.Id, change.Id, change.UserId, change.ProposedRoles);
-        await realtime.NotificationsAsync([notification], ct);
+        await realtime.NotificationsAsync([notification]);
         return await reader.GetAsync(id, ct);
     }
 
@@ -61,7 +61,7 @@ public sealed partial class RoleChangeService(
         db.Notifications.Add(notification);
         await SaveAsync(ct);
         LogRejected(logger, currentUser.Id, change.Id, change.UserId);
-        await realtime.NotificationsAsync([notification], ct);
+        await realtime.NotificationsAsync([notification]);
         return await reader.GetAsync(id, ct);
     }
 

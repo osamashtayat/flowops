@@ -106,6 +106,11 @@ public sealed partial class UserAdministrationService(
         await identity.StageProfileAsync(id, new UserProfile(body.DisplayName.Trim(), body.DepartmentId, body.ManagerId, body.IsActive), ct);
         await SaveAsync(ct);
         LogProfileUpdated(logger, currentUser.Id, id, body.DepartmentId, body.ManagerId, body.IsActive);
+        if (current.IsActive && !body.IsActive)
+        {
+            await realtime.SessionsEndedAsync(id);
+        }
+
         return await GetAsync(id, ct);
     }
 
@@ -153,6 +158,7 @@ public sealed partial class UserAdministrationService(
         await identity.StagePasswordResetAsync(id, body.NewPassword, ct);
         await SaveAsync(ct);
         LogPasswordReset(logger, currentUser.Id, id);
+        await realtime.SessionsEndedAsync(id);
     }
 
     private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(IReadOnlyList<string> currentRoles, string[] roles, CancellationToken ct)
@@ -178,7 +184,7 @@ public sealed partial class UserAdministrationService(
         db.Notifications.AddRange(notifications);
         await SaveAsync(ct);
         LogRoleChangeProposed(logger, currentUser.Id, change.Id, roles);
-        await realtime.NotificationsAsync(notifications, ct);
+        await realtime.NotificationsAsync(notifications);
         return await roleChanges.GetAsync(change.Id, ct);
     }
 

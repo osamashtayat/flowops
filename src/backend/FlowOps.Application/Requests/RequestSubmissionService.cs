@@ -63,9 +63,9 @@ public sealed class RequestSubmissionService(
         var notifications = NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], now).ToList();
         db.Notifications.AddRange(notifications);
         await db.SaveChangesAsync(ct);
-        await realtime.NotificationsAsync(notifications, ct);
-        await realtime.RequestChangedAsync(request.Id, ct);
-        await realtime.TasksChangedAsync(request, [request.OpenTask!], [], ct);
+        await realtime.NotificationsAsync(notifications);
+        await realtime.RequestChangedAsync(request.Id);
+        await realtime.TasksChangedAsync(request, [request.OpenTask!], []);
         var me = await access.ForCurrentUserAsync(ct);
         return await details.ReadAsync(request.Id, me, ct)
             ?? throw new InvalidOperationException("A request the caller just submitted must be visible to them.");

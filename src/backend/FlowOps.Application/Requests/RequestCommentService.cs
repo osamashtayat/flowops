@@ -25,8 +25,8 @@ public sealed class RequestCommentService(IAppDbContext db, AccessRules access, 
         var notifications = NotificationFactory.CommentAdded(request, comment, author.DisplayName, recipients, now).ToList();
         db.Notifications.AddRange(notifications);
         await db.SaveChangesAsync(ct);
-        await realtime.NotificationsAsync(notifications, ct);
-        await realtime.RequestChangedAsync(request.Id, ct);
+        await realtime.NotificationsAsync(notifications);
+        await realtime.RequestChangedAsync(request.Id);
         return new ActivityDto(comment.Id, comment.Type, author, comment.Stage, comment.Body, comment.OccurredAt);
     }
 

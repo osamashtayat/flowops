@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace FlowOps.Infrastructure.Realtime;
 
 /// <summary>The SignalR adapter for <see cref="IRealtimePublisher"/>. Event names and payload shapes are the contract (§9).</summary>
-public sealed class SignalRRealtimePublisher(IHubContext<NotificationsHub> hub) : IRealtimePublisher
+public sealed class SignalRRealtimePublisher(IHubContext<NotificationsHub> hub, HubConnectionRegistry connections) : IRealtimePublisher
 {
     public const string NotificationCreated = "notificationCreated";
     public const string RequestChanged = "requestChanged";
@@ -18,6 +18,12 @@ public sealed class SignalRRealtimePublisher(IHubContext<NotificationsHub> hub) 
 
     public Task TasksChangedAsync(IReadOnlyCollection<Guid> recipients, CancellationToken ct) =>
         recipients.Count == 0 ? Task.CompletedTask : hub.Clients.Users(Ids(recipients)).SendAsync(TasksChanged, new TasksChangedPayload(), ct);
+
+    public Task DisconnectAsync(Guid userId, CancellationToken ct)
+    {
+        connections.AbortAll(userId);
+        return Task.CompletedTask;
+    }
 
     private static string[] Ids(IEnumerable<Guid> users) => [.. users.Distinct().Select(u => u.ToString())];
 

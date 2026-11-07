@@ -120,6 +120,8 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         builder.UseSetting("FlowOps:LoginRateLimit:PerIpPermitLimit", "100000");
         builder.UseSetting("FlowOps:LoginRateLimit:PerEmailPermitLimit", "100000");
         builder.UseSetting("FlowOps:CommentRateLimit:PermitLimit", "100000"); // CommentRateLimitTests sets a real limit
+        // Cookies here expire by the fake clock but SignalR checks expiry by real time; see RealtimeHubOptions.
+        builder.UseSetting("FlowOps:Realtime:CloseOnAuthenticationExpiration", "false");
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<TimeProvider>();

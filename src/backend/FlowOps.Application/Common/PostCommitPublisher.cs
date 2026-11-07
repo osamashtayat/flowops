@@ -8,46 +8,53 @@ namespace FlowOps.Application.Common;
 
 /// <summary>
 /// What use-case services call after <c>SaveChangesAsync</c> succeeded (ADR-0009): works out who gets which hint and
-/// sends it through <see cref="IRealtimePublisher"/>. The data is already committed, so a failure here (hub, network,
+/// sends it through <see cref="IRealtimePublisher"/>, without the request's cancellation token. The data is already committed, so a failure here (hub, network,
 /// the recipient query) is logged and never turns a successful request into an error; clients refetch on reconnect.
 /// </summary>
 public sealed partial class PostCommitPublisher(
     IRealtimePublisher publisher, IAppDbContext db, AccessRules access, ILogger<PostCommitPublisher> logger)
 {
     /// <summary>One <c>notificationCreated</c> per saved notification, to its recipient.</summary>
-    public Task NotificationsAsync(IEnumerable<Notification> notifications, CancellationToken ct) =>
+    public Task NotificationsAsync(IEnumerable<Notification> notifications) =>
         SafelyAsync("notificationCreated", async () =>
         {
             foreach (var n in notifications)
             {
-                await publisher.NotificationCreatedAsync(n.RecipientId, n.Id, n.RequestId, ct);
+                await publisher.NotificationCreatedAsync(n.RecipientId, n.Id, n.RequestId, Ct);
             }
         });
 
     /// <summary><c>requestChanged</c> to everyone who can currently see the request (<see cref="AccessRules.ViewerIds"/>).</summary>
-    public Task RequestChangedAsync(Guid requestId, CancellationToken ct) =>
+    public Task RequestChangedAsync(Guid requestId) =>
         SafelyAsync("requestChanged", async () =>
         {
-            var viewers = await access.ViewerIds(requestId).ToListAsync(ct);
-            await publisher.RequestChangedAsync(viewers, requestId, ct);
+            var viewers = await access.ViewerIds(requestId).ToListAsync(Ct);
+            await publisher.RequestChangedAsync(viewers, requestId, Ct);
         });
 
     /// <summary>
     /// <c>tasksChanged</c> to <paramref name="actors"/> (e.g. the decider, whose Done list changed) and to everyone who may
     /// decide any of <paramref name="tasks"/> (their Open list gained or lost it).
     /// </summary>
-    public Task TasksChangedAsync(Request request, IEnumerable<WorkTask> tasks, IEnumerable<Guid> actors, CancellationToken ct) =>
+    public Task TasksChangedAsync(Request request, IEnumerable<WorkTask> tasks, IEnumerable<Guid> actors) =>
         SafelyAsync("tasksChanged", async () =>
         {
             var recipients = actors.ToHashSet();
             foreach (var task in tasks)
             {
                 recipients.UnionWith(await TaskEligibility
-                    .EligibleDeciders(db, task.AssigneeUserId, task.AssigneeRole, request.RequesterId).ToListAsync(ct));
+                    .EligibleDeciders(db, task.AssigneeUserId, task.AssigneeRole, request.RequesterId).ToListAsync(Ct));
             }
 
-            await publisher.TasksChangedAsync(recipients, ct);
+            await publisher.TasksChangedAsync(recipients, Ct);
         });
+
+    /// <summary>Closes <paramref name="userId"/>'s hub connections after their sessions were revoked.</summary>
+    public Task SessionsEndedAsync(Guid userId) =>
+        SafelyAsync("disconnect", async () => await publisher.DisconnectAsync(userId, Ct));
+
+    // The commit has happened: a caller who hangs up now must not cancel other users' hints.
+    private static CancellationToken Ct => CancellationToken.None;
 
     private async Task SafelyAsync(string eventName, Func<Task> publish)
     {

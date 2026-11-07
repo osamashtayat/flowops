@@ -60,4 +60,10 @@ public sealed class RecordingRealtimePublisher(RealtimeRecorder recorder, Signal
         recorder.Record(new RealtimeEvent("tasksChanged", [.. recipients], null, null));
         return inner.TasksChangedAsync(recipients, ct);
     }
+
+    public Task DisconnectAsync(Guid userId, CancellationToken ct)
+    {
+        recorder.Record(new RealtimeEvent("disconnect", [userId], null, null));
+        return inner.DisconnectAsync(userId, ct);
+    }
 }

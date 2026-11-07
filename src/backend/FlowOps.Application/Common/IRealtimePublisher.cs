@@ -15,4 +15,10 @@ public interface IRealtimePublisher
 
     /// <summary><c>tasksChanged {}</c> to each of <paramref name="recipients"/>.</summary>
     Task TasksChangedAsync(IReadOnlyCollection<Guid> recipients, CancellationToken ct);
+
+    /// <summary>
+    /// Closes every open hub connection of <paramref name="userId"/>. Called when their sessions end (logout, password
+    /// change or reset, deactivation): HTTP sessions die at the next re-validation, but an open connection would not.
+    /// </summary>
+    Task DisconnectAsync(Guid userId, CancellationToken ct);
 }

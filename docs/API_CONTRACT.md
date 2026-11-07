@@ -344,7 +344,8 @@ Payloads are **hints**: never render data from them. Sent only after the databas
 `requestChanged` goes to everyone who can currently see the request **and is connected**; `tasksChanged` goes to the decider, the next assignee(s), and members of affected role queues.
 
 As built (BE-14):
-- **Hub.** `/hubs/notifications` needs a session (no session → 401; `mustChangePassword` → 403). Clients are addressed by user id (SignalR's user = the `NameIdentifier` claim), so a user's tabs all receive their events and nobody else's. Antiforgery doesn't apply: the hub has no client-callable methods, and the cookie is SameSite=Strict.
+- **Hub.** `/hubs/notifications` needs a session (no session → 401; `mustChangePassword` → 403). A browser request from another origin (its `Origin` host differs from the API's host) → 403 `auth.forbidden`. Clients are addressed by user id (SignalR's user = the `NameIdentifier` claim), so a user's tabs all receive their events and nobody else's. Antiforgery doesn't apply: the hub has no client-callable methods (see AUTHORIZATION.md §1.3). WebSockets, server-sent events and long polling are all enabled.
+- **Connection lifetime.** Logout, a password change or reset, and deactivation close all of that user's open connections at once (their HTTP sessions end at the next re-validation anyway). A connection also closes when its session cookie expires. The client reconnects; a revoked session then gets 401.
 - **Who gets what.**
 
   | Change | `notificationCreated` | `requestChanged` | `tasksChanged` |
@@ -354,7 +355,7 @@ As built (BE-14):
   | Comment | each new notification's recipient | everyone who can see it | — |
   | Role change (propose, approve, reject) | each new notification's recipient (`requestId: null`) | — | — |
 - **Only after commit.** If the save fails, nothing is published, and a rejected command (4xx) publishes nothing. If publishing fails after the commit, the request still succeeds and a warning is logged (`PostCommitPublisher`); clients catch up when they refetch.
-- **Inactive users** receive nothing new. A deactivated user's open connection isn't closed at once, but it only ever carried id hints.
+- **Inactive users** receive no `requestChanged`/`tasksChanged`, and deactivation closes their connections.
 
 ---
 

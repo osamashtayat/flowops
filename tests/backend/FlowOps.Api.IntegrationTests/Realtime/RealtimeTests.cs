@@ -146,20 +146,100 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         Factory.Logs.Entries.Count(e => e.Level == LogLevel.Warning && e.Mentions("could not be published")).ShouldBe(3);
     }
 
-    [Fact]
-    public async Task Hub_WithACookieSession_ReceivesOnlyTheCallersEvents()
+    [Theory]
+    [InlineData(HttpTransportType.WebSockets)]
+    [InlineData(HttpTransportType.LongPolling)]
+    public async Task Hub_WithACookieSession_ReceivesOnlyTheCallersEvents(HttpTransportType transport)
     {
-        await using var karimHub = await ConnectAsync(_karim);
-        await using var omarHub = await ConnectAsync(_omar);
+        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        await using var karimHub = await ConnectAsync(_karim, transport);
+        await using var omarHub = await ConnectAsync(_omar, transport);
+        await using var adaHub = await ConnectAsync(ada, transport);
         var karimEvents = Listen(karimHub.Connection);
-        var omarEvents = Listen(omarHub.Connection);
+        var outsiders = new[] { Listen(omarHub.Connection), Listen(adaHub.Connection) };
 
         var requestId = await SubmitPurchaseAsync(_lina);
 
-        var notification = await karimEvents.ReadAsync(Ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), Ct);
-        notification.GetProperty("notificationId").GetGuid().ShouldBe(await SingleNotificationAsync(_karim.Id));
-        notification.GetProperty("requestId").GetGuid().ShouldBe(requestId);
-        omarEvents.TryRead(out _).ShouldBeFalse();
+        var received = new List<(string Name, JsonElement Payload)>();
+        while (received.Count < 3)
+        {
+            received.Add(await karimEvents.ReadAsync(Ct).AsTask().WaitAsync(TimeSpan.FromSeconds(10), Ct));
+        }
+
+        received.Select(e => e.Name).ShouldBe(["notificationCreated", "requestChanged", "tasksChanged"]);
+        received[0].Payload.GetProperty("notificationId").GetGuid().ShouldBe(await SingleNotificationAsync(_karim.Id));
+        received[0].Payload.GetProperty("requestId").GetGuid().ShouldBe(requestId);
+        received[1].Payload.GetProperty("requestId").GetGuid().ShouldBe(requestId);
+        received[2].Payload.EnumerateObject().ShouldBeEmpty();
+        // Sent in the same publish calls, so had they been addressed to the outsiders they would have arrived by now.
+        outsiders.Count(o => o.TryRead(out var _)).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("logout")]
+    [InlineData("password-change")]
+    [InlineData("password-reset")]
+    [InlineData("deactivation")]
+    public async Task EndingTheUsersSessions_ClosesTheirOpenHubConnection(string how)
+    {
+        var admin = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        await using var karimHub = await ConnectAsync(_karim, HttpTransportType.WebSockets);
+        var closed = new TaskCompletionSource();
+        karimHub.Connection.Closed += _ =>
+        {
+            closed.TrySetResult();
+            return Task.CompletedTask;
+        };
+
+        using var response = how switch
+        {
+            "logout" => await (await Factory.ClientFor(_karim)).PostAsync(new Uri("/api/auth/logout", UriKind.Relative), null, Ct),
+            "password-change" => await (await Factory.ClientFor(_karim)).PostAsJsonAsync(new Uri("/api/auth/change-password", UriKind.Relative),
+                new { currentPassword = _karim.Password, newPassword = "Another-Pa55word-9!" }, Ct),
+            "password-reset" => await (await Factory.ClientFor(admin)).PostAsJsonAsync(new Uri($"/api/users/{_karim.Id}/reset-password", UriKind.Relative),
+                new { newPassword = "Reset-Pa55word-9!" }, Ct),
+            _ => await (await Factory.ClientFor(admin)).PutAsJsonAsync(new Uri($"/api/users/{_karim.Id}", UriKind.Relative),
+                new { displayName = "Karim", departmentId = (Guid?)null, managerId = (Guid?)null, isActive = false }, Ct),
+        };
+
+        response.IsSuccessStatusCode.ShouldBeTrue(await response.Content.ReadAsStringAsync(Ct));
+        await closed.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        karimHub.Connection.State.ShouldBe(HubConnectionState.Disconnected);
+    }
+
+    [Fact]
+    public async Task Hub_FromAnotherOrigin_Returns403()
+    {
+        using var client = await Factory.ClientFor(_karim);
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/hubs/notifications/negotiate?negotiateVersion=1", UriKind.Relative));
+        request.Headers.Add("Origin", "https://wiki.example.com");
+
+        using var response = await client.SendAsync(request, Ct);
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
+    }
+
+    [Fact]
+    public async Task Hub_FromTheSameOrigin_Negotiates()
+    {
+        using var client = await Factory.ClientFor(_karim);
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/hubs/notifications/negotiate?negotiateVersion=1", UriKind.Relative));
+        request.Headers.Add("Origin", "https://localhost");
+
+        using var response = await client.SendAsync(request, Ct);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Hub_WhileAPasswordChangeIsRequired_Returns403()
+    {
+        var nour = await Given.User("nour").MustChangePassword().CreateAsync(Factory);
+        using var client = await Factory.ClientFor(nour);
+
+        using var response = await client.PostAsync(new Uri("/hubs/notifications/negotiate?negotiateVersion=1", UriKind.Relative), null, Ct);
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthPasswordChangeRequired);
     }
 
     [Fact]
@@ -217,8 +297,8 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         return await scope.ServiceProvider.GetRequiredService<AppDbContext>().Notifications.CountAsync(Ct);
     }
 
-    /// <summary>A real hub connection over long polling, authenticated by the session cookie from a real login.</summary>
-    private async Task<HubSession> ConnectAsync(TestUser user)
+    /// <summary>A real hub connection over <paramref name="transport"/>, authenticated by the session cookie from a real login.</summary>
+    private async Task<HubSession> ConnectAsync(TestUser user, HttpTransportType transport)
     {
         using var client = Factory.CreateHttpsClient();
         using var login = await FlowOpsApiFactory.LoginAsync(client, user.Email, user.Password);
@@ -228,18 +308,28 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             .WithUrl(new Uri(Factory.Server.BaseAddress, "hubs/notifications"), options =>
             {
                 options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
-                options.Transports = HttpTransportType.LongPolling;
+                options.Transports = transport;
                 options.Headers["Cookie"] = cookie;
+                options.WebSocketFactory = async (context, ct) =>
+                {
+                    var client = Factory.Server.CreateWebSocketClient();
+                    client.ConfigureRequest = request => request.Headers.Cookie = cookie;
+                    return await client.ConnectAsync(context.Uri, ct);
+                };
             })
             .Build();
         await connection.StartAsync(Ct);
         return new HubSession(connection);
     }
 
-    private static ChannelReader<JsonElement> Listen(HubConnection connection)
+    private static ChannelReader<(string Name, JsonElement Payload)> Listen(HubConnection connection)
     {
-        var channel = Channel.CreateUnbounded<JsonElement>();
-        connection.On<JsonElement>("notificationCreated", payload => channel.Writer.TryWrite(payload));
+        var channel = Channel.CreateUnbounded<(string, JsonElement)>();
+        foreach (var name in new[] { "notificationCreated", "requestChanged", "tasksChanged" })
+        {
+            connection.On<JsonElement>(name, payload => channel.Writer.TryWrite((name, payload)));
+        }
+
         return channel.Reader;
     }
 
