@@ -271,6 +271,132 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             .ShouldBe(["fiona", "karim"]);
     }
 
+    [Fact]
+    public async Task RoleMemberDeactivatedWithASessionStillOpen_Returns404()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        await DecideAsync("karim", await OpenItemAsync("karim", requestId), "approve");
+        var item = await OpenItemAsync("fiona", requestId);
+        using var fiona = await ClientAsync("fiona");
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<FlowOps.Infrastructure.Identity.ApplicationUser>>();
+            var user = await users.FindByIdAsync(_users["fiona"].Id.ToString());
+            user!.IsActive = false;
+            (await users.UpdateAsync(user)).Succeeded.ShouldBeTrue();
+        }
+
+        // Within the one-minute claim re-validation the session still works; the decision reads the database.
+        using var response = await fiona.PostAsJsonAsync(TaskUri(item, "approve"), new { version = Version(item) }, Ct);
+
+        await ProblemAssert.HasCode(response, 404, ErrorCodes.NotFound);
+        await ShouldBeAtAsync(requestId, "InReview", "FinanceApproval");
+    }
+
+    [Fact]
+    public async Task NewManager_CannotDecideTheOldManagersTask_Returns403AndItStaysWithTheOldManager()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        var item = await OpenItemAsync("karim", requestId);
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<FlowOps.Infrastructure.Identity.ApplicationUser>>();
+            var lina = await users.FindByIdAsync(_users["lina"].Id.ToString());
+            lina!.ManagerId = _users["omar"].Id;
+            (await users.UpdateAsync(lina)).Succeeded.ShouldBeTrue();
+        }
+
+        using var response = await DecideAsync("omar", item, "approve");
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.TaskNotEligible);
+        (await OpenItemAsync("karim", requestId)).GetProperty("taskId").GetGuid().ShouldBe(item.GetProperty("taskId").GetGuid());
+    }
+
+    [Fact]
+    public async Task Inbox_ShowsOnlyTheCallersQueuesAndDecisions()
+    {
+        await SeedOrgAsync();
+        var purchase = await SubmitPurchaseAsync("lina");
+        await SubmitLeaveAsync("omar");
+        await DecideAsync("karim", await OpenItemAsync("karim", purchase), "approve");
+
+        (await OpenItemsAsync("pete")).ShouldBeEmpty();
+        (await OpenItemsAsync("hana")).ShouldBeEmpty();
+        (await InboxAsync("fiona", "Done")).ShouldBeEmpty();
+        (await OpenItemsAsync("fiona")).Select(i => i.GetProperty("request").GetProperty("id").GetGuid()).ShouldBe([purchase]);
+    }
+
+    [Fact]
+    public async Task Decide_OnAClosedRequest_Returns409RequestClosed()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        var item = await OpenItemAsync("karim", requestId);
+        (await DecideAsync("karim", item, "reject", reason: "No")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        using var response = await DecideAsync("karim", item, "approve");
+
+        await ProblemAssert.HasCode(response, 409, ErrorCodes.RequestClosed);
+    }
+
+    [Fact]
+    public async Task RejectLeave_NotifiesOnlyTheRequesterWithoutTheLeaveReason()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitLeaveAsync("lina");
+
+        await DecideAsync("karim", await OpenItemAsync("karim", requestId), "reject", reason: "Team is short that week");
+
+        var rejected = (await NotificationsAsync(requestId)).Where(n => n.Type == NotificationType.RequestRejected).ShouldHaveSingleItem();
+        Name(rejected.RecipientId).ShouldBe("lina");
+        rejected.Body.ShouldContain("Team is short that week");
+        rejected.Body.ShouldNotContain(LeaveReason);
+        Factory.Logs.Entries.ShouldNotContain(e => e.Mentions(LeaveReason) || e.Mentions("Team is short that week"));
+    }
+
+    [Theory]
+    [InlineData("""{"comment":null}""")]
+    [InlineData("""{"version":"123456789012345678901"}""")]
+    public async Task Approve_WithoutAUsableVersion_Returns400(string json)
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        var item = await OpenItemAsync("karim", requestId);
+        using var karim = await ClientAsync("karim");
+        using var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+        using var response = await karim.PostAsync(TaskUri(item, "approve"), content, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
+    public async Task Approve_WithATooLongComment_Returns400()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        var item = await OpenItemAsync("karim", requestId);
+        using var karim = await ClientAsync("karim");
+
+        using var response = await karim.PostAsJsonAsync(TaskUri(item, "approve"),
+            new { version = Version(item), comment = new string('x', RequestLimits.CommentMaxLength + 1) }, Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
+    [Fact]
+    public async Task Inbox_UnknownStatus_Returns400()
+    {
+        await SeedOrgAsync();
+        using var karim = await ClientAsync("karim");
+
+        using var response = await karim.GetAsync(new Uri("/api/tasks?status=Pending", UriKind.Relative), Ct);
+
+        await ProblemAssert.HasCode(response, 400, ErrorCodes.Validation);
+    }
+
     // ---- Concurrency (§3.4) ----------------------------------------------------------------------------------------
 
     [Fact]
