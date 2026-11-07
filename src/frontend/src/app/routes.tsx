@@ -1,5 +1,4 @@
 import type { RouteObject } from 'react-router'
-import { PlaceholderPage } from '@/app/PlaceholderPage'
 import { RootLayout } from '@/app/RootLayout'
 import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
@@ -15,6 +14,7 @@ import { NewPurchasePage } from '@/features/requests/pages/NewPurchasePage'
 import { NewRequestPage } from '@/features/requests/pages/NewRequestPage'
 import { RequestDetailsPage } from '@/features/requests/pages/RequestDetailsPage'
 import { TeamRequestsPage } from '@/features/requests/pages/TeamRequestsPage'
+import { NotificationsPage } from '@/features/notifications/pages/NotificationsPage'
 import { InboxPage } from '@/features/tasks/pages/InboxPage'
 import { RequireAuth } from '@/features/session/components/RequireAuth'
 import { RequireCapability } from '@/features/session/components/RequireCapability'
@@ -41,7 +41,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <DashboardPage /> },
               { path: '/requests', element: <MyRequestsPage /> },
-              { path: '/notifications', element: <PlaceholderPage title="Notifications" task="FE-11" /> },
+              { path: '/notifications', element: <NotificationsPage /> },
               { path: '/requests/:id', element: <RequestDetailsPage /> },
               {
                 element: <RequireCapability capability="requests.submit" />,
