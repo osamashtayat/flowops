@@ -181,6 +181,66 @@ public sealed class DashboardTests(FlowOpsApiFactory factory) : DatabaseTest(fac
         await ProblemAssert.HasCode(response, 401, ErrorCodes.AuthUnauthenticated);
     }
 
+    [Fact]
+    public async Task DeactivatedCaller_WithASessionStillOpen_SeesNothing()
+    {
+        await SubmitPurchaseAsync(_lina, "Laptop");
+        var bea = await Given.User("bea").WithRoles(Roles.Administrator, Roles.Employee).CreateAsync(Factory);
+        using var linaClient = await Factory.ClientFor(_lina);
+        using var beaClient = await Factory.ClientFor(bea);
+        await DeactivateAsync(_lina);
+        await DeactivateAsync(bea);
+
+        foreach (var client in new[] { linaClient, beaClient })
+        {
+            var dashboard = await JsonBody.ReadAsync(await client.GetAsync(Dashboard, Ct));
+            dashboard.GetProperty("myRequests").GetProperty("inReview").GetInt32().ShouldBe(0);
+            dashboard.GetProperty("myRequests").GetProperty("recent").GetArrayLength().ShouldBe(0);
+            dashboard.GetProperty("recentActivity").GetArrayLength().ShouldBe(0);
+            dashboard.GetProperty("admin").ValueKind.ShouldBe(JsonValueKind.Null);
+        }
+    }
+
+    [Fact]
+    public async Task Officer_DoesNotCountTheirOwnRequestInTheQueue()
+    {
+        var own = await SubmitPurchaseAsync(_finny, "Laptop");
+        await DecideAsync(_karim, own, "approve");
+
+        (await DashboardAsync(_finny)).GetProperty("myTasks").GetProperty("open").GetInt32().ShouldBe(0);
+        (await DashboardAsync(_fiona)).GetProperty("myTasks").GetProperty("open").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AdminWhoIsAlsoAnEmployee_SeesOnlyTheirOwnRequestData()
+    {
+        var bea = await Given.User("bea").WithRoles(Roles.Administrator, Roles.Employee).CreateAsync(Factory);
+        await SubmitPurchaseAsync(_lina, "Laptop");
+
+        var dashboard = await DashboardAsync(bea);
+
+        dashboard.GetProperty("myRequests").GetProperty("inReview").GetInt32().ShouldBe(0);
+        dashboard.GetProperty("recentActivity").GetArrayLength().ShouldBe(0);
+        dashboard.GetProperty("admin").GetProperty("activeUsers").GetInt32().ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task RecentActivity_NeverContainsTheLeaveReason()
+    {
+        using (var lina = await Factory.ClientFor(_lina))
+        {
+            (await lina.PostAsJsonAsync(new Uri("/api/requests/leave", UriKind.Relative),
+                new { startDate = "2026-03-10", endDate = "2026-03-12", leaveType = "Annual", reason = "Hospital appointment" }, Ct))
+                .StatusCode.ShouldBe(HttpStatusCode.Created);
+        }
+
+        using var karim = await Factory.ClientFor(_karim);
+        var raw = await (await karim.GetAsync(Dashboard, Ct)).Content.ReadAsStringAsync(Ct);
+
+        raw.ShouldContain("TaskAssigned");
+        raw.ShouldNotContain("Hospital appointment");
+    }
+
     // ---- Stalled tasks -----------------------------------------------------------------------------------------------
 
     [Fact]
@@ -253,6 +313,7 @@ public sealed class DashboardTests(FlowOpsApiFactory factory) : DatabaseTest(fac
     [Theory]
     [InlineData("karim")]
     [InlineData("fiona")]
+    [InlineData("lina")]
     public async Task Stalled_ForNonAdmins_Returns403(string user)
     {
         using var client = await Factory.ClientFor(User(user));

@@ -255,6 +255,7 @@ As built (BE-15):
 - **myTasks** (`tasks.view`): `open` and `oldestOpenCreatedAt` cover exactly the tasks in the caller's Open inbox (§5). `decidedLast7Days` counts tasks the caller decided in the last 7 × 24 hours.
 - **recentActivity**: the 10 newest activity entries on requests the caller can see (R1–R3), newest first, comments included. It is the same data `GET /requests/{id}/activity` returns, so administrators get `[]`.
 - **admin** (`admin.manage`): `activeUsers` counts active accounts, `departments` counts active departments, and `stalledTasks` counts the same tasks as `GET /admin/stalled-tasks`.
+- **Inactive caller** (deactivated, session not yet re-validated): an empty dashboard (zeros, `[]`, `null` sections).
 - **Cost:** four SQL round trips (access context, one statement with every count, recent requests, recent activity). A test checks this.
 - **Freshness:** the client refetches the dashboard on every realtime event (§9). Admin numbers have no event of their own and refresh on refetch.
 

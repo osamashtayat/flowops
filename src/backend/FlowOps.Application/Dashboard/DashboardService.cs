@@ -21,6 +21,12 @@ public sealed class DashboardService(IAppDbContext db, AccessRules access, TimeP
     public async Task<DashboardDto> GetAsync(CancellationToken ct)
     {
         var me = await access.ForCurrentUserAsync(ct);
+        if (!me.IsActive)
+        {
+            // Deactivated with a session that hasn't re-validated yet: like AccessRules, an inactive user sees nothing.
+            return new DashboardDto(new MyRequestsSummaryDto(0, 0, 0, 0, []), null, [], null);
+        }
+
         var counts = await CountsAsync(me, ct);
         var capabilities = CapabilityRules.For(me.Roles.ToList(), counts.IsManager);
 
@@ -40,12 +46,13 @@ public sealed class DashboardService(IAppDbContext db, AccessRules access, TimeP
     }
 
     /// <summary>
-    /// Every number in one statement (scalar subqueries over the caller's row). Admin numbers are computed for everyone
-    /// but only returned to administrators; they are org-wide totals, cheap at Phase 1 size.
+    /// Every number in one statement (scalar subqueries over the caller's row). The org-wide admin numbers are only
+    /// evaluated for administrators (a SQL <c>CASE</c> on a parameter), so other users never run the stalled scan.
     /// </summary>
     private async Task<Counts> CountsAsync(AccessContext me, CancellationToken ct)
     {
         var userId = me.UserId;
+        var isAdmin = CapabilityRules.CanAdminister(me.Roles.ToList());
         var since = time.GetUtcNow() - DecidedWindow;
         var own = db.Requests.Where(r => r.RequesterId == userId);
         var decidable = TaskEligibility.DecidableBy(db.Requests, me).Select(x => x.Task);
@@ -62,9 +69,9 @@ public sealed class DashboardService(IAppDbContext db, AccessRules access, TimeP
                 OpenTasks = decidable.Count(),
                 OldestOpenTask = decidable.Min(t => (DateTimeOffset?)t.CreatedAt),
                 DecidedLast7Days = decided.Count(),
-                ActiveUsers = db.Users.Count(x => x.IsActive),
-                Departments = db.Departments.Count(d => d.IsActive),
-                StalledTasks = stalled.Count(),
+                ActiveUsers = isAdmin ? db.Users.Count(x => x.IsActive) : 0,
+                Departments = isAdmin ? db.Departments.Count(d => d.IsActive) : 0,
+                StalledTasks = isAdmin ? stalled.Count() : 0,
             })
             .SingleAsync(ct);
     }
