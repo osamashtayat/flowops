@@ -40,7 +40,7 @@ Implementation (BE-05): Identity owns the scheme (`Infrastructure/Identity/Ident
 SameSite=Strict blocks cross-site cookie sending in modern browsers; ASP.NET Core antiforgery is added as defence in depth:
 - After login and on `GET /api/auth/me`, the API issues a readable `XSRF-TOKEN` cookie (antiforgery request token).
 - The frontend API client copies it into the `X-XSRF-TOKEN` header on every non-GET request.
-- A global filter validates antiforgery on all unsafe methods except `POST /api/auth/login` (no session yet).
+- A global filter validates antiforgery on all unsafe methods except `POST /api/auth/login` (no session yet). The SignalR hub (`/hubs/notifications`, BE-14) is outside MVC: it needs the session cookie but takes no antiforgery token, because clients can't invoke anything on it.
 - The antiforgery *cookie token* lives in `__Host-flowops-af` (HttpOnly, Secure, Strict); `XSRF-TOKEN` (Secure, Strict, readable) carries the request token, bound to the signed-in user. Missing/invalid header → **403 `auth.forbidden`** (checked after authentication, so an anonymous call still gets 401).
 
 ### 1.4 CORS

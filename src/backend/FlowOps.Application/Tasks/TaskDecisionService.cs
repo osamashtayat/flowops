@@ -3,6 +3,7 @@ using FlowOps.Application.Common;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Errors;
+using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -14,7 +15,8 @@ namespace FlowOps.Application.Tasks;
 /// (CODE_STANDARDS.md §2.4). Order: visibility (404) → eligibility (403) → version (409) → domain (409) → notifications →
 /// one save. A lost race surfaces as 409 <c>concurrency.conflict</c> from <c>xmin</c>; it is never retried.
 /// </summary>
-public sealed partial class TaskDecisionService(IAppDbContext db, AccessRules access, TimeProvider time, ILogger<TaskDecisionService> logger)
+public sealed partial class TaskDecisionService(
+    IAppDbContext db, AccessRules access, TimeProvider time, PostCommitPublisher realtime, ILogger<TaskDecisionService> logger)
 {
     public Task ApproveAsync(Guid taskId, ApproveTaskRequest body, CancellationToken ct)
     {
@@ -52,10 +54,14 @@ public sealed partial class TaskDecisionService(IAppDbContext db, AccessRules ac
         var now = time.GetUtcNow();
         var result = request.DecideTask(taskId, me.UserId, decision, step => ResolveAssignee(step, requester), now);
 
-        await AddNotificationsAsync(request, result, requester, me.UserId, now, ct);
+        var notifications = await AddNotificationsAsync(request, result, requester, me.UserId, now, ct);
         await SaveAsync(ct);
         LogDecided(logger, me.UserId, task.Id, request.Id, result.DecidedTask.Outcome);
-        // Realtime "task decided" push lands with IRealtimePublisher (BE-14); clients refetch meanwhile.
+
+        // After commit only (ADR-0009): the decided task left its deciders' inboxes, the next one entered others'.
+        await realtime.NotificationsAsync(notifications, ct);
+        await realtime.RequestChangedAsync(request.Id, ct);
+        await realtime.TasksChangedAsync(request, result.NextTask is { } next ? [task, next] : [task], [me.UserId], ct);
     }
 
     /// <summary>Phase 1 only assigns the first step to the manager, so a manager lookup here is not expected to fail.</summary>
@@ -63,17 +69,20 @@ public sealed partial class TaskDecisionService(IAppDbContext db, AccessRules ac
         TaskAssigneeResolver.Resolve(step, step.Assignee.IsRequesterManager ? TaskAssigneeResolver.RequireManager(requester) : Guid.Empty);
 
     /// <summary>WORKFLOWS.md §1.4: whoever may decide the next task, and the requester about the outcome.</summary>
-    private async Task AddNotificationsAsync(
+    private async Task<List<Notification>> AddNotificationsAsync(
         Request request, DecisionResult result, TaskAssigneeResolver.Requester requester, Guid deciderId, DateTimeOffset now, CancellationToken ct)
     {
+        var notifications = new List<Notification>();
         if (result.NextTask is { } next)
         {
             var deciders = await TaskEligibility.EligibleDeciders(db, next.AssigneeUserId, next.AssigneeRole, request.RequesterId).ToListAsync(ct);
-            db.Notifications.AddRange(NotificationFactory.TaskAssigned(request, next, requester.DisplayName, deciders, now));
+            notifications.AddRange(NotificationFactory.TaskAssigned(request, next, requester.DisplayName, deciders, now));
         }
 
         var deciderName = await db.Users.Where(u => u.Id == deciderId).Select(u => u.DisplayName).SingleAsync(ct);
-        db.Notifications.Add(NotificationFactory.DecisionOutcome(request, result, deciderName, now));
+        notifications.Add(NotificationFactory.DecisionOutcome(request, result, deciderName, now));
+        db.Notifications.AddRange(notifications);
+        return notifications;
     }
 
     private async Task SaveAsync(CancellationToken ct)

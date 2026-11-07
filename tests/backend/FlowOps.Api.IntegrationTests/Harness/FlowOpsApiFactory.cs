@@ -1,5 +1,7 @@
 using System.Net.Http.Json;
+using FlowOps.Application.Common;
 using FlowOps.Infrastructure.Persistence;
+using FlowOps.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -32,6 +34,12 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     /// <summary>Everything the app logged since the last <see cref="ResetAsync"/>.</summary>
     public LogSink Logs { get; } = new();
+
+    /// <summary>Every realtime hint the app published since the last <see cref="ResetAsync"/> (forwarded to SignalR too).</summary>
+    public RealtimeRecorder Realtime { get; } = new();
+
+    /// <summary>Lets a test make the next database save fail.</summary>
+    public SaveFailureInterceptor SaveFailures { get; } = new();
 
     public string ConnectionString => _database.GetConnectionString();
 
@@ -68,6 +76,8 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
         Clock.Reset();
         Logs.Clear();
+        Realtime.Reset();
+        SaveFailures.Reset();
     }
 
     /// <summary>An HTTPS client (the auth cookie is <c>__Host-</c>/Secure) that never follows redirects.</summary>
@@ -115,6 +125,11 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.AddSingleton<ILoggerProvider>(Logs);
+            services.RemoveAll<IRealtimePublisher>();
+            services.AddSingleton<SignalRRealtimePublisher>();
+            services.AddSingleton(Realtime);
+            services.AddSingleton<IRealtimePublisher, RecordingRealtimePublisher>();
+            services.ConfigureDbContext<AppDbContext>(options => options.AddInterceptors(SaveFailures));
         });
     }
 

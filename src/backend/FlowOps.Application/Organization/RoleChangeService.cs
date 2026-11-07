@@ -13,7 +13,7 @@ namespace FlowOps.Application.Organization;
 /// </summary>
 public sealed partial class RoleChangeService(
     IAppDbContext db, IIdentityAdmin identity, RoleChangeReader reader, ICurrentUser currentUser, TimeProvider time,
-    ILogger<RoleChangeService> logger)
+    PostCommitPublisher realtime, ILogger<RoleChangeService> logger)
 {
     public Task<PagedResult<RoleChangeDto>> ListAsync(RoleChangeListQuery query, CancellationToken ct) => reader.ListAsync(query, ct);
 
@@ -43,9 +43,11 @@ public sealed partial class RoleChangeService(
 
         await RoleAssignmentRules.EnsureAllowedAsync(db, change.UserId, currentRoles, change.ProposedRoles, ct);
         await identity.StageRolesAsync(change.UserId, change.ProposedRoles, ct);
-        db.Notifications.Add(NotificationFactory.RoleChangeDecided(change, await DisplayNameAsync(currentUser.Id, ct), now));
+        var notification = NotificationFactory.RoleChangeDecided(change, await DisplayNameAsync(currentUser.Id, ct), now);
+        db.Notifications.Add(notification);
         await SaveAsync(ct);
         LogApproved(logger, currentUser.Id, change.Id, change.UserId, change.ProposedRoles);
+        await realtime.NotificationsAsync([notification], ct);
         return await reader.GetAsync(id, ct);
     }
 
@@ -55,9 +57,11 @@ public sealed partial class RoleChangeService(
         var change = await LoadForDecisionAsync(id, body.Version, ct);
         var now = time.GetUtcNow();
         change.Reject(currentUser.Id, body.Reason, now);
-        db.Notifications.Add(NotificationFactory.RoleChangeDecided(change, await DisplayNameAsync(currentUser.Id, ct), now));
+        var notification = NotificationFactory.RoleChangeDecided(change, await DisplayNameAsync(currentUser.Id, ct), now);
+        db.Notifications.Add(notification);
         await SaveAsync(ct);
         LogRejected(logger, currentUser.Id, change.Id, change.UserId);
+        await realtime.NotificationsAsync([notification], ct);
         return await reader.GetAsync(id, ct);
     }
 

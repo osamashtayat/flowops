@@ -14,7 +14,7 @@ namespace FlowOps.Application.Organization;
 /// </summary>
 public sealed partial class UserAdministrationService(
     IAppDbContext db, IIdentityAdmin identity, RoleChangeReader roleChanges, ICurrentUser currentUser, TimeProvider time,
-    ILogger<UserAdministrationService> logger)
+    PostCommitPublisher realtime, ILogger<UserAdministrationService> logger)
 {
     public async Task<PagedResult<UserDto>> ListAsync(UserListQuery query, CancellationToken ct)
     {
@@ -174,9 +174,11 @@ public sealed partial class UserAdministrationService(
         var change = RoleChange.Propose(currentUser.Id, currentRoles, roles, now);
         db.RoleChanges.Add(change);
         var proposerName = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.DisplayName).SingleAsync(ct);
-        db.Notifications.AddRange(NotificationFactory.RoleChangePending(change, proposerName, reviewers, now));
+        var notifications = NotificationFactory.RoleChangePending(change, proposerName, reviewers, now).ToList();
+        db.Notifications.AddRange(notifications);
         await SaveAsync(ct);
         LogRoleChangeProposed(logger, currentUser.Id, change.Id, roles);
+        await realtime.NotificationsAsync(notifications, ct);
         return await roleChanges.GetAsync(change.Id, ct);
     }
 

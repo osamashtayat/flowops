@@ -9,7 +9,7 @@ namespace FlowOps.Application.Requests;
 /// <c>POST /api/requests/{id}/comments</c> (API_CONTRACT.md §4). Anyone who can see the request may comment, also once it
 /// is closed (AUTHORIZATION.md §3); others get 404. Notifies the requester and the task participants except the author.
 /// </summary>
-public sealed class RequestCommentService(IAppDbContext db, AccessRules access, TimeProvider time)
+public sealed class RequestCommentService(IAppDbContext db, AccessRules access, TimeProvider time, PostCommitPublisher realtime)
 {
     public async Task<ActivityDto> AddAsync(Guid requestId, AddCommentRequest body, CancellationToken ct)
     {
@@ -22,8 +22,11 @@ public sealed class RequestCommentService(IAppDbContext db, AccessRules access, 
         var now = time.GetUtcNow();
         var comment = request.AddComment(me.UserId, body.Body, now);
         var recipients = await RecipientsAsync(request, ct);
-        db.Notifications.AddRange(NotificationFactory.CommentAdded(request, comment, author.DisplayName, recipients, now));
+        var notifications = NotificationFactory.CommentAdded(request, comment, author.DisplayName, recipients, now).ToList();
+        db.Notifications.AddRange(notifications);
         await db.SaveChangesAsync(ct);
+        await realtime.NotificationsAsync(notifications, ct);
+        await realtime.RequestChangedAsync(request.Id, ct);
         return new ActivityDto(comment.Id, comment.Type, author, comment.Stage, comment.Body, comment.OccurredAt);
     }
 

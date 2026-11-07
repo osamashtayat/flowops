@@ -6,6 +6,7 @@ using FlowOps.Api.Requests;
 using FlowOps.Application;
 using FlowOps.Application.Common;
 using FlowOps.Infrastructure;
+using FlowOps.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,5 +67,7 @@ app.UseMiddleware<PasswordChangeGate>();
 app.UseAuthorization();
 
 app.MapControllers();
+// Composition root: the hub lives with the SignalR adapter in Infrastructure (ARCHITECTURE.md §3).
+app.MapHub<NotificationsHub>(NotificationsHub.Path);
 
 app.Run();

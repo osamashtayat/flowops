@@ -144,7 +144,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### BE-13 — Notifications API · `Done`
 - **Objective:** `API_CONTRACT.md` §6. **Deps:** BE-12. **Tests:** own-only access; read-all; unread count.
 
-### BE-14 — Real-time hub & post-commit publishing · `Todo`
+### BE-14 — Real-time hub & post-commit publishing · `Done`
 - **Objective:** `/hubs/notifications`, user groups, `SignalRRealtimePublisher`; services publish after `SaveChangesAsync`.
 - **Deps:** BE-13. **AC:** events and recipients per `API_CONTRACT.md` §9; publisher failures are logged, never fail the request.
 - **Tests:** `TESTING.md` §3.5; one hub connection test with cookie auth.

@@ -343,6 +343,19 @@ Payloads are **hints**: never render data from them. Sent only after the databas
 
 `requestChanged` goes to everyone who can currently see the request **and is connected**; `tasksChanged` goes to the decider, the next assignee(s), and members of affected role queues.
 
+As built (BE-14):
+- **Hub.** `/hubs/notifications` needs a session (no session → 401; `mustChangePassword` → 403). Clients are addressed by user id (SignalR's user = the `NameIdentifier` claim), so a user's tabs all receive their events and nobody else's. Antiforgery doesn't apply: the hub has no client-callable methods, and the cookie is SameSite=Strict.
+- **Who gets what.**
+
+  | Change | `notificationCreated` | `requestChanged` | `tasksChanged` |
+  |---|---|---|---|
+  | Submit | each new notification's recipient | everyone who can see the request (`AccessRules.ViewerIds`, R1–R3) | the first task's eligible deciders |
+  | Decision | each new notification's recipient | everyone who can see it now | the decider, everyone who could decide the decided task, everyone who may decide the next one |
+  | Comment | each new notification's recipient | everyone who can see it | — |
+  | Role change (propose, approve, reject) | each new notification's recipient (`requestId: null`) | — | — |
+- **Only after commit.** If the save fails, nothing is published, and a rejected command (4xx) publishes nothing. If publishing fails after the commit, the request still succeeds and a warning is logged (`PostCommitPublisher`); clients catch up when they refetch.
+- **Inactive users** receive nothing new. A deactivated user's open connection isn't closed at once, but it only ever carried id hints.
+
 ---
 
 ## 10. Changing this contract
