@@ -149,7 +149,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-13. **AC:** events and recipients per `API_CONTRACT.md` §9; publisher failures are logged, never fail the request.
 - **Tests:** `TESTING.md` §3.5; one hub connection test with cookie auth.
 
-### BE-15 — Dashboard & stalled tasks · `Todo`
+### BE-15 — Dashboard & stalled tasks · `Done`
 - **Objective:** `GET /dashboard`, `GET /admin/stalled-tasks`. **Deps:** BE-12.
 - **AC:** dashboard is ≤ 4 SQL round-trips; capability-gated sections are `null`.
 - **Tests:** per-capability shapes; stalled reasons both detected.
