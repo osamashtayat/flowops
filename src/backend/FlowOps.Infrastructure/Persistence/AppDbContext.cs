@@ -25,6 +25,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
+
     IQueryable<UserReadModel> IAppDbContext.Users => Users.Select(u => new UserReadModel
     {
         Id = u.Id,
@@ -52,6 +54,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         // Two concurrent role edits adding the same role: the loser sees the winner's row.
         // Defence in depth for two simultaneous decisions (WORKFLOWS.md §5): xmin normally stops the second one first.
         ["ux_work_tasks_open_per_request"] = (ErrorCodes.ConcurrencyConflict, "Someone else changed this task. Reload to see the latest state."),
+        // Two proposals racing for the same administrator: the second one sees the first.
+        [RoleChangeConfiguration.PendingPerUserIndex] =
+            (ErrorCodes.RoleChangeAlreadyPending, "You already have a role change waiting for approval."),
         ["pk_user_roles"] = (ErrorCodes.ConcurrencyConflict, "The user was changed by someone else. Reload and try again."),
     };
 

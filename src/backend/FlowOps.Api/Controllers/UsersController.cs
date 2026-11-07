@@ -46,14 +46,20 @@ public sealed class UsersController(UserAdministrationService users) : Controlle
     public async Task<ActionResult<UserDto>> Update(Guid id, UpdateUserRequest body, CancellationToken ct) =>
         Ok(await users.UpdateAsync(id, body, ct));
 
+    /// <summary>200 with the user, or 202 with the pending change when admins edit their own roles (ADR-0012 §3).</summary>
     [HttpPut("{id:guid}/roles")]
     [ProducesResponseType<UserDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<RoleChangeDto>(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<UserDto>> UpdateRoles(Guid id, UpdateUserRolesRequest body, CancellationToken ct) =>
-        Ok(await users.UpdateRolesAsync(id, body, ct));
+    public async Task<IActionResult> UpdateRoles(Guid id, UpdateUserRolesRequest body, CancellationToken ct) =>
+        await users.UpdateRolesAsync(id, body, ct) switch
+        {
+            { PendingChange: { } pending } => AcceptedAtAction(nameof(RoleChangesController.Get), "RoleChanges", new { id = pending.Id }, pending),
+            { User: var user } => Ok(user),
+        };
 
     [HttpPost("{id:guid}/reset-password")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

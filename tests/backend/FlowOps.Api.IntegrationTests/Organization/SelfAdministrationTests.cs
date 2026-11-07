@@ -10,25 +10,11 @@ namespace FlowOps.Api.IntegrationTests.Organization;
 
 /// <summary>
 /// Admins can't use admin powers to gain process authority (decided 2026-11-06, AUTHORIZATION.md §2): no changing their
-/// own roles or manager link, no making themselves anyone's manager, no deactivating themselves (issue #27), no resetting their own password (issue #31). Other admins
+/// own manager link (own roles: a pending change another admin approves, ADR-0012, see RoleChangeTests), no making themselves anyone's manager, no deactivating themselves (issue #27), no resetting their own password (issue #31). Other admins
 /// still can, and every admin change (including a password reset) is audit-logged with the actor's id.
 /// </summary>
 public sealed class SelfAdministrationTests(FlowOpsApiFactory factory) : DatabaseTest(factory)
 {
-    [Fact]
-    public async Task UpdateRoles_OnSelf_Returns422AndKeepsRoles()
-    {
-        await Given.User("bea").WithRoles(Roles.Administrator).CreateAsync(Factory);
-        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
-        using var admin = await Factory.ClientFor(ada);
-
-        using var response = await admin.PutAsJsonAsync(ById(ada.Id, "/roles"), RoleSet("Administrator", "FinanceOfficer"), Ct);
-
-        await ProblemAssert.HasCode(response, 422, ErrorCodes.UserSelfAdministration);
-        (await JsonBody.ReadAsync(await admin.GetAsync(ById(ada.Id), Ct))).GetProperty("roles").EnumerateArray()
-            .Select(r => r.GetString()).ShouldBe(["Administrator"]);
-    }
-
     [Fact]
     public async Task UpdateRoles_OnAnotherAdmin_IsAllowed()
     {

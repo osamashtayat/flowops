@@ -110,9 +110,9 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### BE-08b — Admin self-authority (follow-up) · `Done`
 - **Objective:** an admin can't change their own roles or manager link, make themselves anyone's manager (incl. by reactivating a report) or deactivate themselves → 422 `user.self_administration`; resetting another user's password stays allowed and is audit-logged with the actor id. #24, #27. Self password reset via the admin endpoint → 422 too (BE-08c, #31). #32 → ADR-0012 (accepted), implemented by BE-08d.
 
-### BE-08d — Role-change rules (ADR-0012) · `Todo`
+### BE-08d — Role-change rules (ADR-0012) · `Done`
 - **Objective:** `Administrator` can't be added by `PUT /users/{id}/roles` (422 `user.admin_role_on_create_only`); an admin's own role change becomes a pending `RoleChange` (202) that another active admin approves, rejects or the proposer cancels; 72 h expiry; `RoleChangePending` notifications. ADR-0012 §1–7.
-- **Deps:** BE-08, BE-13. **AC:** approver checked against the database; stale and expired changes refused; one `SaveChangesAsync` per use case; contract and openapi updated.
+- **Deps:** BE-08. (Notifications are written with the existing `Notification` entity; users read them once BE-13 lands.) **AC:** approver checked against the database; stale and expired changes refused; one `SaveChangesAsync` per use case; contract and openapi updated.
 - **Tests:** each new error code; self-approval; only-admin refusal; stale after a direct change; expiry with `FakeTimeProvider`; approve/cancel race (≥ 20 runs); notifications.
 
 ## Requests and process

@@ -19,6 +19,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.AuthPasswordChangeRequired] = StatusCodes.Status403Forbidden,
         [ErrorCodes.TaskNotEligible] = StatusCodes.Status403Forbidden,
         [ErrorCodes.TaskSelfDecision] = StatusCodes.Status403Forbidden,
+        [ErrorCodes.RoleChangeNotProposer] = StatusCodes.Status403Forbidden,
 
         [ErrorCodes.NotFound] = StatusCodes.Status404NotFound,
 
@@ -29,6 +30,9 @@ public static class ErrorStatusCodes
         [ErrorCodes.ConcurrencyConflict] = StatusCodes.Status409Conflict,
         [ErrorCodes.DepartmentDuplicate] = StatusCodes.Status409Conflict,
         [ErrorCodes.UserDuplicateEmail] = StatusCodes.Status409Conflict,
+        [ErrorCodes.RoleChangeAlreadyPending] = StatusCodes.Status409Conflict,
+        [ErrorCodes.RoleChangeNotPending] = StatusCodes.Status409Conflict,
+        [ErrorCodes.RoleChangeStale] = StatusCodes.Status409Conflict,
 
         [ErrorCodes.RequestManagerNotAssigned] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RequestDepartmentNotAssigned] = StatusCodes.Status422UnprocessableEntity,
@@ -36,6 +40,9 @@ public static class ErrorStatusCodes
         [ErrorCodes.UserLastAdmin] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.UserSelfAdministration] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.DepartmentInactive] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.UserAdminRoleOnCreateOnly] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.RoleChangeNoReviewer] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.RoleChangeSelfApproval] = StatusCodes.Status422UnprocessableEntity,
 
         [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,
         [ErrorCodes.RequestCommentRateLimited] = StatusCodes.Status429TooManyRequests,
