@@ -17,6 +17,7 @@ export function RequestActionsCard({ request }: { request: RequestDetailsDto }) 
         taskId={available.taskId}
         version={available.version}
         stage={task.stage}
+        requestType={request.type}
         requestNumber={request.number}
         actions={available.actions}
       />

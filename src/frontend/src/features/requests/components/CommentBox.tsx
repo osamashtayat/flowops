@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import { Textarea } from '@/components/ui/Textarea'
 import { toUserMessage } from '@/lib/api/problem'
+import type { RequestType } from '@/lib/api/types'
+import { withLeaveVisibilityWarning } from '@/lib/format/visibility'
 import { ApiError } from '@/lib/api/apiError'
 import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
 import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
@@ -10,7 +12,7 @@ import { useAddComment } from '../api'
 import { commentSchema } from '../schemas'
 
 /** Adds a plain-text comment to the request's history. Only rendered when the server says `canComment`. */
-export function CommentBox({ requestId }: { requestId: string }) {
+export function CommentBox({ requestId, requestType }: { requestId: string; requestType: RequestType }) {
   const add = useAddComment(requestId)
   const {
     register,
@@ -40,7 +42,7 @@ export function CommentBox({ requestId }: { requestId: string }) {
       }
     >
       {bannerMessage && <Alert tone="danger">{bannerMessage}</Alert>}
-      <FormField label="Add a comment" helperText={upToCharacters(REQUEST_LIMITS.commentMax)} error={fieldError(errors, 'body')}>
+      <FormField label="Add a comment" helperText={withLeaveVisibilityWarning(upToCharacters(REQUEST_LIMITS.commentMax), requestType)} error={fieldError(errors, 'body')}>
         {(c) => <Textarea {...c} rows={3} {...register('body')} />}
       </FormField>
       <div className="flex justify-end">

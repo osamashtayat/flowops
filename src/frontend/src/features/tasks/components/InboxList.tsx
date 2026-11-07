@@ -53,6 +53,7 @@ const openColumns: DataTableColumn<InboxItemDto>[] = [
         taskId={item.taskId}
         version={item.version}
         stage={item.stage}
+        requestType={item.request.type}
         requestNumber={item.request.number}
         actions={item.actions}
       />
