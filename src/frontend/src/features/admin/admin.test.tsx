@@ -128,14 +128,16 @@ describe('Edit user', () => {
     await heading('Users')
   })
 
-  it("locks the administrator's own roles, manager and active switch and explains why", async () => {
+  it("locks the administrator's own manager and active switch, leaves roles editable and explains why", async () => {
     asAdmin(editPath('admin'))
     await heading('Sami Qasem')
-    expect(screen.getByText(/own account. Another administrator has to change/)).toBeInTheDocument()
-    for (const label of ['Administrator', 'Employee', 'Finance officer', 'HR officer', 'Procurement officer', 'Active']) {
-      expect(screen.getByLabelText(label)).toBeDisabled()
-    }
+    expect(screen.getByText(/own account. Another administrator has to change your manager/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Active')).toBeDisabled()
     expect(screen.getByLabelText('Manager')).toBeDisabled()
+    // Own roles go through the approval flow (ADR-0012), so the form still offers them.
+    for (const label of ['Administrator', 'Employee', 'Finance officer', 'HR officer', 'Procurement officer']) {
+      expect(screen.getByLabelText(label)).toBeEnabled()
+    }
     expect(screen.getByLabelText(/Display name/)).toBeEnabled()
     expect(screen.getByLabelText('Department')).toBeEnabled()
   })

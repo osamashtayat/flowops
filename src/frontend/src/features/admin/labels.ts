@@ -22,3 +22,6 @@ export const STALLED_REASONS: Record<StalledTaskReason, { label: string; guidanc
     guidance: () => 'Reactivate the assignee, or give the requester a new manager.',
   },
 }
+
+/** "Employee, Finance officer" for a role set. */
+export const rolesText = (roles: readonly Role[]) => (roles.length ? roles.map((r) => ROLE_NAMES[r]).join(', ') : 'No roles')

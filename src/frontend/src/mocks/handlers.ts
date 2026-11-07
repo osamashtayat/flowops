@@ -24,13 +24,16 @@ import type {
   UpdateUserRequest,
   UserDto,
 } from '@/lib/api/types'
+import type { RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
 import { currentActor } from './actor'
 import {
   createMockDepartment,
   createMockUser,
+  decideMockRoleChange,
   getMockUser,
   isAdminFailure,
   listMockDepartments,
+  listMockRoleChanges,
   listMockStalledTasks,
   listMockUsers,
   resetMockPassword,
@@ -288,8 +291,25 @@ export const adminHandlers = [
   }),
   http.put<{ id: string }, { roles: Role[] }>('/api/users/:id/roles', async ({ params, request }) => {
     const body = await request.json()
-    return asAdmin((admin) => updateMockRoles(admin.id, params.id, body.roles), (u) => HttpResponse.json(u))
+    return asAdmin(
+      (admin) => updateMockRoles(admin.id, params.id, body.roles),
+      // Your own roles are queued for approval (ADR-0012): 202 with the role change, not the user.
+      (result) => HttpResponse.json(result, { status: 'proposedRoles' in result ? 202 : 200 }),
+    )
   }),
+  http.get('/api/admin/role-changes', ({ request }) => {
+    const query = queryParam(request)
+    return asAdmin(
+      (admin) => listMockRoleChanges(admin.id, { status: (query('status') ?? '') as RoleChangeStatus | '', page: Number(query('page') ?? 1), pageSize: Number(query('pageSize') ?? 20) }),
+      (page) => HttpResponse.json(page),
+    )
+  }),
+  ...(['approve', 'reject', 'cancel'] as const).map((action) =>
+    http.post<{ id: string }, { version: string; reason?: string }>(`/api/admin/role-changes/:id/${action}`, async ({ params, request }) => {
+      const body = await request.json()
+      return asAdmin((admin) => decideMockRoleChange(admin.id, params.id, action, body), (change) => HttpResponse.json(change))
+    }),
+  ),
   http.post<{ id: string }>('/api/users/:id/reset-password', ({ params }) =>
     asAdmin(() => resetMockPassword(params.id) ?? true, () => new HttpResponse(null, { status: 204 })),
   ),

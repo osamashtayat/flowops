@@ -1,4 +1,4 @@
-import { Bell, Building2, FileText, Hourglass, Inbox, LayoutDashboard, Users, UsersRound, type LucideIcon } from 'lucide-react'
+import { Bell, Building2, FileText, Hourglass, Inbox, ShieldCheck, LayoutDashboard, Users, UsersRound, type LucideIcon } from 'lucide-react'
 import type { Capability } from '@/lib/api/types'
 
 export interface NavItem {
@@ -25,6 +25,7 @@ const PRIMARY: readonly NavItem[] = [
 const ADMIN: readonly NavItem[] = [
   { to: '/admin/users', label: 'Users', icon: Users, capability: 'admin.manage' },
   { to: '/admin/departments', label: 'Departments', icon: Building2, capability: 'admin.manage' },
+  { to: '/admin/role-changes', label: 'Role changes', icon: ShieldCheck, capability: 'admin.manage' },
   { to: '/admin/stalled-tasks', label: 'Stalled tasks', icon: Hourglass, capability: 'admin.manage' },
 ]
 

@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
-import { api } from '@/lib/api/client'
+import { api, pendingApi } from '@/lib/api/client'
+import type { RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type {
   CreateDepartmentRequest,
@@ -102,21 +103,34 @@ export interface SaveUserInput {
   roles?: Role[]
 }
 
+/** `roleChange` is set when the server did not apply the roles but queued them for approval (202, ADR-0012). */
+export interface SaveUserResult {
+  user: UserDto
+  roleChange: RoleChangeDto | null
+}
+
 /**
  * Saves the profile (`PUT /api/users/{id}`) and, when the roles changed, the roles
  * (`PUT /api/users/{id}/roles`). They are two endpoints, so a failure of the second leaves the
- * first saved; the caller refetches and shows the server's message.
+ * first saved; the caller refetches and shows the server's message. Your own roles answer 202 with
+ * a pending role change instead of the user.
  */
 export function useSaveUser() {
+  const queryClient = useQueryClient()
   const refresh = useRefreshAfterUserChange()
   return useMutation({
-    mutationFn: async ({ id, profile, roles }: SaveUserInput): Promise<UserDto> => {
+    mutationFn: async ({ id, profile, roles }: SaveUserInput): Promise<SaveUserResult> => {
       const params = { path: { id } }
       const saved = required((await api.PUT('/api/users/{id}', { params, body: profile })).data)
-      if (!roles) return saved
-      return required((await api.PUT('/api/users/{id}/roles', { params, body: { roles } })).data)
+      if (!roles) return { user: saved, roleChange: null }
+      const { data, response } = await pendingApi.PUT('/api/users/{id}/roles', { params, body: { roles } })
+      if (response.status === 202) return { user: saved, roleChange: required(data) as RoleChangeDto }
+      return { user: required(data) as UserDto, roleChange: null }
     },
-    onSettled: refresh,
+    onSettled: async () => {
+      await refresh()
+      await queryClient.invalidateQueries({ queryKey: queryKeys.admin.roleChangesAll })
+    },
   })
 }
 
@@ -170,5 +184,59 @@ export function useStalledTasks(params: { page: number; pageSize: number }) {
       return required(data)
     },
     placeholderData: keepPreviousData,
+  })
+}
+
+export type RoleChangeListParams = {
+  status: RoleChangeStatus | ''
+  page: number
+  pageSize: number
+}
+
+/** `GET /api/admin/role-changes`. Every administrator sees every role change. */
+export function useRoleChanges(params: RoleChangeListParams) {
+  return useQuery({
+    queryKey: queryKeys.admin.roleChanges(params),
+    queryFn: async () => {
+      const query = { status: params.status || undefined, page: params.page, pageSize: params.pageSize }
+      const { data } = await pendingApi.GET('/api/admin/role-changes', { params: { query } })
+      return required(data)
+    },
+    placeholderData: keepPreviousData,
+  })
+}
+
+export interface DecideRoleChangeInput {
+  id: string
+  action: RoleChangeAction
+  /** The `version` read with the role change; a stale one answers 409 `concurrency.conflict`. */
+  version: string
+  /** Required to reject. */
+  reason?: string
+}
+
+/**
+ * Approve, reject or cancel a role change. Whatever the outcome (including 409 and 422) the list
+ * is refetched, so the buttons always match what the server now allows. An approval also changes
+ * the person's roles, so the user queries are refreshed too.
+ */
+export function useDecideRoleChange() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, action, version, reason }: DecideRoleChangeInput): Promise<RoleChangeDto> => {
+      const params = { path: { id } }
+      const result =
+        action === 'approve'
+          ? await pendingApi.POST('/api/admin/role-changes/{id}/approve', { params, body: { version } })
+          : action === 'cancel'
+            ? await pendingApi.POST('/api/admin/role-changes/{id}/cancel', { params, body: { version } })
+            : await pendingApi.POST('/api/admin/role-changes/{id}/reject', { params, body: { version, reason: reason ?? '' } })
+      return required(result.data)
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.roleChangesAll }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.admin.usersAll }),
+      ]),
   })
 }

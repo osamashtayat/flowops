@@ -5,6 +5,7 @@ import { ForbiddenPage } from '@/app/pages/ForbiddenPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { DepartmentsPage } from '@/features/admin/pages/DepartmentsPage'
+import { RoleChangesPage } from '@/features/admin/pages/RoleChangesPage'
 import { StalledTasksPage } from '@/features/admin/pages/StalledTasksPage'
 import { EditUserPage, NewUserPage } from '@/features/admin/pages/UserFormPage'
 import { UsersPage } from '@/features/admin/pages/UsersPage'
@@ -65,6 +66,7 @@ export const routes: RouteObject[] = [
                   { path: '/admin/users/new', element: <NewUserPage /> },
                   { path: '/admin/users/:id', element: <EditUserPage /> },
                   { path: '/admin/departments', element: <DepartmentsPage /> },
+                  { path: '/admin/role-changes', element: <RoleChangesPage /> },
                   { path: '/admin/stalled-tasks', element: <StalledTasksPage /> },
                 ],
               },

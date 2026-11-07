@@ -1,4 +1,5 @@
 import { ApiError, NETWORK_ERROR_CODE } from './apiError'
+import { PENDING_PROBLEM_MESSAGES } from './pendingRoleChangeContract'
 
 /**
  * User-facing text for every error `code` the API can return. The code list lives in
@@ -37,14 +38,15 @@ export const PROBLEM_MESSAGES = {
   'user.self_administration': 'Another administrator has to make this change.',
 } as const satisfies Record<string, string>
 
-export type ProblemCode = keyof typeof PROBLEM_MESSAGES
+/** PROVISIONAL (FE-13b): ADR-0012 codes until the backend defines them; then merged into PROBLEM_MESSAGES. */
+const ALL_MESSAGES: Record<string, string> = { ...PROBLEM_MESSAGES, ...PENDING_PROBLEM_MESSAGES }
 
 const NETWORK_MESSAGE = "Can't reach the server. Check your connection and try again."
 const GENERIC_MESSAGE = 'Something went wrong. Try again.'
 const NOT_AVAILABLE_MESSAGE = "This feature isn't available yet."
 
-function isKnownCode(code: string): code is ProblemCode {
-  return Object.hasOwn(PROBLEM_MESSAGES, code)
+function isKnownCode(code: string): boolean {
+  return Object.hasOwn(ALL_MESSAGES, code)
 }
 
 /** The text to show a user for any thrown value. Mapped from `code`, with a status-based fallback. */
@@ -54,7 +56,7 @@ export function toUserMessage(error: unknown): string {
   // 501: the endpoint exists in the contract but its backend task isn't done. Checked before the
   // code because the server may label it `server.error`; retrying won't help.
   if (error.status === 501) return NOT_AVAILABLE_MESSAGE
-  if (isKnownCode(error.code)) return PROBLEM_MESSAGES[error.code]
+  if (isKnownCode(error.code)) return ALL_MESSAGES[error.code] ?? GENERIC_MESSAGE
   if (error.status === 401) return PROBLEM_MESSAGES['auth.unauthenticated']
   if (error.status === 403) return PROBLEM_MESSAGES['auth.forbidden']
   if (error.status === 404) return PROBLEM_MESSAGES.not_found

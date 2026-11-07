@@ -1,3 +1,4 @@
+import type { RoleChangeStatus } from '@/lib/api/pendingRoleChangeContract'
 import type { RequestStage, RequestStatus, WorkTaskOutcome } from '@/lib/api/types'
 
 /**
@@ -67,4 +68,21 @@ export function requestStageLabel(stage: RequestStage): string {
 /** Active / Inactive for users and departments. */
 export function activeStatusPresentation(isActive: boolean): StatusPresentation {
   return isActive ? { label: 'Active', tone: 'success', icon: 'check' } : { label: 'Inactive', tone: 'neutral', icon: 'x-circle' }
+}
+
+export function roleChangeStatusPresentation(status: RoleChangeStatus): StatusPresentation {
+  switch (status) {
+    case 'Pending':
+      return { label: 'Waiting for approval', tone: 'warning', icon: 'clock' }
+    case 'Approved':
+      return { label: 'Approved', tone: 'success', icon: 'check' }
+    case 'Rejected':
+      return { label: 'Rejected', tone: 'danger', icon: 'x-circle' }
+    case 'Cancelled':
+      return { label: 'Cancelled', tone: 'neutral', icon: 'x-circle' }
+    case 'Expired':
+      return { label: 'Expired', tone: 'neutral', icon: 'clock' }
+    default:
+      return status satisfies never
+  }
 }
