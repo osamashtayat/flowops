@@ -108,7 +108,12 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** each error code; non-admin → 403; paging/search.
 
 ### BE-08b — Admin self-authority (follow-up) · `Done`
-- **Objective:** an admin can't change their own roles or manager link, make themselves anyone's manager (incl. by reactivating a report) or deactivate themselves → 422 `user.self_administration`; resetting another user's password stays allowed and is audit-logged with the actor id. #24, #27. Self password reset via the admin endpoint → 422 too (BE-08c, #31). Open: #32 (two-person control, ADR proposed).
+- **Objective:** an admin can't change their own roles or manager link, make themselves anyone's manager (incl. by reactivating a report) or deactivate themselves → 422 `user.self_administration`; resetting another user's password stays allowed and is audit-logged with the actor id. #24, #27. Self password reset via the admin endpoint → 422 too (BE-08c, #31). #32 → ADR-0012 (accepted), implemented by BE-08d.
+
+### BE-08d — Role-change rules (ADR-0012) · `Todo`
+- **Objective:** `Administrator` can't be added by `PUT /users/{id}/roles` (422 `user.admin_role_on_create_only`); an admin's own role change becomes a pending `RoleChange` (202) that another active admin approves, rejects or the proposer cancels; 72 h expiry; `RoleChangePending` notifications. ADR-0012 §1–7.
+- **Deps:** BE-08, BE-13. **AC:** approver checked against the database; stale and expired changes refused; one `SaveChangesAsync` per use case; contract and openapi updated.
+- **Tests:** each new error code; self-approval; only-admin refusal; stale after a direct change; expiry with `FakeTimeProvider`; approve/cancel race (≥ 20 runs); notifications.
 
 ## Requests and process
 
@@ -207,6 +212,9 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
 - **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
+### FE-13b — Role-change screens (ADR-0012) · `Todo`
+- **Objective:** ADR-0012 §8: the edit-roles form can't add `Administrator`; "Waiting for another administrator" after a 202 on your own roles; a pending/decided "Role changes" list with approve, reject and cancel from `availableActions`. **Deps:** FE-13, BE-08d (contract).
+
 ## Operations & quality
 
 ### OPS-01 — Full-stack Docker Compose · `Todo`
@@ -215,7 +223,7 @@ Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxy
 ### OPS-02 — CI pipeline · `Todo`
 GitHub Actions: backend build + domain tests + integration tests (Docker available on ubuntu runners), OpenAPI drift check, frontend typecheck/lint/test/build. **Deps:** BE-04, BE-03.
 
-### QA-01 — Security review pass · `Todo` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08.
+### QA-01 — Security review pass · `Todo` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08, BE-08d.
 ### QA-02 — Architecture review pass · `Todo` — `architecture-reviewer` agent over whole backend + frontend structure. **Deps:** BE-15, FE-10.
 ### QA-03 — UI/UX review pass · `Todo` — `review-ui` skill over all pages at 360/768/1280 px. **Deps:** FE-13.
 ### QA-04 — E2E smoke (optional) · `Todo` — Playwright: purchase happy path across 4 users; leave rejection. **Deps:** OPS-01.

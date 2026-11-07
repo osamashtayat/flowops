@@ -1,6 +1,6 @@
 # ADR-0012: Administrator role only on new accounts; an admin's own role change needs a second admin
 
-- **Status:** Proposed. The owner set the rules on #32 on 2026-11-06 and 2026-11-07 and answered the open questions on 2026-11-07. It becomes Accepted when PR #44 is merged.
+- **Status:** Accepted (owner, 2026-11-07, PR #44). The owner set the rules on #32 on 2026-11-06 and 2026-11-07.
 - **Date:** 2026-11-06, revised 2026-11-07
 - **Phase:** 1 (new tasks BE-08d and FE-13b, before QA-01)
 
