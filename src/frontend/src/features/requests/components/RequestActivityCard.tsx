@@ -2,16 +2,18 @@ import { Card } from '@/components/ui/Card'
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { ErrorState } from '@/components/ui/ErrorState'
+import type { RequestType } from '@/lib/api/types'
 import { toUserMessage } from '@/lib/api/problem'
 import { useRequestActivity } from '../api'
 import { CommentBox } from './CommentBox'
 
 export interface RequestActivityCardProps {
   requestId: string
+  requestType: RequestType
   canComment: boolean
 }
 
-export function RequestActivityCard({ requestId, canComment }: RequestActivityCardProps) {
+export function RequestActivityCard({ requestId, requestType, canComment }: RequestActivityCardProps) {
   const activity = useRequestActivity(requestId)
   return (
     <Card title="Activity">
@@ -26,7 +28,7 @@ export function RequestActivityCard({ requestId, canComment }: RequestActivityCa
         ) : (
           <ActivityTimeline items={activity.data} />
         )}
-        {canComment && <CommentBox requestId={requestId} />}
+        {canComment && <CommentBox requestId={requestId} requestType={requestType} />}
       </div>
     </Card>
   )

@@ -1,4 +1,5 @@
-import type { RequestStage, TaskAction } from '@/lib/api/types'
+import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
+import { withLeaveVisibilityWarning } from '@/lib/format/visibility'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
 
 /** What a decision button, its dialog and its text field look like. The one home for these words. */
@@ -14,7 +15,13 @@ export interface DecisionPresentation {
   reason: { label: string; required: boolean; helperText?: string; maxLength: number }
 }
 
-export function decisionPresentation(action: TaskAction, stage: RequestStage): DecisionPresentation {
+export function decisionPresentation(action: TaskAction, stage: RequestStage, requestType: RequestType): DecisionPresentation {
+  const presentation = basePresentation(action, stage)
+  const helperText = withLeaveVisibilityWarning(presentation.reason.helperText, requestType)
+  return { ...presentation, reason: { ...presentation.reason, helperText } }
+}
+
+function basePresentation(action: TaskAction, stage: RequestStage): DecisionPresentation {
   switch (action) {
     case 'approve': {
       // The API verb is `approve` for every approval; HR "confirms" (docs/WORKFLOWS.md).
