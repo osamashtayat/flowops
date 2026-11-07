@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { routes } from '@/app/routes'
-import { createMockUser, getMockUser, proposeMockRoleChange } from '@/mocks/adminStore'
+import { createMockUser, decideMockRoleChange, getMockUser, proposeMockRoleChange } from '@/mocks/adminStore'
 import { server } from '@/mocks/server'
 import { setMockUser } from '@/mocks/state'
 import { MOCK_USERS } from '@/mocks/users'
@@ -166,6 +166,17 @@ describe('Role changes list', () => {
     expect(await within(dialog).findByText(message)).toBeInTheDocument()
     await waitFor(() => expect(lists).toBeGreaterThan(before))
     server.events.removeAllListeners()
+  })
+
+  it('still tells the user why when another administrator decided first and the row leaves the Pending list', async () => {
+    const change = otherAdminProposal()
+    asAdmin('/admin/role-changes')
+    const approve = await screen.findByRole('button', { name: 'Approve' })
+    decideMockRoleChange(MOCK_USERS.admin.id, change.id, 'approve', { version: change.version })
+    await userEvent.click(approve)
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Approve change' }))
+    expect((await screen.findAllByText(/no longer waiting for a decision|changed by someone else/i)).length).toBeGreaterThan(0)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull())
   })
 
   it('lets the proposer cancel their own change', async () => {

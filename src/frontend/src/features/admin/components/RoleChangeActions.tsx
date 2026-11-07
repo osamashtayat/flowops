@@ -51,7 +51,9 @@ export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
           toast.success(PRESENTATION[action].done)
           close()
         },
-        // Stale and already-decided answers refetch the list; the dialog shows why and the buttons update behind it.
+        // Stale and already-decided answers refetch the list. The dialog shows why, but when the refetch drops the row
+        // (it is no longer Pending) the dialog goes with it, so the same message also goes to a toast the user can't miss.
+        onError: (error) => toast.error(toUserMessage(error)),
       },
     )
   }
