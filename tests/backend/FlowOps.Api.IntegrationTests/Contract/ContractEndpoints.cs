@@ -37,11 +37,11 @@ internal static class ContractEndpoints
         new("POST", "/api/tasks/{taskId}/reject", $"/api/tasks/{Id}/reject", """{"version":"7","reason":"Over budget"}""", Finance) { Implemented = true },
         new("POST", "/api/tasks/{taskId}/fulfill", $"/api/tasks/{Id}/fulfill", """{"version":"7","note":"PO-77"}""", "ProcurementOfficer") { Implemented = true },
 
-        // §6 Notifications
-        new("GET", "/api/notifications", "/api/notifications?unreadOnly=true", null, Employee),
-        new("GET", "/api/notifications/unread-count", "/api/notifications/unread-count", null, Employee),
-        new("POST", "/api/notifications/{id}/read", $"/api/notifications/{Id}/read", null, Employee),
-        new("POST", "/api/notifications/read-all", "/api/notifications/read-all", null, Employee),
+        // §6 Notifications: implemented in BE-13 (behaviour: Notifications/NotificationsApiTests).
+        new("GET", "/api/notifications", "/api/notifications?unreadOnly=true", null, Employee) { Implemented = true },
+        new("GET", "/api/notifications/unread-count", "/api/notifications/unread-count", null, Employee) { Implemented = true },
+        new("POST", "/api/notifications/{id}/read", $"/api/notifications/{Id}/read", null, Employee) { Implemented = true },
+        new("POST", "/api/notifications/read-all", "/api/notifications/read-all", null, Employee) { Implemented = true },
 
         // §7 Dashboard
         new("GET", "/api/dashboard", "/api/dashboard", null, Employee),
