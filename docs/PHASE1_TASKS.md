@@ -199,7 +199,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ### FE-10 — Inbox · `Done` (against MSW mocks; real integration waits for BE-12)
 - **Objective:** `UI_SPEC.md` §4.6 reusing `DecisionDialog`/`useDecideTask` from FE-09. **Deps:** FE-09 (+ BE-12).
-- **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29).
+- **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29). Leave decision dialogs carry the visibility note (#38).
 
 ### FE-11 — Notifications & realtime · `Todo`
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).

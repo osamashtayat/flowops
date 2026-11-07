@@ -75,7 +75,7 @@ export function RequestDetailsPage() {
         <div className="space-y-6">
           <RequestSummaryCard request={request} />
           <RequestActionsCard request={request} />
-          <RequestActivityCard requestId={request.id} canComment={request.canComment} />
+          <RequestActivityCard requestId={request.id} requestType={request.type} canComment={request.canComment} />
         </div>
       </div>
     </div>
