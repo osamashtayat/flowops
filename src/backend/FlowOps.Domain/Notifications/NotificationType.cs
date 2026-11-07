@@ -9,4 +9,7 @@ public enum NotificationType
     RequestCompleted,
     StepApproved,
     CommentAdded,
+    RoleChangePending,
+    RoleChangeApproved,
+    RoleChangeRejected,
 }

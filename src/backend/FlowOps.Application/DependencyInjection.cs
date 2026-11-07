@@ -23,6 +23,8 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<DepartmentService>();
         services.AddScoped<UserAdministrationService>();
+        services.AddScoped<RoleChangeReader>();
+        services.AddScoped<RoleChangeService>();
         return services;
     }
 }

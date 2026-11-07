@@ -35,6 +35,16 @@ export const PROBLEM_MESSAGES = {
   'user.manager_cycle': "A person can't report to themselves or to someone who reports to them.",
   'user.last_admin': 'At least one active administrator is required.',
   'user.self_administration': 'Another administrator has to make this change.',
+  'user.admin_role_on_create_only':
+    'The Administrator role can only be given when a new account is created.',
+  'role_change.no_reviewer':
+    'You are the only active administrator, so nobody could approve a change to your own roles.',
+  'role_change.already_pending': 'You already have a role change waiting for approval.',
+  'role_change.self_approval': 'Another administrator has to decide on your own role change.',
+  'role_change.not_pending': 'This role change is no longer waiting for a decision.',
+  'role_change.stale':
+    "This administrator's roles changed after the request was made. Reject it and ask for a new one.",
+  'role_change.not_proposer': 'Only the administrator who asked for this role change can cancel it.',
 } as const satisfies Record<string, string>
 
 export type ProblemCode = keyof typeof PROBLEM_MESSAGES

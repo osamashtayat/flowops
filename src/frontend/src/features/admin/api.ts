@@ -114,7 +114,10 @@ export function useSaveUser() {
       const params = { path: { id } }
       const saved = required((await api.PUT('/api/users/{id}', { params, body: profile })).data)
       if (!roles) return saved
-      return required((await api.PUT('/api/users/{id}/roles', { params, body: { roles } })).data)
+      const result = required((await api.PUT('/api/users/{id}/roles', { params, body: { roles } })).data)
+      // A 202 carries a pending role change instead of the user: an admin's own roles wait for another
+      // admin (ADR-0012) and are unchanged for now. The form doesn't offer this yet; FE-13b adds that state.
+      return 'email' in result ? result : saved
     },
     onSettled: refresh,
   })

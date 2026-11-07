@@ -50,10 +50,10 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 |---|---|---|
 | 400 | Malformed body / DataAnnotations failure | `validation` |
 | 401 | No/expired session | `auth.unauthenticated` |
-| 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision` |
+| 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision`, `role_change.not_proposer` |
 | 404 | Not found **or not visible** to caller | `not_found` |
-| 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email` |
-| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `department.inactive` |
+| 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email`, `role_change.already_pending`, `role_change.not_pending`, `role_change.stale` |
+| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `user.admin_role_on_create_only`, `department.inactive`, `role_change.no_reviewer`, `role_change.self_approval` |
 | 429 | Too many attempts; sends `Retry-After` (seconds). Login: per address or email. Comments: per user (#37) | `auth.rate_limited`, `request.comment_rate_limited` |
 | 500 | Unhandled | `server.error` (no internals in `detail`) |
 
@@ -219,7 +219,8 @@ Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
 | `POST /api/notifications/read-all` | | 204 |
 
 ```ts
-type NotificationDto = { id: string; type: "TaskAssigned"|"RequestApproved"|"RequestRejected"|"RequestCompleted"|"StepApproved"|"CommentAdded";
+type NotificationDto = { id: string; type: "TaskAssigned"|"RequestApproved"|"RequestRejected"|"RequestCompleted"|"StepApproved"|"CommentAdded"
+    |"RoleChangePending"|"RoleChangeApproved"|"RoleChangeRejected";
   title: string; body: string; requestId: string | null; taskId: string | null; createdAt: string; readAt: string | null };
 ```
 
@@ -255,7 +256,7 @@ As built (BE-08): `includeInactive=true` is honoured only for administrators; ev
 | `GET /api/users/{id}` | — | 200 `UserDto` | 404 |
 | `POST /api/users` | `CreateUserRequest` | 201 `UserDto` + `Location` | 400 (password rules → `errors.initialPassword`; unknown department; unknown/inactive manager), 409 `user.duplicate_email`, 422 `department.inactive`, `user.self_administration` (caller as manager) |
 | `PUT /api/users/{id}` | `UpdateUserRequest` | 200 `UserDto` | 400 (unknown department, unknown/inactive manager), 404, 409 `concurrency.conflict`, 422 `user.manager_cycle`, `user.last_admin` (deactivating last admin), `department.inactive` (moving into an inactive department), `user.self_administration` (changing own manager, making yourself someone's manager, reactivating someone who reports to you, or deactivating yourself) |
-| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto` | 404, 409 `concurrency.conflict`, 422 `user.last_admin`, `user.self_administration` (own roles) |
+| `PUT /api/users/{id}/roles` | `{ roles: Role[] }` | 200 `UserDto`; **202 `RoleChangeDto`** + `Location` for your own roles (ADR-0012) | 400, 404, 409 `concurrency.conflict`, `role_change.already_pending` (own roles), 422 `user.last_admin`, `user.admin_role_on_create_only` (adding Administrator to an existing user), `role_change.no_reviewer` (own roles, no other active admin) |
 | `POST /api/users/{id}/reset-password` | `{ newPassword }` | 204 (sets MustChangePassword, clears lockout, ends the user's sessions) | 400, 404, 409 `concurrency.conflict`, 422 `user.self_administration` (own account: use `POST /api/auth/change-password`) |
 
 ```ts
@@ -271,8 +272,8 @@ As built (BE-08):
 - **Manager.** Must be an existing, active user (otherwise 400 `errors.managerId`). It is checked only when the manager changes.
 - **Department.** An unknown department gives 400 `errors.departmentId`. An inactive one gives 422 `department.inactive`. Both are checked only when the department changes.
 - **Last administrator.** "Last admin" means the last **active** user with the `Administrator` role.
+- **Roles (ADR-0012).** `Administrator` can only be given on `POST /users`. Adding it to an existing user gives 422 `user.admin_role_on_create_only`; keeping it, or removing it from another admin, is allowed. Sending the user's current role set changes nothing and returns 200. An admin's **own** role change returns 202 with a pending `RoleChangeDto` and applies only when another active admin approves it (see *Role changes* below). Another admin can still change their roles directly.
 - **No self-granted process authority (decided 2026-11-06).** An admin may not:
-  - change their own roles (another admin must);
   - change their own manager link;
   - set themselves as anyone's manager, on create or update;
   - deactivate their own account (issue #27);
@@ -284,6 +285,29 @@ As built (BE-08):
 - **Known races (accepted for Phase 1).** Two simultaneous demotions can remove the last administrator, and two simultaneous manager changes ("A reports to B" and "B reports to A") can create a cycle. Both rules are checked before acting, with no lock.
 - **Audit.** Every user change, including a password reset, is logged with the acting admin's id and the target user's id (never the password).
 - **Email.** It must also be a valid Identity user name: letters, digits and `-._@+`. Anything else gives 400 `errors.email`.
+
+### Role changes (ADR-0012)
+An administrator's own role change, decided by another **active** administrator (checked in the database, not the session). Every admin sees every change.
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /api/admin/role-changes?status&page&pageSize` | — | 200 `Paged<RoleChangeDto>`, newest first | 400 |
+| `GET /api/admin/role-changes/{id}` | — | 200 `RoleChangeDto` | 404 |
+| `POST /api/admin/role-changes/{id}/approve` | `{ version }` | 200 `RoleChangeDto`; the roles are applied | 400, 403 `auth.forbidden` (caller no longer an active admin), 404, 409 `concurrency.conflict`, `role_change.not_pending`, `role_change.stale` (the roles changed since the proposal), 422 `role_change.self_approval`, `user.last_admin` |
+| `POST /api/admin/role-changes/{id}/reject` | `{ version, reason }` (1–500 chars) | 200 `RoleChangeDto` | 400, 403 `auth.forbidden`, 404, 409 `concurrency.conflict`, `role_change.not_pending`, 422 `role_change.self_approval` |
+| `POST /api/admin/role-changes/{id}/cancel` | `{ version }` | 200 `RoleChangeDto` | 400, 403 `role_change.not_proposer`, 404, 409 `concurrency.conflict`, `role_change.not_pending` |
+
+```ts
+type RoleChangeStatus = "Pending" | "Approved" | "Rejected" | "Cancelled" | "Expired";
+type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previousRoles: Role[]; status: RoleChangeStatus;
+  proposedAt: string; expiresAt: string; decidedBy: UserRef | null; decidedAt: string | null; rejectionReason: string | null;
+  version: string; availableActions: ("approve" | "reject" | "cancel")[] };
+```
+
+- **Expiry.** A change expires 72 hours after `proposedAt`. `status` already accounts for it (no background job): `?status=Pending` excludes expired changes, and an expired change shows `decidedAt = expiresAt` and can't be decided (409 `role_change.not_pending`).
+- **One at a time.** An admin has at most one pending change; a second gives 409 `role_change.already_pending` (also when two proposals race).
+- **availableActions** for the caller: the proposer gets `cancel`; other admins get `approve` and `reject`; nothing once it is no longer pending.
+- **Notifications.** A proposal sends `RoleChangePending` to every other active admin; approval and rejection send `RoleChangeApproved` / `RoleChangeRejected` to the proposer. They link to no request or task and never contain the rejection reason, which is also never logged.
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
