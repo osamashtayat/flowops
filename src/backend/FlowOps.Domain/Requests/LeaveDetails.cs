@@ -23,7 +23,10 @@ public sealed class LeaveDetails
     public string? Reason { get; private set; }
 
     /// <summary>Calendar days, counting both start and end day.</summary>
-    public int Days => EndDate.DayNumber - StartDate.DayNumber + 1;
+    public int Days => DaysBetween(StartDate, EndDate);
+
+    /// <summary>The same count for read models projected from the database.</summary>
+    public static int DaysBetween(DateOnly startDate, DateOnly endDate) => endDate.DayNumber - startDate.DayNumber + 1;
 
     /// <summary>
     /// "Today" is the calendar date in the company time zone (default Asia/Amman), not server UTC,

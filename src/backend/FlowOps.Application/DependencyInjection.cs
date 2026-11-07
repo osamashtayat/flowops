@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using FlowOps.Application.Organization;
+using FlowOps.Application.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -20,6 +21,8 @@ public static class DependencyInjection
         services.AddScoped<RequestSubmissionService>();
         services.AddScoped<RequestQueryService>();
         services.AddScoped<RequestCommentService>();
+        services.AddScoped<TaskQueryService>();
+        services.AddScoped<TaskDecisionService>();
         services.AddScoped<AuthService>();
         services.AddScoped<DepartmentService>();
         services.AddScoped<UserAdministrationService>();
