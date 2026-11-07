@@ -118,7 +118,10 @@ public sealed partial class UserAdministrationService(
         ArgumentNullException.ThrowIfNull(body);
         await EnsureExistsAsync(id, ct);
         var roles = RoleNames(body.Roles);
-        var currentRoles = await RoleAssignmentRules.CurrentRolesAsync(db, id, ct);
+        // Own roles only become a proposal (approval re-checks them); others are claimed so a parallel edit can't be overtaken.
+        var currentRoles = id == currentUser.Id
+            ? await RoleAssignmentRules.CurrentRolesAsync(db, id, ct)
+            : await identity.ClaimRolesForChangeAsync(id, ct);
         if (RoleAssignmentRules.SameRoles(currentRoles, roles))
         {
             return new RoleUpdateOutcome(await GetAsync(id, ct), null);
@@ -152,7 +155,7 @@ public sealed partial class UserAdministrationService(
         LogPasswordReset(logger, currentUser.Id, id);
     }
 
-    private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(string[] currentRoles, string[] roles, CancellationToken ct)
+    private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(IReadOnlyList<string> currentRoles, string[] roles, CancellationToken ct)
     {
         var reviewers = await RoleAssignmentRules.ActiveAdministrators(db).Where(u => u.Id != currentUser.Id).Select(u => u.Id).ToListAsync(ct);
         if (reviewers.Count == 0)

@@ -27,11 +27,18 @@ public sealed partial class RoleChangeService(
         var now = time.GetUtcNow();
         change.Approve(currentUser.Id, now);
 
-        var currentRoles = await RoleAssignmentRules.CurrentRolesAsync(db, change.UserId, ct);
+        // Claimed first, so a direct edit committing during this approval fails one of the two (409) instead of being overwritten.
+        var currentRoles = await identity.ClaimRolesForChangeAsync(change.UserId, ct);
         if (!RoleAssignmentRules.SameRoles(currentRoles, change.PreviousRoles))
         {
             throw new ConflictException(ErrorCodes.RoleChangeStale,
                 "This administrator's roles changed after the request was made. Reject it and ask for a new one.");
+        }
+
+        if (!await db.Users.AnyAsync(u => u.Id == change.UserId && u.IsActive, ct))
+        {
+            throw new ConflictException(ErrorCodes.RoleChangeStale,
+                "This administrator's account was deactivated after the request was made. Reject it.");
         }
 
         await RoleAssignmentRules.EnsureAllowedAsync(db, change.UserId, currentRoles, change.ProposedRoles, ct);

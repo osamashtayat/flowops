@@ -380,6 +380,85 @@ public sealed class RoleChangeTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         await ProblemAssert.HasCode(response, 404, ErrorCodes.NotFound);
     }
 
+    [Theory]
+    [InlineData("approve", false)]
+    [InlineData("reject", false)]
+    [InlineData("approve", true)]
+    [InlineData("reject", true)]
+    public async Task Decide_ByAnAdminDemotedOrDeactivatedMomentsAgo_Returns403(string action, bool deactivate)
+    {
+        var (ada, bea) = await TwoAdminsAsync();
+        var carl = await Given.User("carl").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        using var carlClient = await Factory.ClientFor(carl);
+        using var beaClient = await Factory.ClientFor(bea);
+        using var removal = deactivate
+            ? await beaClient.PutAsJsonAsync(ById(carl.Id), new { displayName = "Carl", departmentId = (Guid?)null, managerId = (Guid?)null, isActive = false }, Ct)
+            : await beaClient.PutAsJsonAsync(ById(carl.Id, "/roles"), RoleSet("Employee"), Ct);
+        removal.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        using var response = await DecideAsync(carlClient, change, action);
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
+        (await JsonBody.ReadAsync(await beaClient.GetAsync(ChangeUri(Id(change)), Ct))).GetProperty("status").GetString().ShouldBe("Pending");
+    }
+
+    [Fact]
+    public async Task Approve_AfterTheProposerWasDeactivated_Returns409StaleAndKeepsRoles()
+    {
+        var (ada, bea) = await TwoAdminsAsync();
+        await Given.User("carl").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        JsonElement change;
+        using (var adaClient = await Factory.ClientFor(ada))
+        {
+            change = await ProposeAsync(adaClient, ada, "Administrator", "FinanceOfficer");
+        }
+
+        using var beaClient = await Factory.ClientFor(bea);
+        (await beaClient.PutAsJsonAsync(ById(ada.Id), new { displayName = "Ada", departmentId = (Guid?)null, managerId = (Guid?)null, isActive = false }, Ct))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        using var response = await DecideAsync(beaClient, change, "approve");
+
+        await ProblemAssert.HasCode(response, 409, ErrorCodes.RoleChangeStale);
+        (await RolesOfAsync(beaClient, ada.Id)).ShouldBe(["Administrator"]);
+    }
+
+    [Theory]
+    [InlineData("reject")]
+    [InlineData("cancel")]
+    public async Task RejectOrCancel_AfterExpiry_Returns409NotPending(string action)
+    {
+        var (ada, bea) = await TwoAdminsAsync();
+        JsonElement change;
+        using (var adaClient = await Factory.ClientFor(ada))
+        {
+            change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        }
+
+        Factory.Clock.Advance(RoleChange.Lifetime);
+        using var client = await Factory.ClientFor(action == "cancel" ? ada : bea);
+
+        using var response = await DecideAsync(client, change, action);
+
+        await ProblemAssert.HasCode(response, 409, ErrorCodes.RoleChangeNotPending);
+    }
+
+    [Fact]
+    public async Task Cancel_AfterApproval_Returns409NotPending()
+    {
+        var (ada, bea) = await TwoAdminsAsync();
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        using var beaClient = await Factory.ClientFor(bea);
+        var approved = await JsonBody.ReadAsync(await DecideAsync(beaClient, change, "approve"));
+
+        using var response = await DecideAsync(adaClient, approved, "cancel");
+
+        await ProblemAssert.HasCode(response, 409, ErrorCodes.RoleChangeNotPending);
+    }
+
     // ---- Listing and access -----------------------------------------------------------------------------------------
 
     [Fact]
@@ -410,7 +489,10 @@ public sealed class RoleChangeTests(FlowOpsApiFactory factory) : DatabaseTest(fa
 
     [Theory]
     [InlineData("GET", "")]
+    [InlineData("LIST", "")]
     [InlineData("POST", "/approve")]
+    [InlineData("POST", "/reject")]
+    [InlineData("POST", "/cancel")]
     public async Task NonAdmin_Returns403(string method, string suffix)
     {
         var (ada, _) = await TwoAdminsAsync();
@@ -419,9 +501,12 @@ public sealed class RoleChangeTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
         using var client = await Factory.ClientFor(lina);
 
-        using var response = method == "GET"
-            ? await client.GetAsync(ChangeUri(Id(change)), Ct)
-            : await client.PostAsJsonAsync(ChangeUri(Id(change), suffix), new { version = Version(change) }, Ct);
+        using var response = method switch
+        {
+            "GET" => await client.GetAsync(ChangeUri(Id(change)), Ct),
+            "LIST" => await client.GetAsync(List, Ct),
+            _ => await client.PostAsJsonAsync(ChangeUri(Id(change), suffix), new { version = Version(change), reason = "x" }, Ct),
+        };
 
         await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
     }
@@ -447,6 +532,44 @@ public sealed class RoleChangeTests(FlowOpsApiFactory factory) : DatabaseTest(fa
             (await RolesOfAsync(beaClient, ada.Id)).ShouldBe(approved ? ["Administrator", "FinanceOfficer"] : ["Administrator"]);
             var status = (await JsonBody.ReadAsync(await beaClient.GetAsync(ChangeUri(Id(change)), Ct))).GetProperty("status").GetString();
             status.ShouldBe(approved ? "Approved" : "Cancelled");
+            foreach (var r in responses)
+            {
+                r.Dispose();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ApprovalAndDirectDemotion_Racing_NeverOverwriteTheDemotion()
+    {
+        for (var run = 0; run < 20; run++)
+        {
+            await Factory.ResetAsync();
+            var (ada, bea) = await TwoAdminsAsync();
+            var carl = await Given.User("carl").WithRoles(Roles.Administrator).CreateAsync(Factory);
+            using var adaClient = await Factory.ClientFor(ada);
+            using var beaClient = await Factory.ClientFor(bea);
+            using var carlClient = await Factory.ClientFor(carl);
+            var change = await ProposeAsync(adaClient, ada, "Administrator", "FinanceOfficer");
+
+            var responses = await Task.WhenAll(
+                DecideAsync(beaClient, change, "approve"),
+                carlClient.PutAsJsonAsync(ById(ada.Id, "/roles"), RoleSet("Employee"), Ct));
+
+            var (approval, demotion) = (responses[0], responses[1]);
+            var roles = await RolesOfAsync(beaClient, ada.Id);
+            if (demotion.StatusCode == HttpStatusCode.OK)
+            {
+                // Approval either committed first (then the demotion replaced it) or lost; the demotion is never undone.
+                roles.ShouldBe(["Employee"], $"run {run}");
+            }
+            else
+            {
+                demotion.StatusCode.ShouldBe(HttpStatusCode.Conflict, $"run {run}");
+                approval.StatusCode.ShouldBe(HttpStatusCode.OK, $"run {run}");
+                roles.ShouldBe(["Administrator", "FinanceOfficer"], $"run {run}");
+            }
+
             foreach (var r in responses)
             {
                 r.Dispose();

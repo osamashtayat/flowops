@@ -17,6 +17,13 @@ public interface IIdentityAdmin
 
     Task StageProfileAsync(Guid userId, UserProfile profile, CancellationToken ct);
 
+    /// <summary>
+    /// The user's current role names, read after claiming the account for this unit of work: an Identity change to the
+    /// user that commits after this call makes the save fail with a concurrency conflict, so rules checked against these
+    /// roles can't be overtaken by a parallel edit (e.g. a demotion racing an approval).
+    /// </summary>
+    Task<IReadOnlyList<string>> ClaimRolesForChangeAsync(Guid userId, CancellationToken ct);
+
     /// <summary>Replaces the user's roles with <paramref name="roles"/> (Identity role names).</summary>
     Task StageRolesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken ct);
 

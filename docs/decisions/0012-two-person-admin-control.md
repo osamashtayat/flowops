@@ -74,7 +74,7 @@ The owner's rules (2026-11-07):
    - PHASE1_TASKS (BE-08d, FE-13b).
 
 ## Consequences
-- \+ No admin can give themselves process roles alone, and no existing account can be promoted to administrator.
+- \+ An admin's own role change needs a second, active admin account, and no existing account can be promoted to administrator. This does not stop one person who controls two admin accounts: an admin can create a second admin account alone (see the residual risks below and #48 for a possible approver rule).
 - \+ Small scope: one aggregate, one migration, 4 new endpoints, a 202 on one existing endpoint for one case, and new 4xx codes. Create, edit and reset password keep today's contract.
 - − **Residual risks accepted by the owner.** One admin can still, alone and with only the audit log as control:
   - grant process roles to another account they control;

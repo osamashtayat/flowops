@@ -293,7 +293,7 @@ An administrator's own role change, decided by another **active** administrator 
 |---|---|---|---|
 | `GET /api/admin/role-changes?status&page&pageSize` | — | 200 `Paged<RoleChangeDto>`, newest first | 400 |
 | `GET /api/admin/role-changes/{id}` | — | 200 `RoleChangeDto` | 404 |
-| `POST /api/admin/role-changes/{id}/approve` | `{ version }` | 200 `RoleChangeDto`; the roles are applied | 400, 403 `auth.forbidden` (caller no longer an active admin), 404, 409 `concurrency.conflict`, `role_change.not_pending`, `role_change.stale` (the roles changed since the proposal), 422 `role_change.self_approval`, `user.last_admin` |
+| `POST /api/admin/role-changes/{id}/approve` | `{ version }` | 200 `RoleChangeDto`; the roles are applied | 400, 403 `auth.forbidden` (caller no longer an active admin), 404, 409 `concurrency.conflict`, `role_change.not_pending`, `role_change.stale` (the roles changed since the proposal, or the proposer was deactivated), 422 `role_change.self_approval`, `user.last_admin` |
 | `POST /api/admin/role-changes/{id}/reject` | `{ version, reason }` (1–500 chars) | 200 `RoleChangeDto` | 400, 403 `auth.forbidden`, 404, 409 `concurrency.conflict`, `role_change.not_pending`, 422 `role_change.self_approval` |
 | `POST /api/admin/role-changes/{id}/cancel` | `{ version }` | 200 `RoleChangeDto` | 400, 403 `role_change.not_proposer`, 404, 409 `concurrency.conflict`, `role_change.not_pending` |
 
@@ -305,6 +305,7 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 ```
 
 - **Expiry.** A change expires 72 hours after `proposedAt`. `status` already accounts for it (no background job): `?status=Pending` excludes expired changes, and an expired change shows `decidedAt = expiresAt` and can't be decided (409 `role_change.not_pending`).
+- **No lost updates.** Approving and a direct role edit of the same user can't both silently apply: the account is claimed before the rules are checked, so a parallel edit that commits first makes the other request fail with 409. Reading role changes uses the `Admin` policy like the other admin reads (claims, up to a minute stale); deciding checks the database.
 - **One at a time.** An admin has at most one pending change; a second gives 409 `role_change.already_pending` (also when two proposals race).
 - **availableActions** for the caller: the proposer gets `cancel`; other admins get `approve` and `reject`; nothing once it is no longer pending.
 - **Notifications.** A proposal sends `RoleChangePending` to every other active admin; approval and rejection send `RoleChangeApproved` / `RoleChangeRejected` to the proposer. They link to no request or task and never contain the rejection reason, which is also never logged.
