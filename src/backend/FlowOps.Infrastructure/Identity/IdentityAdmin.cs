@@ -71,6 +71,15 @@ internal sealed class IdentityAdmin(AppDbContext db, UserManager<ApplicationUser
         user.IsActive = profile.IsActive;
     }
 
+    public async Task<IReadOnlyList<string>> ClaimRolesForChangeAsync(Guid userId, CancellationToken ct)
+    {
+        await LoadAsync(userId, ct);
+        var names = await db.UserRoles.Where(ur => ur.UserId == userId)
+            .Join(db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name!)
+            .ToListAsync(ct);
+        return [.. names.Order(StringComparer.Ordinal)];
+    }
+
     public async Task StageRolesAsync(Guid userId, IReadOnlyCollection<string> roles, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(roles);

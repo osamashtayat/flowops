@@ -145,7 +145,7 @@ Activities are never updated or deleted. Free-form comments are activities of ty
 |---|---|---|
 | Id | Guid | |
 | RecipientId | Guid | |
-| Type | `NotificationType` | `TaskAssigned`, `RequestApproved`, `RequestRejected`, `RequestCompleted`, `StepApproved`, `CommentAdded` |
+| Type | `NotificationType` | `TaskAssigned`, `RequestApproved`, `RequestRejected`, `RequestCompleted`, `StepApproved`, `CommentAdded`, `RoleChangePending`, `RoleChangeApproved`, `RoleChangeRejected` (ADR-0012) |
 | Title | string(150) | rendered server-side; no HTML |
 | Body | string(500) | rendered server-side; no HTML; **never contains the leave reason** |
 | RequestId | Guid? | |
@@ -154,6 +154,24 @@ Activities are never updated or deleted. Free-form comments are activities of ty
 | ReadAt | DateTimeOffset? | |
 
 Role-queue tasks notify **every eligible member** of the role (excluding the requester) — one row per recipient.
+
+### 2.8 RoleChange (ADR-0012)
+
+An administrator's request to change **their own** roles, applied only when a different active administrator approves it. Not a `Request`: it is not a business process.
+
+| Field | Type | Rules |
+|---|---|---|
+| Id | Guid | |
+| UserId | Guid | the administrator whose roles change; also the proposer |
+| PreviousRoles | string[] | the user's roles at proposal; approval is refused (`role_change.stale`) if they differ by then |
+| ProposedRoles | string[] | the complete new set; distinct, sorted, known roles, different from `PreviousRoles` |
+| ProposedAt / ExpiresAt | DateTimeOffset | `ExpiresAt = ProposedAt + 72 h` |
+| Status | `RoleChangeStatus` | `Pending`, `Approved`, `Rejected`, `Cancelled`, `Expired`; a stored `Pending` past `ExpiresAt` reads as `Expired` (`StatusAt(now)`) |
+| DecidedById / DecidedAt | Guid? / DateTimeOffset? | set exactly when no longer `Pending` (expiry: `DecidedAt = ExpiresAt`, no decider) |
+| RejectionReason | string(500)? | set exactly when `Rejected`; never logged or put in notifications |
+| Version | uint | `xmin` |
+
+Transitions: `Pending → Approved | Rejected` by anyone but `UserId` (`role_change.self_approval`); `Pending → Cancelled` by `UserId` only (`role_change.not_proposer`); `Pending → Expired` when a new proposal finds an expired row (`ExpireIfDue`). Anything else: `role_change.not_pending`. Checks that need data (decider is an active admin, last administrator, Administrator only on new accounts, roles unchanged) live in `Application/Organization/RoleAssignmentRules` and `RoleChangeService`.
 
 ---
 
@@ -275,6 +293,7 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 - Enums stored as `text` (readable, migration-safe), with check constraints generated per enum.
 - Indexes: `requests(requester_id, submitted_at desc)`, `requests(status)`, `work_tasks(assignee_user_id) where status='Open'`, `work_tasks(assignee_role) where status='Open'`, `notifications(recipient_id, created_at desc)`, `notifications(recipient_id) where read_at is null`, `request_activities(request_id, occurred_at)`.
 - Partial unique index `ux_work_tasks_open_per_request on work_tasks(request_id) where status='Open'` (I4).
+- Partial unique index `ux_role_changes_pending_per_user on role_changes(user_id) where status='Pending'` (one pending role change per admin, ADR-0012); checks `ck_role_changes_decision_iff_closed` and `ck_role_changes_reason_iff_rejected`.
 - Check: `num_nonnulls(assignee_user_id, assignee_role) = 1`; `manager_id <> id` on users.
 - `request_number_seq` sequence for `Request.Number`.
 
@@ -282,7 +301,7 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 - Enum and currency checks are generated from code (`CheckConstraints.InEnum<T>`, `CheckConstraints.In(column, SupportedCurrencies.All)`), so a new value lands in the next migration. Enum columns are `varchar(32)`.
 - Extra checks beyond the list above: `ck_work_tasks_decision_iff_done` (outcome, decider and time are set exactly when Done), `ck_work_tasks_assignee_role` (a known role), `ck_purchase_request_details_amount` (0 < amount ≤ 1,000,000.000), `ck_leave_request_details_dates` (end ≥ start); department names unique case-insensitively (`ux_departments_name_ci` on `lower(name)`).
 - Details tables are keyed by `request_id` (PK = FK to `requests`, cascade). Tasks and activities cascade with their request; everything referencing users, departments or tasks is `RESTRICT` (users and departments are deactivated, never deleted).
-- `xmin` is mapped with `IsRowVersion()` on `Request.Version` and `WorkTask.Version`; it is a system column, so it doesn't appear in the DDL.
+- `xmin` is mapped with `IsRowVersion()` on `Request.Version`, `WorkTask.Version` and `RoleChange.Version`; it is a system column, so it doesn't appear in the DDL.
 - Every FK has an index except `work_tasks.assignee_user_id`, which only has the open-task partial index, because users are never deleted.
 - Domain types have a private parameterless constructor for materialization only; `RequestNumber.Parse` rebuilds the stored value.
 - **Ids (BE-11).** Domain ids come from `Common/SequentialGuid.NewV7(now)`: UUIDv7 with a per-process counter in the same millisecond, so ordering by id is creation order. Lists sort by time then `id`, e.g. a request's `Submitted` before its first `TaskAssigned`, which share an instant. `Guid.CreateVersion7` randomises within the millisecond, so that order was not guaranteed before.

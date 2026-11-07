@@ -87,7 +87,7 @@ namespace FlowOps.Infrastructure.Migrations
 
                     b.ToTable("notifications", null, t =>
                         {
-                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'RequestApproved', 'RequestRejected', 'RequestCompleted', 'StepApproved', 'CommentAdded')");
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('TaskAssigned', 'RequestApproved', 'RequestRejected', 'RequestCompleted', 'StepApproved', 'CommentAdded', 'RoleChangePending', 'RoleChangeApproved', 'RoleChangeRejected')");
                         });
                 });
 
@@ -125,6 +125,87 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasDatabaseName("ux_departments_code");
 
                     b.ToTable("departments", (string)null);
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Organization.RoleChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.PrimitiveCollection<string[]>("PreviousRoles")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("previous_roles");
+
+                    b.Property<DateTimeOffset>("ProposedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proposed_at");
+
+                    b.PrimitiveCollection<string[]>("ProposedRoles")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("proposed_roles");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_role_changes");
+
+                    b.HasIndex("DecidedById")
+                        .HasDatabaseName("ix_role_changes_decided_by_id");
+
+                    b.HasIndex("ProposedAt")
+                        .IsDescending()
+                        .HasDatabaseName("ix_role_changes_proposed_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_role_changes_user_id");
+
+                    b.HasIndex(new[] { "UserId" }, "ux_role_changes_pending_per_user")
+                        .IsUnique()
+                        .HasDatabaseName("ux_role_changes_pending_per_user")
+                        .HasFilter("status = 'Pending'");
+
+                    b.ToTable("role_changes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_role_changes_decision_iff_closed", "(status = 'Pending') = (decided_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_role_changes_reason_iff_rejected", "(status = 'Rejected') = (rejection_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_role_changes_status", "status IN ('Pending', 'Approved', 'Rejected', 'Cancelled', 'Expired')");
+                        });
                 });
 
             modelBuilder.Entity("FlowOps.Domain.Requests.Request", b =>
@@ -706,6 +787,22 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_notifications_work_task_task_id");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Organization.RoleChange", b =>
+                {
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_role_changes_users_decided_by_id");
+
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_changes_users_user_id");
                 });
 
             modelBuilder.Entity("FlowOps.Domain.Requests.Request", b =>

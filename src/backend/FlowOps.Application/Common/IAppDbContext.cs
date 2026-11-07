@@ -19,6 +19,9 @@ public interface IAppDbContext
 
     DbSet<Notification> Notifications { get; }
 
+    /// <summary>Administrators' own role changes waiting for, or decided by, another administrator (ADR-0012).</summary>
+    DbSet<RoleChange> RoleChanges { get; }
+
     /// <summary>Read-only projection of the Identity user (ADR-0002): Application never sees Identity types.</summary>
     IQueryable<UserReadModel> Users { get; }
 

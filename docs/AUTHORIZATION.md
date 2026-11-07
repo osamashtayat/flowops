@@ -78,7 +78,7 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 |---|---|
 | `isManager` | user has ≥ 1 active direct report |
 
-Users may hold several roles. **Administrator grants no request visibility and no process authority.** Admin powers can't be used to get it either (decided 2026-11-06): an admin can't change their own roles or manager link, make themselves anyone's manager, deactivate themselves, or reset their own password through the admin endpoint (422 `user.self_administration`; they use change-password). Another administrator has to make those changes. Resetting another user's password stays allowed; every admin change, password resets included, is logged with the actor's id.
+Users may hold several roles. **Administrator grants no request visibility and no process authority.** Admin powers can't be used to get it either (decided 2026-11-06): an admin can't change their own manager link, make themselves anyone's manager, deactivate themselves, or reset their own password through the admin endpoint (422 `user.self_administration`; they use change-password). Another administrator has to make those changes. An admin's own **role** change is recorded as pending (202) and applies only when a different, active administrator approves it within 72 hours; with no other active admin it is refused (422 `role_change.no_reviewer`). The `Administrator` role can only be given when a new account is created (422 `user.admin_role_on_create_only` otherwise). See ADR-0012. Resetting another user's password stays allowed; every admin change, password resets and role-change decisions included, is logged with the actor's id.
 
 The server returns the capability set from `GET /api/auth/me` (`capabilities: string[]`). The frontend uses that list to show navigation and buttons; it never derives permissions from role names itself.
 
@@ -106,7 +106,10 @@ Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `
 | Comment on a request | ⚙ R1 | ⚙ R2 | ⚙ R3 | ⚙ R3 | ⚙ R3 | ⛔ |
 | Read leave `Reason` | own | ⚙ R2 | ⛔ | ⚙ R3 | — | ⛔ |
 | Manage users / departments / roles / managers | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
-| …on **their own** account: change roles or manager link, make themselves anyone's manager (including by reactivating a report), deactivate themselves, reset their own password via the admin endpoint | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ 422 `user.self_administration` (another admin must) |
+| …on **their own** account: change their manager link, make themselves anyone's manager (including by reactivating a report), deactivate themselves, reset their own password via the admin endpoint | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ 422 `user.self_administration` (another admin must) |
+| …change **their own** roles | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⏳ 202 pending; another active admin approves (ADR-0012) |
+| …add `Administrator` to an **existing** user | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ 422 `user.admin_role_on_create_only` (only on create) |
+| Approve or reject **another** admin's own role change | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ (not your own: 422 `role_change.self_approval`) |
 | View stalled tasks (number, type, stage, age only) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
 | Own notifications | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 

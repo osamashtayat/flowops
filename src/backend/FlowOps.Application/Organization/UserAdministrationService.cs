@@ -1,4 +1,5 @@
 using FlowOps.Application.Common;
+using FlowOps.Application.Notifications;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using Microsoft.EntityFrameworkCore;
@@ -8,10 +9,12 @@ namespace FlowOps.Application.Organization;
 
 /// <summary>
 /// User administration (API_CONTRACT.md §8). Rules: no manager cycles (I13), an active Administrator always
-/// remains, inactive departments take no new members. Duplicate emails surface as 409 from the unique index.
+/// remains, inactive departments take no new members, Administrator is only given to new accounts and an admin's own
+/// role change waits for another admin (ADR-0012). Duplicate emails surface as 409 from the unique index.
 /// </summary>
 public sealed partial class UserAdministrationService(
-    IAppDbContext db, IIdentityAdmin identity, ICurrentUser currentUser, TimeProvider time, ILogger<UserAdministrationService> logger)
+    IAppDbContext db, IIdentityAdmin identity, RoleChangeReader roleChanges, ICurrentUser currentUser, TimeProvider time,
+    ILogger<UserAdministrationService> logger)
 {
     public async Task<PagedResult<UserDto>> ListAsync(UserListQuery query, CancellationToken ct)
     {
@@ -96,7 +99,7 @@ public sealed partial class UserAdministrationService(
 
         if (current.IsActive && !body.IsActive)
         {
-            await EnsureNotLastAdministratorAsync(id, ct);
+            await RoleAssignmentRules.EnsureNotLastAdministratorAsync(db, id, ct);
             EnsureNotSelfDeactivation(id);
         }
 
@@ -106,25 +109,34 @@ public sealed partial class UserAdministrationService(
         return await GetAsync(id, ct);
     }
 
-    public async Task<UserDto> UpdateRolesAsync(Guid id, UpdateUserRolesRequest body, CancellationToken ct)
+    /// <summary>
+    /// Replaces another user's roles at once. An administrator's own roles only change after another administrator
+    /// approves (ADR-0012 §3), so for the caller this records a pending <see cref="RoleChange"/> instead.
+    /// </summary>
+    public async Task<RoleUpdateOutcome> UpdateRolesAsync(Guid id, UpdateUserRolesRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
         await EnsureExistsAsync(id, ct);
         var roles = RoleNames(body.Roles);
-        if (!roles.Contains(Roles.Administrator))
+        // Own roles only become a proposal (approval re-checks them); others are claimed so a parallel edit can't be overtaken.
+        var currentRoles = id == currentUser.Id
+            ? await RoleAssignmentRules.CurrentRolesAsync(db, id, ct)
+            : await identity.ClaimRolesForChangeAsync(id, ct);
+        if (RoleAssignmentRules.SameRoles(currentRoles, roles))
         {
-            await EnsureNotLastAdministratorAsync(id, ct);
+            return new RoleUpdateOutcome(await GetAsync(id, ct), null);
         }
 
+        await RoleAssignmentRules.EnsureAllowedAsync(db, id, currentRoles, roles, ct);
         if (id == currentUser.Id)
         {
-            throw SelfAdministration("You cannot change your own roles. Ask another administrator.");
+            return new RoleUpdateOutcome(null, await ProposeOwnRoleChangeAsync(currentRoles, roles, ct));
         }
 
         await identity.StageRolesAsync(id, roles, ct);
         await SaveAsync(ct);
         LogRolesReplaced(logger, currentUser.Id, id, roles);
-        return await GetAsync(id, ct);
+        return new RoleUpdateOutcome(await GetAsync(id, ct), null);
     }
 
     public async Task ResetPasswordAsync(Guid id, ResetPasswordRequest body, CancellationToken ct)
@@ -141,6 +153,31 @@ public sealed partial class UserAdministrationService(
         await identity.StagePasswordResetAsync(id, body.NewPassword, ct);
         await SaveAsync(ct);
         LogPasswordReset(logger, currentUser.Id, id);
+    }
+
+    private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(IReadOnlyList<string> currentRoles, string[] roles, CancellationToken ct)
+    {
+        var reviewers = await RoleAssignmentRules.ActiveAdministrators(db).Where(u => u.Id != currentUser.Id).Select(u => u.Id).ToListAsync(ct);
+        if (reviewers.Count == 0)
+        {
+            throw new BusinessRuleException(ErrorCodes.RoleChangeNoReviewer,
+                "You are the only active administrator, so nobody could approve a change to your own roles.");
+        }
+
+        var now = time.GetUtcNow();
+        if (await db.RoleChanges.SingleOrDefaultAsync(c => c.UserId == currentUser.Id && c.Status == RoleChangeStatus.Pending, ct)
+            is { } pending && !pending.ExpireIfDue(now))
+        {
+            throw new ConflictException(ErrorCodes.RoleChangeAlreadyPending, "You already have a role change waiting for approval.");
+        }
+
+        var change = RoleChange.Propose(currentUser.Id, currentRoles, roles, now);
+        db.RoleChanges.Add(change);
+        var proposerName = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.DisplayName).SingleAsync(ct);
+        db.Notifications.AddRange(NotificationFactory.RoleChangePending(change, proposerName, reviewers, now));
+        await SaveAsync(ct);
+        LogRoleChangeProposed(logger, currentUser.Id, change.Id, roles);
+        return await roleChanges.GetAsync(change.Id, ct);
     }
 
     private async Task SaveAsync(CancellationToken ct)
@@ -228,17 +265,6 @@ public sealed partial class UserAdministrationService(
         }
     }
 
-    /// <summary>Called before the user stops being an active Administrator. Phase 1 accepts the race of two simultaneous demotions.</summary>
-    private async Task EnsureNotLastAdministratorAsync(Guid id, CancellationToken ct)
-    {
-        var activeAdmins = db.Users.Where(u => u.IsActive && db.UserRoles.Any(r => r.UserId == u.Id && r.RoleName == Roles.Administrator));
-        var isActiveAdmin = await activeAdmins.AnyAsync(u => u.Id == id, ct);
-        if (isActiveAdmin && !await activeAdmins.AnyAsync(u => u.Id != id, ct))
-        {
-            throw new BusinessRuleException(ErrorCodes.UserLastAdmin, "At least one active administrator must remain.");
-        }
-    }
-
     private async Task EnsurePasswordAcceptedAsync(string password, string field, CancellationToken ct)
     {
         var problems = await identity.CheckPasswordAsync(password, ct);
@@ -280,6 +306,9 @@ public sealed partial class UserAdministrationService(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} set roles of user {UserId} to {Roles}")]
     private static partial void LogRolesReplaced(ILogger logger, Guid actorId, Guid userId, IEnumerable<string> roles);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} asked to change their own roles to {Roles} (role change {RoleChangeId})")]
+    private static partial void LogRoleChangeProposed(ILogger logger, Guid actorId, Guid roleChangeId, IEnumerable<string> roles);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Admin {ActorId} reset the password of user {UserId}")]
     private static partial void LogPasswordReset(ILogger logger, Guid actorId, Guid userId);

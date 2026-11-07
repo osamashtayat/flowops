@@ -25,6 +25,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
+
     IQueryable<UserReadModel> IAppDbContext.Users => Users.Select(u => new UserReadModel
     {
         Id = u.Id,
@@ -50,6 +52,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         [DepartmentConfiguration.NameIndex] = (ErrorCodes.DepartmentDuplicate, "A department with this name already exists."),
         [IdentityTableNames.UserNameIndex] = (ErrorCodes.UserDuplicateEmail, "A user with this email already exists."),
         // Two concurrent role edits adding the same role: the loser sees the winner's row.
+        // Two proposals racing for the same administrator: the second one sees the first.
+        [RoleChangeConfiguration.PendingPerUserIndex] =
+            (ErrorCodes.RoleChangeAlreadyPending, "You already have a role change waiting for approval."),
         ["pk_user_roles"] = (ErrorCodes.ConcurrencyConflict, "The user was changed by someone else. Reload and try again."),
     };
 

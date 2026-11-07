@@ -57,6 +57,12 @@ internal static class ContractEndpoints
         new("PUT", "/api/users/{id}", $"/api/users/{Id}", """{"displayName":"Renamed","departmentId":null,"managerId":null,"isActive":true}""", Admin) { Implemented = true },
         new("PUT", "/api/users/{id}/roles", $"/api/users/{Id}/roles", """{"roles":["Employee","HrOfficer"]}""", Admin) { Implemented = true },
         new("POST", "/api/users/{id}/reset-password", $"/api/users/{Id}/reset-password", """{"newPassword":"a-long-reset-pw"}""", Admin) { Implemented = true },
+        // ADR-0012 role changes (BE-08d, behaviour: Organization/RoleChangeTests).
+        new("GET", "/api/admin/role-changes", "/api/admin/role-changes?status=Pending&page=1&pageSize=20", null, Admin) { Implemented = true },
+        new("GET", "/api/admin/role-changes/{id}", $"/api/admin/role-changes/{Id}", null, Admin) { Implemented = true },
+        new("POST", "/api/admin/role-changes/{id}/approve", $"/api/admin/role-changes/{Id}/approve", """{"version":"7"}""", Admin) { Implemented = true },
+        new("POST", "/api/admin/role-changes/{id}/reject", $"/api/admin/role-changes/{Id}/reject", """{"version":"7","reason":"Not now"}""", Admin) { Implemented = true },
+        new("POST", "/api/admin/role-changes/{id}/cancel", $"/api/admin/role-changes/{Id}/cancel", """{"version":"7"}""", Admin) { Implemented = true },
         new("GET", "/api/admin/stalled-tasks", "/api/admin/stalled-tasks?page=2&pageSize=50", null, Admin),
     ];
 }
