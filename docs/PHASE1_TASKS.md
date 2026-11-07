@@ -201,9 +201,10 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.6 reusing `DecisionDialog`/`useDecideTask` from FE-09. **Deps:** FE-09 (+ BE-12).
 - **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29). Leave decision dialogs carry the visibility note (#38).
 
-### FE-11 — Notifications & realtime · `Todo`
+### FE-11 — Notifications & realtime · `Done` (notifications on the real API, checked in the browser 2026-11-07; the SignalR client is built against the contract but the hub isn't on `main` until BE-14, see #53)
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).
 - **Deps:** FE-04 (+ BE-13/14). **Tests:** invalidation mapping per event; optimistic mark-read rollback on error.
+- **Notes:** role-change notifications (no request/task id) open `/admin/role-changes` (the screen itself is FE-13b). The realtime client retries a missing hub quietly and is off in unit tests and while the dev API is mocked. Verify live updates once BE-14 is merged.
 
 ### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).

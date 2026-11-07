@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router'
 import { Dialog } from '@/components/ui/Dialog'
+import { useRealtime } from '@/lib/realtime/useRealtime'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 
@@ -10,6 +11,7 @@ import { TopBar } from './TopBar'
  */
 export function AppShell() {
   const { pathname } = useLocation()
+  useRealtime()
   // The drawer is open only on the page where it was opened, so any navigation (a link, the back
   // button) closes it without an effect.
   const [openedAt, setOpenedAt] = useState<string | null>(null)

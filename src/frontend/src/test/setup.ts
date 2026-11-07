@@ -3,6 +3,7 @@ import { cleanup } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { server } from '@/mocks/server'
 import { resetMockAdmin } from '@/mocks/adminStore'
+import { resetMockNotifications } from '@/mocks/notificationStore'
 import { resetMockRequests } from '@/mocks/requestStore'
 import { resetMockState } from '@/mocks/state'
 
@@ -14,6 +15,7 @@ afterEach(() => {
   server.resetHandlers()
   resetMockState()
   resetMockRequests()
+  resetMockNotifications()
   resetMockAdmin()
 })
 

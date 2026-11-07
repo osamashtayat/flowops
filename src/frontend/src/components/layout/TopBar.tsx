@@ -1,5 +1,5 @@
-import { Link } from 'react-router'
-import { Bell, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
+import { NotificationBell } from '@/features/notifications/components/NotificationBell'
 import { UserMenu } from './UserMenu'
 
 export interface TopBarProps {
@@ -23,14 +23,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
         <span className="text-base font-semibold text-ink lg:hidden">FlowOps</span>
       </div>
       <div className="flex items-center gap-1">
-        {/* Placeholder until FE-11 adds the unread count and popover. */}
-        <Link
-          to="/notifications"
-          aria-label="Notifications"
-          className="inline-flex size-9 items-center justify-center rounded-sm text-ink hover:bg-surface-muted"
-        >
-          <Bell aria-hidden="true" className="size-5" />
-        </Link>
+        <NotificationBell />
         <UserMenu />
       </div>
     </header>
