@@ -231,6 +231,13 @@ type NotificationDto = { id: string; type: "TaskAssigned"|"RequestApproved"|"Req
   title: string; body: string; requestId: string | null; taskId: string | null; createdAt: string; readAt: string | null };
 ```
 
+As built (BE-13):
+- **Own only.** Every query is scoped to the signed-in user. Another user's id, or an unknown id, gives 404 (never 403). Administrators see only notifications addressed to them; they get no request notifications.
+- **Order and filters.** Newest first (`createdAt`, then `id`). `unreadOnly=true` lists only `readAt: null`. `unread-count` counts the same set. Paging follows §1 (`page` ≥ 1, `pageSize` 1–100; anything else gives 400).
+- **Marking read.** `POST /{id}/read` sets `readAt` once; repeating it keeps the first time (204). `read-all` marks every unread notification of the caller and returns 204, also when there is nothing to mark.
+- **Links.** `requestId` / `taskId` point to the request and task the notification is about. Role-change notifications (`RoleChange*`) have neither; the client links them to the role-changes screen by `type`.
+- **Text.** `title` and `body` are plain text rendered when the notification was created (`NotificationFactory`). They never contain a leave reason.
+
 ## 7. Dashboard
 
 `GET /api/dashboard` — auth → 200 `DashboardDto`. Sections the caller lacks capability for are `null`.

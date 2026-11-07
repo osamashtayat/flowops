@@ -141,7 +141,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Contract:** `InboxItemDto.actions` is in the contract (DTO, openapi, API_CONTRACT §5). `GET /tasks` must fill it from the same eligibility source as `availableActions.actions` (`[]` for Done items), with a test.
 - **Note:** highest-risk task — request an `architecture-reviewer` and `security-reviewer` pass before merging.
 
-### BE-13 — Notifications API · `Todo`
+### BE-13 — Notifications API · `Done`
 - **Objective:** `API_CONTRACT.md` §6. **Deps:** BE-12. **Tests:** own-only access; read-all; unread count.
 
 ### BE-14 — Real-time hub & post-commit publishing · `Todo`
