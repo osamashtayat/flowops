@@ -79,7 +79,7 @@ Success: navigate to `/requests/:id`, toast "Request FO-… submitted. Your mana
 ### 4.5 Request details
 Header: "FO-2026-000123 · Dell XPS 15" + StatusBadge + stage text ("Waiting for: Finance approval").
 Layout ≥ 1024: two columns — left (2/3): Details card (fields by type; leave reason shows "Restricted" when `reasonHidden`), Approval steps card (WorkTaskDto list as a stepper: each step with assignee, outcome, decided by/at, comment); right (1/3): Summary card (requester, department, submitted, closed), Actions card (only if `availableActions`), Activity timeline + comment box (if `canComment`).
-Actions: buttons from `availableActions` → ConfirmDialog → decision mutation with `version`. 409 → toast with mapped message + refetch.
+Actions: buttons from `availableActions` → ConfirmDialog → decision mutation with `version`. 409 → toast with mapped message + refetch. If a refresh removes the task (or the open action) while its dialog is open and nothing was sent yet, the dialog closes with an info toast "FO-… is no longer waiting for your decision, so the dialog was closed." (same in the inbox and the role-changes list; `useClosedByRefreshNotice`).
 Leave requests only: the comment box and the decision dialog's comment / reason field say "Visible to everyone who can see this request. Don't repeat the leave reason." (free text isn't masked, the leave reason is; AUTHORIZATION §5). Same dialog from the inbox. The text lives in `lib/format/visibility.ts`.
 States: skeleton; 404 → NotFound content ("This request doesn't exist or you don't have access."); error with retry.
 

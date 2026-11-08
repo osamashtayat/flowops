@@ -13,7 +13,9 @@ export function RequestActionsCard({ request }: { request: RequestDetailsDto }) 
   return (
     <Card title="Your action">
       <p className="mb-4 text-sm text-ink-muted">This request is waiting for your decision.</p>
+      {/* Keyed by task: when a refresh hands this page a different task, an open dialog must not carry over to it. */}
       <DecisionActions
+        key={available.taskId}
         taskId={available.taskId}
         version={available.version}
         stage={task.stage}
