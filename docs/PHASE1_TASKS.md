@@ -149,14 +149,19 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-13. **AC:** events and recipients per `API_CONTRACT.md` §9; publisher failures are logged, never fail the request.
 - **Tests:** `TESTING.md` §3.5; one hub connection test with cookie auth.
 
+### BE-14b — Hub connection cap (#55) · `Done`
+- **Objective:** a signed-in user can't exhaust server memory and sockets with hub connections. Each user may hold at most `FlowOps:Realtime:MaxConnectionsPerUser` (default 10) open connections. A connection beyond that is closed with an error and no reconnect; the existing ones keep working. No negotiate rate limit: negotiated-but-unconnected connections are disposed by SignalR after a short timeout, so the open-connection cap is the bound that matters.
+- **Tests:** `RealtimeTests` (cap refused with the others intact, other users unaffected).
+
 ### BE-15 — Dashboard & stalled tasks · `Done`
 - **Objective:** `GET /dashboard`, `GET /admin/stalled-tasks`. **Deps:** BE-12.
 - **AC:** dashboard is ≤ 4 SQL round-trips; capability-gated sections are `null`.
 - **Tests:** per-capability shapes; stalled reasons both detected.
 
-### BE-16 — Development seed data · `Todo`
+### BE-16 — Development seed data · `Done`
 - **Objective:** `--seed-demo` option creating a demo company (3 departments, ~10 users across all roles, sample requests in every state). Dev only.
 - **Deps:** BE-12. **AC:** idempotent; documented credentials in README; never runs in Production.
+- **As built:** `DemoDataSeeder` (Infrastructure/Seeding) with data in `DemoCompany`; builds requests through the `Request` aggregate and notifications through `NotificationFactory`, one `SaveChangesAsync` (users added as entities with Identity's hasher, so no transaction). Throws outside Development. Role-queue tasks are not announced by notification in the seed (eligibility needs the saved data). Tests: `Seeding/DemoDataSeederTests`.
 
 ## Frontend
 

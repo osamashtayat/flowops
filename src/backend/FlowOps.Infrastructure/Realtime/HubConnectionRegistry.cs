@@ -11,12 +11,28 @@ public sealed class HubConnectionRegistry
 {
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, HubCallerContext>> _byUser = new(StringComparer.Ordinal);
 
-    public void Add(HubCallerContext connection)
+    /// <summary>
+    /// Registers <paramref name="connection"/> unless its user already has <paramref name="maxPerUser"/> open (#55).
+    /// Checked and added under the user's lock, so parallel connects can't overshoot the cap.
+    /// </summary>
+    public bool TryAdd(HubCallerContext connection, int maxPerUser)
     {
         ArgumentNullException.ThrowIfNull(connection);
-        if (connection.UserIdentifier is { } user)
+        if (connection.UserIdentifier is not { } user)
         {
-            _byUser.GetOrAdd(user, _ => new(StringComparer.Ordinal))[connection.ConnectionId] = connection;
+            return false;
+        }
+
+        var connections = _byUser.GetOrAdd(user, _ => new(StringComparer.Ordinal));
+        lock (connections)
+        {
+            if (connections.Count >= maxPerUser)
+            {
+                return false;
+            }
+
+            connections[connection.ConnectionId] = connection;
+            return true;
         }
     }
 
