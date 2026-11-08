@@ -271,6 +271,71 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             .ShouldBe(["fiona", "karim"]);
     }
 
+    // ---- Separation of duties (T3, #50) ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ManagerWhoIsAlsoAFinanceOfficer_CannotDecideTheFinanceStepAfterApproving_Returns403()
+    {
+        await SeedOrgWithFinanceManagerAsync();
+        var requestId = await SubmitPurchaseAsync("rana");
+        await DecideAsync("kofi", await OpenItemAsync("kofi", requestId), "approve");
+        var financeItem = await OpenItemAsync("fiona", requestId);
+
+        using var response = await DecideAsync("kofi", financeItem, "approve");
+
+        await ProblemAssert.HasCode(response, 403, ErrorCodes.TaskAlreadyParticipated);
+        await ShouldBeAtAsync(requestId, "InReview", "FinanceApproval");
+    }
+
+    [Fact]
+    public async Task ManagerWhoIsAlsoAFinanceOfficer_IsNotOfferedOrNotifiedAboutTheFinanceStep()
+    {
+        await SeedOrgWithFinanceManagerAsync();
+        var requestId = await SubmitPurchaseAsync("rana");
+        await DecideAsync("kofi", await OpenItemAsync("kofi", requestId), "approve");
+
+        (await OpenItemsAsync("kofi")).ShouldBeEmpty();
+        using var kofi = await ClientAsync("kofi");
+        var details = await JsonBody.ReadAsync(await kofi.GetAsync(new Uri($"/api/requests/{requestId}", UriKind.Relative), Ct));
+        details.GetProperty("availableActions").ValueKind.ShouldBe(JsonValueKind.Null);
+        (await NotificationsAsync(requestId)).Where(n => n.Type == NotificationType.TaskAssigned).Select(n => Name(n.RecipientId)).Order().ToArray()
+            .ShouldBe(["finny", "fiona", "kofi"], customMessage: "kofi got the manager task only; the finance step went to the other officers");
+    }
+
+    [Fact]
+    public async Task AnotherFinanceOfficer_DecidesTheStep_AfterTheManagerOfficerWasRefused()
+    {
+        await SeedOrgWithFinanceManagerAsync();
+        var requestId = await SubmitPurchaseAsync("rana");
+        await DecideAsync("kofi", await OpenItemAsync("kofi", requestId), "approve");
+
+        using var response = await DecideAsync("fiona", await OpenItemAsync("fiona", requestId), "approve");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        await ShouldBeAtAsync(requestId, "Approved", "ProcurementFulfillment");
+    }
+
+    [Fact]
+    public async Task FinanceStep_WhoseOnlyOfficerApprovedTheManagerStep_IsStalled()
+    {
+        var ops = await Given.DepartmentAsync(Factory, "Operations", "OPS");
+        _users = new()
+        {
+            ["kofi"] = await Given.User("kofi").InDepartment(ops).WithRoles(Roles.Employee, Roles.FinanceOfficer).CreateAsync(Factory),
+            ["ada"] = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory),
+        };
+        _users["rana"] = await Given.User("rana").InDepartment(ops).ManagedBy(_users["kofi"]).CreateAsync(Factory);
+        var requestId = await SubmitPurchaseAsync("rana");
+        await DecideAsync("kofi", await OpenItemAsync("kofi", requestId), "approve");
+
+        using var admin = await ClientAsync("ada");
+        var stalled = await JsonBody.ReadAsync(await admin.GetAsync(new Uri("/api/admin/stalled-tasks", UriKind.Relative), Ct));
+
+        var row = stalled.GetProperty("items").EnumerateArray().ShouldHaveSingleItem();
+        row.GetProperty("requestId").GetGuid().ShouldBe(requestId);
+        row.GetProperty("reason").GetString().ShouldBe("NoEligibleRoleMember");
+    }
+
     [Fact]
     public async Task RoleMemberDeactivatedWithASessionStillOpen_Returns404()
     {
@@ -480,6 +545,15 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         {
             _users["fred"] = await Given.User("fred").WithRoles(Roles.FinanceOfficer).CreateAsync(Factory);
         }
+    }
+
+    /// <summary>The standard org plus Kofi, a FinanceOfficer who manages Rana (#50).</summary>
+    private async Task SeedOrgWithFinanceManagerAsync()
+    {
+        await SeedOrgAsync();
+        var ops = await Given.DepartmentAsync(Factory, "Operations", "OPS");
+        _users["kofi"] = await Given.User("kofi").InDepartment(ops).WithRoles(Roles.Employee, Roles.FinanceOfficer).CreateAsync(Factory);
+        _users["rana"] = await Given.User("rana").InDepartment(ops).ManagedBy(_users["kofi"]).CreateAsync(Factory);
     }
 
     private string Name(Guid id) => _users.Single(u => u.Value.Id == id).Key;

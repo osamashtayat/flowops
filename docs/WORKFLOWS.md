@@ -113,6 +113,7 @@ Leave balances, payroll, calendars, overlapping-leave detection, half days.
 | Decide a non-current task (cannot happen with I4, but guarded) | 409 `task.not_current` |
 | `reject` on a Fulfillment task / `fulfill` on an Approval task | 409 `task.invalid_action` |
 | Requester tries to decide own task (e.g. finance officer's own purchase) | 403 `task.self_decision` |
+| Someone who decided an earlier step tries a later one (e.g. a manager who is also a finance officer) | 403 `task.already_participated` (#50) |
 | User not assignee / not in role tries to decide | 403 `task.not_eligible` if the user can see the request, otherwise 404 |
 | Stale `version` from an old browser tab | 409 `concurrency.conflict` — client refetches |
 | Submit with no manager assigned | 422 `request.manager_not_assigned` |

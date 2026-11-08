@@ -19,6 +19,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.AuthPasswordChangeRequired] = StatusCodes.Status403Forbidden,
         [ErrorCodes.TaskNotEligible] = StatusCodes.Status403Forbidden,
         [ErrorCodes.TaskSelfDecision] = StatusCodes.Status403Forbidden,
+        [ErrorCodes.TaskAlreadyParticipated] = StatusCodes.Status403Forbidden,
         [ErrorCodes.RoleChangeNotProposer] = StatusCodes.Status403Forbidden,
 
         [ErrorCodes.NotFound] = StatusCodes.Status404NotFound,

@@ -59,7 +59,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
             row.Purchase is { } purchase ? ToDto(purchase) : null,
             row.Leave is { } leave ? ToDto(leave, reasonVisible) : null,
             [.. row.Tasks.Select(ToDto)],
-            TaskEligibility.AvailableActions(row.RequesterId, openTask, me),
+            TaskEligibility.AvailableActions(row.RequesterId, row.Tasks.Select(t => t.Task.DecidedById), openTask, me),
             // Commenting is open to every participant who can see the request (AUTHORIZATION.md §3), closed or not.
             CanComment: true);
     }

@@ -148,7 +148,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         foreach (var request in await db.Requests.Include(r => r.Tasks).ToListAsync(Ct))
         {
             if (request.OpenTask is { } open
-                && !await TaskEligibility.EligibleDeciders(db, open.AssigneeUserId, open.AssigneeRole, request.RequesterId).AnyAsync(Ct))
+                && !await TaskEligibility.EligibleDeciders(db, request, open).AnyAsync(Ct))
             {
                 withoutDecider.Add(org.RequestName(request.Id));
             }
@@ -224,7 +224,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         {
             var me = await rules.ContextForAsync(org.Users[user], Ct);
             var loaded = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests[request], Ct);
-            var actual = TaskEligibility.FailureCode(loaded.RequesterId, loaded.OpenTask!, me);
+            var actual = TaskEligibility.FailureCode(loaded.RequesterId, loaded.Tasks.Select(t => t.DecidedById), loaded.OpenTask!, me);
             if (actual != code)
             {
                 wrong.Add($"{user}/{request}: expected {code ?? "eligible"} but got {actual ?? "eligible"}");
@@ -244,8 +244,8 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         var hana = await rules.ContextForAsync(org.Users["hana"], Ct);
         var pf = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["PF"], Ct);
 
-        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf.RequesterId, pf.OpenTask!, finny)).Code.ShouldBe(ErrorCodes.TaskSelfDecision);
-        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf.RequesterId, pf.OpenTask!, hana)).Code.ShouldBe(ErrorCodes.TaskNotEligible);
+        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf, pf.OpenTask!, finny)).Code.ShouldBe(ErrorCodes.TaskSelfDecision);
+        Should.Throw<ForbiddenException>(() => TaskEligibility.EnsureCanDecide(pf, pf.OpenTask!, hana)).Code.ShouldBe(ErrorCodes.TaskNotEligible);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         {
             var me = await rules.ContextForAsync(org.Users[user], Ct);
             var fromSql = await TaskEligibility.DecidableBy(db.Requests, me).Select(d => d.Request.Id).ToListAsync(Ct);
-            var inMemory = all.Where(r => TaskEligibility.FailureCode(r.RequesterId, r.OpenTask!, me) is null).Select(r => r.Id);
+            var inMemory = all.Where(r => TaskEligibility.FailureCode(r.RequesterId, r.Tasks.Select(t => t.DecidedById), r.OpenTask!, me) is null).Select(r => r.Id);
             var sqlNames = fromSql.Select(org.RequestName).Order(StringComparer.Ordinal).ToArray();
             var memoryNames = inMemory.Select(org.RequestName).Order(StringComparer.Ordinal).ToArray();
             if (!sqlNames.SequenceEqual(expected.Order(StringComparer.Ordinal)) || !memoryNames.SequenceEqual(sqlNames))
@@ -282,7 +282,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         async Task<AvailableActionsDto?> For(string user, string request)
         {
             var loaded = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests[request], Ct);
-            return TaskEligibility.AvailableActions(loaded.RequesterId, loaded.OpenTask, await rules.ContextForAsync(org.Users[user], Ct));
+            return TaskEligibility.AvailableActions(loaded.RequesterId, loaded.Tasks.Select(t => t.DecidedById), loaded.OpenTask, await rules.ContextForAsync(org.Users[user], Ct));
         }
 
         var karimP1 = (await For("karim", "P1")).ShouldNotBeNull();
@@ -363,8 +363,8 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         var (db, rules) = Services(scope);
         var p1 = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["P1"], Ct);
 
-        TaskEligibility.FailureCode(p1.RequesterId, p1.OpenTask!, await rules.ContextForAsync(org.Users["karim"], Ct)).ShouldBeNull();
-        TaskEligibility.FailureCode(p1.RequesterId, p1.OpenTask!, await rules.ContextForAsync(org.Users["boss"], Ct))
+        TaskEligibility.FailureCode(p1.RequesterId, p1.Tasks.Select(t => t.DecidedById), p1.OpenTask!, await rules.ContextForAsync(org.Users["karim"], Ct)).ShouldBeNull();
+        TaskEligibility.FailureCode(p1.RequesterId, p1.Tasks.Select(t => t.DecidedById), p1.OpenTask!, await rules.ContextForAsync(org.Users["boss"], Ct))
             .ShouldBe(ErrorCodes.TaskNotEligible);
     }
 
@@ -378,8 +378,8 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         var financeTask = p3.Tasks.Single(t => t.Stage == FlowOps.Domain.Requests.RequestStage.FinanceApproval);
         var fiona = await rules.ContextForAsync(org.Users["fiona"], Ct);
 
-        TaskEligibility.FailureCode(p3.RequesterId, financeTask, fiona).ShouldBeNull();
-        TaskEligibility.AvailableActions(p3.RequesterId, financeTask, fiona).ShouldBeNull("a decided task offers no buttons");
+        TaskEligibility.FailureCode(p3.RequesterId, p3.Tasks.Select(t => t.DecidedById), financeTask, fiona).ShouldBeNull();
+        TaskEligibility.AvailableActions(p3.RequesterId, p3.Tasks.Select(t => t.DecidedById), financeTask, fiona).ShouldBeNull("a decided task offers no buttons");
     }
 
     [Fact]
