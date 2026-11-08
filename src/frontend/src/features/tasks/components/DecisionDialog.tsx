@@ -27,9 +27,23 @@ export interface DecisionDialogProps {
  * current state. Any other failure stays in the dialog so the typed text is not lost.
  */
 export function DecisionDialog({ action, taskId, version, stage, requestType, requestNumber, onClose, onDecided }: DecisionDialogProps) {
-  const decide = useDecideTask()
   const toast = useToast()
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
+  const decide = useDecideTask({
+    onSuccess: (input) => {
+      toast.success(decisionPresentation(input.action, stage, requestType).done(requestNumber))
+      close()
+      onDecided?.()
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.error(toUserMessage(error))
+        close()
+      } else {
+        setErrorMessage(toUserMessage(error))
+      }
+    },
+  })
   if (!action) return null
   const text = decisionPresentation(action, stage, requestType)
   const { title, description } = text.describe(requestNumber)
@@ -42,24 +56,7 @@ export function DecisionDialog({ action, taskId, version, stage, requestType, re
   function confirm(reason: string) {
     if (!action) return
     setErrorMessage(undefined)
-    decide.mutate(
-      { taskId, action, version, text: reason },
-      {
-        onSuccess: () => {
-          toast.success(text.done(requestNumber))
-          close()
-          onDecided?.()
-        },
-        onError: (error) => {
-          if (error instanceof ApiError && error.status === 409) {
-            toast.error(toUserMessage(error))
-            close()
-          } else {
-            setErrorMessage(toUserMessage(error))
-          }
-        },
-      },
-    )
+    decide.mutate({ taskId, action, version, text: reason })
   }
 
   return (

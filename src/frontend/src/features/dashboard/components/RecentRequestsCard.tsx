@@ -37,7 +37,8 @@ export function RecentRequestsCard({ requests }: { requests: readonly RequestSum
         empty={
           <EmptyState
             message="You have no requests yet."
-            action={canSubmit ? <ButtonLink to="/requests/new">New request</ButtonLink> : undefined}
+            // Secondary: the page header already has the one primary "New request" (DESIGN_SYSTEM §5).
+            action={canSubmit ? <ButtonLink to="/requests/new" variant="secondary">New request</ButtonLink> : undefined}
           />
         }
       />
