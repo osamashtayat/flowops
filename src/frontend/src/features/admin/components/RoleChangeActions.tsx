@@ -35,8 +35,16 @@ const PRESENTATION: Record<RoleChangeAction, { button: string; variant: 'primary
 /** Approve / reject / cancel buttons for one role change, each behind a confirmation dialog. */
 export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
   const [open, setOpen] = useState<RoleChangeAction | null>(null)
-  const decide = useDecideRoleChange()
   const toast = useToast()
+  const decide = useDecideRoleChange({
+    onSuccess: (input) => {
+      toast.success(PRESENTATION[input.action].done)
+      close()
+    },
+    // Stale and already-decided answers refetch the list. The dialog shows why, but when the refetch drops the row
+    // (it is no longer Pending) the dialog goes with it, so the same message also goes to a toast the user can't miss.
+    onError: (error) => toast.error(toUserMessage(error)),
+  })
 
   function close() {
     setOpen(null)
@@ -44,18 +52,7 @@ export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
   }
 
   function confirm(action: RoleChangeAction, reason: string) {
-    decide.mutate(
-      { id: change.id, action, version: change.version, reason },
-      {
-        onSuccess: () => {
-          toast.success(PRESENTATION[action].done)
-          close()
-        },
-        // Stale and already-decided answers refetch the list. The dialog shows why, but when the refetch drops the row
-        // (it is no longer Pending) the dialog goes with it, so the same message also goes to a toast the user can't miss.
-        onError: (error) => toast.error(toUserMessage(error)),
-      },
-    )
+    decide.mutate({ id: change.id, action, version: change.version, reason })
   }
 
   return (

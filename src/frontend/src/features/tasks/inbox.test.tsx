@@ -3,10 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { routes } from '@/app/routes'
+import { currentActor } from '@/mocks/actor'
+import { decideMockTask } from '@/mocks/requestWorkflow'
 import { server } from '@/mocks/server'
 import { setMockUser } from '@/mocks/state'
 import { renderRoutes } from '@/test/renderRoutes'
 import type { InboxItemDto } from '@/lib/api/types'
+import { invalidateForEvent } from '@/lib/realtime/invalidation'
 
 const heading = () => screen.findByRole('heading', { level: 1, name: 'Inbox' })
 const openTable = () => screen.findByRole('table', { name: 'Open tasks' })
@@ -100,6 +103,28 @@ describe('Inbox — Open', () => {
     expect(await screen.findByText(`${number} approved.`)).toBeInTheDocument()
     await waitFor(() => expect(bodyRows(grid)).toHaveLength(2))
     expect(within(grid).queryByText(number)).toBeNull()
+  })
+
+  it('still announces the decision when a realtime refresh removes the row before the server answers', async () => {
+    // The real API publishes tasksChanged after its commit, so the list can refetch (and unmount the
+    // row with its dialog) before the decision's own response arrives.
+    const { queryClient } = financeInbox()
+    const grid = await openTable()
+    await waitFor(() => expect(bodyRows(grid)).toHaveLength(3))
+    server.use(
+      http.post<{ taskId: string }, { version: string }>('/api/tasks/:taskId/approve', async ({ params, request }) => {
+        const actor = await currentActor()
+        if (!actor) throw new Error('signed out')
+        expect(decideMockTask(actor, params.taskId, 'approve', (await request.json()).version, null)).toBeNull()
+        invalidateForEvent(queryClient, 'tasksChanged', {})
+        await waitFor(() => expect(bodyRows(grid)).toHaveLength(2))
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const number = within(bodyRows(grid)[0] as HTMLElement).getByText(/^FO-2026-/).textContent ?? ''
+    await userEvent.click(within(bodyRows(grid)[0] as HTMLElement).getByRole('button', { name: 'Approve' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve request' }))
+    expect(await screen.findByText(`${number} approved.`)).toBeInTheDocument()
   })
 
   it('requires a reason to reject', async () => {

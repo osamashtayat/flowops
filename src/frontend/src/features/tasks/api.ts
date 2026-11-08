@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
+import type { MutationOutcome } from '@/lib/api/mutationOutcome'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type { TaskAction, WorkTaskStatus } from '@/lib/api/types'
 
@@ -73,10 +74,14 @@ async function decide({ taskId, action, version, text }: DecideTaskInput): Promi
  * showed may be stale, so tasks, requests and the dashboard are refetched. A conflict is never
  * retried silently (.claude/rules/security.md, "Concurrency as security").
  */
-export function useDecideTask() {
+export function useDecideTask(outcome: MutationOutcome<DecideTaskInput> = {}) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: decide,
+    // On the hook, not on mutate(): the refetch below, or a realtime event that gets there first,
+    // unmounts the dialog with its row (MutationOutcome).
+    onSuccess: (_data, input) => outcome.onSuccess?.(input),
+    onError: (error, input) => outcome.onError?.(error, input),
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all }),
