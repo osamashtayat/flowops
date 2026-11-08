@@ -110,8 +110,12 @@ Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `
 | …change **their own** roles | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⏳ 202 pending; another active admin approves (ADR-0012) |
 | …add `Administrator` to an **existing** user | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ 422 `user.admin_role_on_create_only` (only on create) |
 | Approve or reject **another** admin's own role change | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ (not your own: 422 `role_change.self_approval`) |
-| View stalled tasks (number, type, stage, age only) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
+| View stalled tasks (metadata only: the `StalledTaskDto` fields, see below) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
 | Own notifications | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+**Stalled tasks (#58, decided 2026-11-09).** The list returns exactly the fields of `StalledTaskDto` (API_CONTRACT.md §8): task and request ids, request number, type, stage, the assignee (user `UserRef` or role), the reason (`AssigneeInactive` / `NoEligibleRoleMember`) and the open-since time. It never returns request details: purpose, item, cost, dates, leave reason or comments. The request id does not grant access: `GET /api/requests/{id}` stays 404 for administrators.
+
+These fields allow some inference, which is accepted. `AssigneeInactive` with a named manager says that one of that manager's reports has an open request of that type. `NoEligibleRoleMember` on a `Leave` row at `HrConfirmation` says that the only HR officer applied for leave. The admin needs the assignee and the reason to fix the stall (UI_SPEC §4.8: "add an active Finance officer", "reassign the manager"), and already sees user names and roles in `/api/users`.
 
 ---
 

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toastContext'
+import { useClosedByRefreshNotice } from '@/components/ui/useClosedByRefreshNotice'
 import type { RoleChangeAction, RoleChangeDto } from '@/lib/api/types'
 import { ADMIN_LIMITS } from '@/lib/api/limits'
 import { toUserMessage } from '@/lib/api/problem'
@@ -46,6 +47,17 @@ export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
     onError: (error) => toast.error(toUserMessage(error)),
   })
 
+  const isSubmitted = !decide.isIdle
+  const goneMessage = `The role change for ${change.user.displayName} is no longer waiting for a decision, so the dialog was closed.`
+  // The server may stop offering the open action while the row stays listed (any filter but Pending): hide the dialog then.
+  const isStale = open !== null && !isSubmitted && !change.availableActions.includes(open)
+  const shown = isStale ? null : open
+  useEffect(() => {
+    if (isStale) toast.info(goneMessage)
+  }, [isStale, goneMessage, toast])
+  // The row left the list (Pending filter) while the dialog was open.
+  useClosedByRefreshNotice({ isOpen: shown !== null, isSubmitted, message: goneMessage })
+
   function close() {
     setOpen(null)
     decide.reset()
@@ -62,18 +74,18 @@ export function RoleChangeActions({ change }: { change: RoleChangeDto }) {
           {PRESENTATION[action].button}
         </Button>
       ))}
-      {open && (
+      {shown && (
         <ConfirmDialog
           open
-          {...PRESENTATION[open].describe(change.user.displayName)}
-          tone={PRESENTATION[open].tone}
-          confirmLabel={open === 'cancel' ? 'Cancel change' : `${PRESENTATION[open].button} change`}
-          cancelLabel={open === 'cancel' ? 'Keep it' : 'Back'}
-          reason={open === 'reject' ? { label: 'Reason', required: true, helperText: 'Shown to the administrator who proposed the change.', maxLength: ADMIN_LIMITS.roleChangeReasonMax } : undefined}
+          {...PRESENTATION[shown].describe(change.user.displayName)}
+          tone={PRESENTATION[shown].tone}
+          confirmLabel={shown === 'cancel' ? 'Cancel change' : `${PRESENTATION[shown].button} change`}
+          cancelLabel={shown === 'cancel' ? 'Keep it' : 'Back'}
+          reason={shown === 'reject' ? { label: 'Reason', required: true, helperText: 'Shown to the administrator who proposed the change.', maxLength: ADMIN_LIMITS.roleChangeReasonMax } : undefined}
           loading={decide.isPending}
           error={decide.error ? toUserMessage(decide.error) : undefined}
           onCancel={close}
-          onConfirm={(reason) => confirm(open, reason)}
+          onConfirm={(reason) => confirm(shown, reason)}
         />
       )}
     </div>

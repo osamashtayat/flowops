@@ -194,7 +194,7 @@ type InboxItemDto = {
   taskId: string; kind: WorkTaskKind; stage: RequestStage; createdAt: string; version: string;
   status: WorkTaskStatus; outcome: WorkTaskOutcome | null; decidedAt: string | null;
   actions: ("approve"|"reject"|"fulfill")[];       // what the caller may do now; same source as `availableActions.actions`; [] for Done items
-  request: RequestSummaryDto & { keyDetail: string };   // "JOD 1,250.500" or "3 days · Annual"
+  request: RequestSummaryDto & { keyDetail: string };   // "1,250.500 JOD" or "3 days · Annual"
 };
 ```
 
@@ -213,7 +213,7 @@ As built (BE-12):
 - **Order of checks.** Not visible → 404; visible but not assigned → 403 `task.not_eligible`; your own request → 403 `task.self_decision`; stale `version` on an **open** task → 409 `concurrency.conflict` before any work; then the domain's 409s. A task that is already decided answers `task.already_decided` whatever `version` is sent, so a second click says what happened.
 - **`version`** is required and at most 20 characters (400 otherwise); any other value the server never issued is a stale version (409).
 - **Races.** Of two simultaneous decisions exactly one gets 204. The other gets 409: `concurrency.conflict` if it raced the save, or `task.already_decided` if it loaded after the winner committed.
-- **Inbox.** `Open` lists only tasks the caller may decide now (the same `TaskEligibility` source as `availableActions`), so a role-queue member never sees their own request. `Done` lists tasks the caller decided. `keyDetail` is `"JOD 1,250.500"` (currency, thousands separator, 3 decimals) or `"3 days · Annual"` (`"1 day"` when it's one).
+- **Inbox.** `Open` lists only tasks the caller may decide now (the same `TaskEligibility` source as `availableActions`), so a role-queue member never sees their own request. `Done` lists tasks the caller decided. `keyDetail` is `"1,250.500 JOD"` (thousands separator, 3 decimals, then the currency — the same order as every other amount in the UI, #66) or `"3 days · Annual"` (`"1 day"` when it's one).
 - **Notifications** (WORKFLOWS.md §1.4): the next task's eligible deciders get `TaskAssigned`; the requester gets `StepApproved`, `RequestApproved` (purchase ready for procurement), `RequestCompleted` or `RequestRejected`. The rejection notice repeats the decider's reason (cut to 500 characters); no notification contains a leave reason. Logs hold ids and the outcome only.
 
 ## 6. Notifications
@@ -336,7 +336,7 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
 `type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
-No request details (privacy): admins see metadata only.
+No request details (privacy): admins see metadata only. The fields and the inference they allow are accepted in AUTHORIZATION.md §3 (#58).
 
 As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.
 

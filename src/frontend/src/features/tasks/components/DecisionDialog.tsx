@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toastContext'
+import { useClosedByRefreshNotice } from '@/components/ui/useClosedByRefreshNotice'
 import { ApiError } from '@/lib/api/apiError'
 import { toUserMessage } from '@/lib/api/problem'
 import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
@@ -44,12 +45,18 @@ export function DecisionDialog({ action, taskId, version, stage, requestType, re
       }
     },
   })
+  useClosedByRefreshNotice({
+    isOpen: action !== null,
+    isSubmitted: !decide.isIdle,
+    message: `${requestNumber} is no longer waiting for your decision, so the dialog was closed.`,
+  })
   if (!action) return null
   const text = decisionPresentation(action, stage, requestType)
   const { title, description } = text.describe(requestNumber)
 
   function close() {
     setErrorMessage(undefined)
+    decide.reset()
     onClose()
   }
 

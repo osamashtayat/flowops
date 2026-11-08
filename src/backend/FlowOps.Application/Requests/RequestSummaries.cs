@@ -72,9 +72,9 @@ public static class RequestSummaries
             ? RequestTitle.ForPurchase(ItemName)
             : RequestTitle.ForLeave(LeaveType!.Value, LeaveStart!.Value, LeaveEnd!.Value);
 
-        /// <summary>The inbox's one-line detail: <c>"JOD 1,250.500"</c> or <c>"3 days · Annual"</c> (API_CONTRACT.md §5).</summary>
+        /// <summary>The inbox's one-line detail: <c>"1,250.500 JOD"</c> (the same order as the client's money format, #66) or <c>"3 days · Annual"</c> (API_CONTRACT.md §5).</summary>
         public string KeyDetail => EstimatedAmount is { } amount
-            ? string.Create(CultureInfo.InvariantCulture, $"{EstimatedCurrency} {amount:#,0.000}")
+            ? string.Create(CultureInfo.InvariantCulture, $"{amount:#,0.000} {EstimatedCurrency}")
             : string.Create(CultureInfo.InvariantCulture,
                 $"{LeaveDays} {(LeaveDays == 1 ? "day" : "days")} · {LeaveType}");
 
