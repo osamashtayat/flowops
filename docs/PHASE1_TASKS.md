@@ -214,7 +214,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
 - **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
-### FE-13b — Role-change screens (ADR-0012) · `Todo`
+### FE-13b — Role-change screens (ADR-0012) · `Done` (real API since BE-08d; checked in the browser 2026-11-09 with two administrators: Administrator not addable, 202 → "Waiting for another administrator", approve/reject/cancel from `availableActions`, 409 toast + refetch)
 - **Objective:** ADR-0012 §8: the edit-roles form can't add `Administrator`; "Waiting for another administrator" after a 202 on your own roles; a pending/decided "Role changes" list with approve, reject and cancel from `availableActions`. **Deps:** FE-13, BE-08d (contract).
 
 ## Operations & quality

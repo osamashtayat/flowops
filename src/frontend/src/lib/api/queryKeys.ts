@@ -31,6 +31,8 @@ export const queryKeys = {
     user: (id: string) => ['admin', 'users', 'detail', id] as const,
     departmentsAll: ['admin', 'departments'] as const,
     departments: (params: Params) => ['admin', 'departments', params] as const,
+    roleChangesAll: ['admin', 'role-changes'] as const,
+    roleChanges: (params: Params) => ['admin', 'role-changes', params] as const,
     stalled: (params: Params) => ['admin', 'stalled', params] as const,
   },
 } as const

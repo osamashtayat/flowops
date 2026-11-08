@@ -35,10 +35,11 @@ export interface UserFormProps {
 }
 
 /**
- * Create / edit a user. On the signed-in administrator's own record the roles, manager and active
- * switch are read-only and an explanation is shown: the server refuses those changes (422
- * `user.self_administration`, docs/AUTHORIZATION.md §2). The server stays the authority; if it
- * answers 422 anyway, its mapped message appears in the banner.
+ * Create / edit a user. On the signed-in administrator's own record the manager and active switch
+ * are read-only: the server refuses those changes (422 `user.self_administration`,
+ * docs/AUTHORIZATION.md §2). Own roles can be edited but only wait for another administrator
+ * (202, ADR-0012). `Administrator` can't be added to an existing user. The server stays the
+ * authority; if it answers 422 anyway, its mapped message appears in the banner.
  */
 export function UserForm({ user }: UserFormProps) {
   const { user: me } = useSession()
@@ -71,20 +72,34 @@ export function UserForm({ user }: UserFormProps) {
 
   function submit(values: UserFormValues) {
     const links = { departmentId: values.departmentId || null, managerId: values.managerId || null }
-    const done = (saved: UserDto) => {
-      toast.success(`${saved.displayName} was ${user ? 'updated' : 'created'}.`)
-      void navigate('/admin/users')
-    }
     if (!user) {
-      create.mutate({ email: values.email, displayName: values.displayName, initialPassword: values.initialPassword, roles: values.roles, ...links }, { onSuccess: done })
+      create.mutate(
+        { email: values.email, displayName: values.displayName, initialPassword: values.initialPassword, roles: values.roles, ...links },
+        {
+          onSuccess: (created) => {
+            toast.success(`${created.displayName} was created.`)
+            void navigate('/admin/users')
+          },
+        },
+      )
       return
     }
     // Own record: send what the server already has for the locked fields, never what the read-only controls hold.
     const profile = isSelf
       ? { displayName: values.displayName, departmentId: links.departmentId, managerId: user.manager?.id ?? null, isActive: user.isActive }
       : { displayName: values.displayName, isActive: values.isActive, ...links }
-    const rolesChanged = !isSelf && !sameRoles(values.roles, user.roles)
-    save.mutate({ id: user.id, profile, roles: rolesChanged ? values.roles : undefined }, { onSuccess: done })
+    const rolesChanged = !sameRoles(values.roles, user.roles)
+    save.mutate(
+      { id: user.id, profile, roles: rolesChanged ? values.roles : undefined },
+      {
+        onSuccess: ({ user: saved, roleChange }) => {
+          // The server did not apply our own roles; they wait for another administrator.
+          if (roleChange) toast.success('Role change sent. Waiting for another administrator.')
+          else toast.success(`${saved.displayName} was updated.`)
+          void navigate(roleChange ? '/admin/role-changes' : '/admin/users')
+        },
+      },
+    )
   }
 
   const failure = (field: string) => serverMessage(mutation.error, field)
@@ -94,7 +109,10 @@ export function UserForm({ user }: UserFormProps) {
   return (
     <form noValidate onSubmit={(event) => void handleSubmit(submit)(event)} className="grid max-w-160 gap-5">
       {isSelf && (
-        <Alert tone="info">This is your own account. Another administrator has to change your roles, your manager or your active status.</Alert>
+        <Alert tone="info">
+          This is your own account. Another administrator has to change your manager or your active status. A change to your roles waits for
+          another administrator to approve it.
+        </Alert>
       )}
       {banner && <Alert tone="danger">{banner}</Alert>}
       <FormField label="Display name" required error={fieldError(errors, 'displayName') ?? failure('displayName')}>
@@ -141,7 +159,7 @@ export function UserForm({ user }: UserFormProps) {
           setManagerName(name)
         }}
       />
-      <RolesField registration={register('roles')} locked={isSelf ? user.roles : undefined} error={failure('roles')} />
+      <RolesField registration={register('roles')} held={user?.roles} error={failure('roles')} />
       {user &&
         (isSelf ? (
           <Checkbox label="Active" checked={user.isActive} disabled readOnly />

@@ -9,6 +9,7 @@ import type {
   UpdateUserRequest,
   UserDto,
 } from '@/lib/api/types'
+import type { PagedRoleChanges, RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/types'
 import { MOCK_USERS, type MockUserKey } from './users'
 
 /**
@@ -24,13 +25,14 @@ export const MOCK_DEPARTMENTS = {
 
 /** A failure the handler turns into a problem response. */
 export interface AdminFailure {
-  status: 400 | 404 | 409 | 422
+  status: 400 | 403 | 404 | 409 | 422
   code: string
   field?: string
 }
 
 let departments: DepartmentDto[] = []
 let users: UserDto[] = []
+let roleChanges: RoleChangeDto[] = []
 
 function userFromMock(key: MockUserKey): UserDto {
   const person = MOCK_USERS[key]
@@ -63,6 +65,7 @@ export function resetMockAdmin() {
     roles: ['Employee'],
   }))
   users = [...(['employee', 'manager', 'finance', 'admin', 'newHire'] as const).map(userFromMock), ...generated]
+  roleChanges = []
   recount()
 }
 
@@ -159,16 +162,90 @@ export function updateMockUser(actorId: string, id: string, body: UpdateUserRequ
   return getMockUser(id) ?? updated
 }
 
-export function updateMockRoles(actorId: string, id: string, roles: Role[]): UserDto | AdminFailure {
+/** ADR-0012: nobody gains Administrator by a role change; your own roles wait for another administrator (202). */
+export function updateMockRoles(actorId: string, id: string, roles: Role[]): UserDto | RoleChangeDto | AdminFailure {
   const current = getMockUser(id)
   if (!current) return { status: 404, code: 'not_found' }
   const next = [...new Set(roles)]
+  if (next.includes('Administrator') && !current.roles.includes('Administrator')) return { status: 422, code: 'user.admin_role_on_create_only' }
   if (current.roles.includes('Administrator') && !next.includes('Administrator') && activeAdmins().length === 1 && current.isActive) {
     return { status: 422, code: 'user.last_admin' }
   }
-  if (id === actorId) return { status: 422, code: 'user.self_administration' }
-  users = users.map((u) => (u.id === id ? { ...u, roles: next } : u))
-  return getMockUser(id) as UserDto
+  if (id !== actorId) {
+    users = users.map((u) => (u.id === id ? { ...u, roles: next } : u))
+    return getMockUser(id) as UserDto
+  }
+  if (activeAdmins().every((a) => a.id === actorId)) return { status: 422, code: 'role_change.no_reviewer' }
+  if (roleChanges.some((c) => c.user.id === id && c.status === 'Pending')) return { status: 409, code: 'role_change.already_pending' }
+  return proposeMockRoleChange(current, next)
+}
+
+const ref = (u: UserDto) => ({ id: u.id, displayName: u.displayName })
+
+/** Test seam as well as the 202 path: a pending change proposed by `proposer` for their own roles. */
+export function proposeMockRoleChange(proposer: UserDto, proposedRoles: Role[]): RoleChangeDto {
+  const now = new Date()
+  const change: RoleChangeDto = {
+    id: `7c1d0000-0000-4000-8000-${String(roleChanges.length + 1).padStart(12, '0')}`,
+    user: ref(proposer),
+    proposedRoles,
+    previousRoles: [...proposer.roles],
+    status: 'Pending',
+    proposedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 72 * 3_600_000).toISOString(),
+    decidedBy: null,
+    decidedAt: null,
+    rejectionReason: null,
+    version: '1',
+    availableActions: [],
+  }
+  roleChanges = [change, ...roleChanges]
+  return change
+}
+
+/** What the viewer may do: the proposer cancels; any other administrator decides (the server computes this). */
+function withActions(change: RoleChangeDto, viewerId: string): RoleChangeDto {
+  const actions: RoleChangeAction[] = change.status !== 'Pending' ? [] : change.user.id === viewerId ? ['cancel'] : ['approve', 'reject']
+  return { ...change, availableActions: actions }
+}
+
+export function listMockRoleChanges(viewerId: string, query: { status: RoleChangeStatus | ''; page: number; pageSize: number }): PagedRoleChanges {
+  const matches = roleChanges.filter((c) => !query.status || c.status === query.status)
+  const start = (query.page - 1) * query.pageSize
+  const items = matches.slice(start, start + query.pageSize).map((c) => withActions(c, viewerId))
+  return { items, page: query.page, pageSize: query.pageSize, totalCount: matches.length }
+}
+
+export function decideMockRoleChange(
+  viewerId: string,
+  id: string,
+  action: RoleChangeAction,
+  body: { version: string; reason?: string },
+): RoleChangeDto | AdminFailure {
+  const change = roleChanges.find((c) => c.id === id)
+  if (!change) return { status: 404, code: 'not_found' }
+  const isProposer = change.user.id === viewerId
+  if (action === 'cancel' && !isProposer) return { status: 403, code: 'role_change.not_proposer' }
+  if (action !== 'cancel' && isProposer) return { status: 422, code: 'role_change.self_approval' }
+  if (change.version !== body.version) return { status: 409, code: 'concurrency.conflict' }
+  if (change.status !== 'Pending') return { status: 409, code: 'role_change.not_pending' }
+  const owner = getMockUser(change.user.id)
+  if (action === 'approve' && owner && [...owner.roles].sort().join() !== [...change.previousRoles].sort().join()) {
+    return { status: 409, code: 'role_change.stale' }
+  }
+  const status: RoleChangeStatus = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Cancelled'
+  const decider = getMockUser(viewerId)
+  const decided: RoleChangeDto = {
+    ...change,
+    status,
+    version: String(Number(change.version) + 1),
+    decidedAt: new Date().toISOString(),
+    decidedBy: action === 'cancel' || !decider ? null : ref(decider),
+    rejectionReason: action === 'reject' ? (body.reason ?? '') : null,
+  }
+  roleChanges = roleChanges.map((c) => (c.id === id ? decided : c))
+  if (action === 'approve') users = users.map((u) => (u.id === change.user.id ? { ...u, roles: change.proposedRoles } : u))
+  return withActions(decided, viewerId)
 }
 
 export function createMockDepartment(body: CreateDepartmentRequest): DepartmentDto | AdminFailure {
