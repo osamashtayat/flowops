@@ -336,7 +336,7 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
 `type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
-No request details (privacy): admins see metadata only.
+No request details (privacy): admins see metadata only. The fields and the inference they allow are accepted in AUTHORIZATION.md §3 (#58).
 
 As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.
 

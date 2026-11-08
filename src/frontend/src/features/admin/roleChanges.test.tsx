@@ -8,6 +8,7 @@ import { server } from '@/mocks/server'
 import { setMockUser } from '@/mocks/state'
 import { MOCK_USERS } from '@/mocks/users'
 import { renderRoutes } from '@/test/renderRoutes'
+import { queryKeys } from '@/lib/api/queryKeys'
 import type { UserDto } from '@/lib/api/types'
 
 const heading = (name: string) => screen.findByRole('heading', { level: 1, name })
@@ -177,6 +178,29 @@ describe('Role changes list', () => {
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Approve change' }))
     expect((await screen.findAllByText(/no longer waiting for a decision|changed by someone else/i)).length).toBeGreaterThan(0)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull())
+  })
+
+  it('says so when the change is decided elsewhere and leaves the Pending list while its dialog is open (#67)', async () => {
+    const change = otherAdminProposal()
+    const { queryClient } = asAdmin('/admin/role-changes')
+    await userEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+    await userEvent.type(within(await screen.findByRole('dialog')).getByLabelText(/^Reason/), 'Not now')
+    decideMockRoleChange(change.user.id, change.id, 'cancel', { version: change.version })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.roleChangesAll })
+    expect(await screen.findByText('The role change for Nadia Admin is no longer waiting for a decision, so the dialog was closed.')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('closes the dialog when the row stays listed but its action is gone', async () => {
+    const change = otherAdminProposal()
+    const { queryClient } = asAdmin('/admin/role-changes?status=all')
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))
+    await screen.findByRole('dialog')
+    decideMockRoleChange(change.user.id, change.id, 'cancel', { version: change.version })
+    await queryClient.invalidateQueries({ queryKey: queryKeys.admin.roleChangesAll })
+    expect(await screen.findByText(/no longer waiting for a decision, so the dialog was closed/)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByText('Nadia Admin')).toBeInTheDocument()
   })
 
   it('lets the proposer cancel their own change', async () => {
