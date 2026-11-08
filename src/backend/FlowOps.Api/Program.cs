@@ -7,9 +7,12 @@ using FlowOps.Application;
 using FlowOps.Application.Common;
 using FlowOps.Infrastructure;
 using FlowOps.Infrastructure.Realtime;
+using FlowOps.Infrastructure.Seeding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
-var builder = WebApplication.CreateBuilder(args);
+// `--seed-demo` (BE-16) is a switch, not configuration: removed before the command-line provider could read it as a key.
+var seedDemo = args.Contains(DemoDataSeeder.CommandLineFlag, StringComparer.Ordinal);
+var builder = WebApplication.CreateBuilder(args.Where(a => a != DemoDataSeeder.CommandLineFlag).ToArray());
 
 // Structured logs: the built-in JSON console formatter (no Serilog in Phase 1, ARCHITECTURE.md §6).
 builder.Logging.ClearProviders();
@@ -49,6 +52,12 @@ builder.Services.AddOptions<CompanyOptions>()
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+if (seedDemo)
+{
+    // Throws outside Development; the app then doesn't start.
+    await DemoDataSeeder.RunAsync(app.Services, CancellationToken.None);
+}
 
 app.UseFlowOpsSecurityHeaders();
 app.UseExceptionHandler();

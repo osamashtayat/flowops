@@ -3,6 +3,7 @@ using FlowOps.Application.Requests;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
 using FlowOps.Infrastructure.Realtime;
+using FlowOps.Infrastructure.Seeding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,6 +40,7 @@ public static class DependencyInjection
         });
         services.AddSingleton<HubConnectionRegistry>();
         services.AddSingleton<IRealtimePublisher, SignalRRealtimePublisher>();
+        services.AddScoped<DemoDataSeeder>(); // runs only with --seed-demo, and only in Development (BE-16)
         return services;
     }
 }
