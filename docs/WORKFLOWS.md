@@ -55,6 +55,8 @@ There is no explicit `BeginTransaction`: a single `SaveChangesAsync` is atomic i
 | Request `Rejected` | requester | `RequestRejected` (body includes rejection reason) |
 | Comment added | requester + decided/eligible participants except the author | `CommentAdded` |
 
+Every recipient must be **active** at the time of the event. An inactive requester gets no outcome notification (#56, decided 2026-11-09). The decision still applies, and a reactivated requester sees the outcome on the request and in its activity. Later decisions notify them again.
+
 ---
 
 ## 2. Equipment purchase

@@ -68,7 +68,10 @@ public sealed partial class TaskDecisionService(
     private static Assignee ResolveAssignee(ProcessStep step, TaskAssigneeResolver.Requester requester) =>
         TaskAssigneeResolver.Resolve(step, step.Assignee.IsRequesterManager ? TaskAssigneeResolver.RequireManager(requester) : Guid.Empty);
 
-    /// <summary>WORKFLOWS.md §1.4: whoever may decide the next task, and the requester about the outcome.</summary>
+    /// <summary>
+    /// WORKFLOWS.md §1.4: whoever may decide the next task, and the requester about the outcome, unless the requester is
+    /// inactive (#56): like every other recipient rule, inactive users get no notifications.
+    /// </summary>
     private async Task<List<Notification>> AddNotificationsAsync(
         Request request, DecisionResult result, TaskAssigneeResolver.Requester requester, Guid deciderId, DateTimeOffset now, CancellationToken ct)
     {
@@ -79,8 +82,12 @@ public sealed partial class TaskDecisionService(
             notifications.AddRange(NotificationFactory.TaskAssigned(request, next, requester.DisplayName, deciders, now));
         }
 
-        var deciderName = await db.Users.Where(u => u.Id == deciderId).Select(u => u.DisplayName).SingleAsync(ct);
-        notifications.Add(NotificationFactory.DecisionOutcome(request, result, deciderName, now));
+        if (requester.IsActive)
+        {
+            var deciderName = await db.Users.Where(u => u.Id == deciderId).Select(u => u.DisplayName).SingleAsync(ct);
+            notifications.Add(NotificationFactory.DecisionOutcome(request, result, deciderName, now));
+        }
+
         db.Notifications.AddRange(notifications);
         return notifications;
     }

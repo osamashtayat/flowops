@@ -12,15 +12,18 @@ namespace FlowOps.Application.Requests;
 /// </summary>
 public static class TaskAssigneeResolver
 {
-    /// <summary>The submitter as submission needs them: server-side department and manager (I14).</summary>
-    public sealed record Requester(Guid Id, string DisplayName, Guid? DepartmentId, Guid? ManagerId, bool ManagerIsActive);
+    /// <summary>
+    /// The requester as submission and decisions need them: server-side department and manager (I14), and whether they are
+    /// still active (an inactive requester gets no outcome notification, #56).
+    /// </summary>
+    public sealed record Requester(Guid Id, string DisplayName, Guid? DepartmentId, Guid? ManagerId, bool ManagerIsActive, bool IsActive);
 
     public static Task<Requester?> LoadRequesterAsync(IAppDbContext db, Guid requesterId, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);
         return db.Users.AsNoTracking().Where(u => u.Id == requesterId)
             .Select(u => new Requester(u.Id, u.DisplayName, u.DepartmentId, u.ManagerId,
-                db.Users.Any(m => m.Id == u.ManagerId && m.IsActive)))
+                db.Users.Any(m => m.Id == u.ManagerId && m.IsActive), u.IsActive))
             .SingleOrDefaultAsync(ct);
     }
 
