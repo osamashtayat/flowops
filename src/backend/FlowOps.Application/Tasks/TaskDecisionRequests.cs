@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
 
 namespace FlowOps.Application.Tasks;
@@ -7,6 +8,7 @@ namespace FlowOps.Application.Tasks;
 public sealed record ApproveTaskRequest
 {
     [Required]
+    [StringLength(VersionToken.MaxLength)]
     public string Version { get; init; } = "";
 
     [StringLength(RequestLimits.CommentMaxLength)]
@@ -17,6 +19,7 @@ public sealed record ApproveTaskRequest
 public sealed record RejectTaskRequest
 {
     [Required]
+    [StringLength(VersionToken.MaxLength)]
     public string Version { get; init; } = "";
 
     [Required]
@@ -28,6 +31,7 @@ public sealed record RejectTaskRequest
 public sealed record FulfillTaskRequest
 {
     [Required]
+    [StringLength(VersionToken.MaxLength)]
     public string Version { get; init; } = "";
 
     [StringLength(RequestLimits.CommentMaxLength)]

@@ -147,15 +147,12 @@ describe('frame', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
-  it('has a notifications link in the top bar', async () => {
+  it('has the notifications bell in the top bar', async () => {
     renderRoutes(routes, '/')
     await mainNav()
     const topBar = screen.getByRole('button', { name: /Layla Haddad/ }).closest('header')
     expect(topBar).not.toBeNull()
-    expect(within(topBar as HTMLElement).getByRole('link', { name: 'Notifications' })).toHaveAttribute(
-      'href',
-      '/notifications',
-    )
+    expect(within(topBar as HTMLElement).getByRole('button', { name: /^Notifications/ })).toHaveAttribute('aria-expanded', 'false')
   })
 })
 

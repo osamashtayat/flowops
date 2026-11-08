@@ -48,6 +48,7 @@ public sealed record RoleChangeListQuery : PageRequest
 public sealed record RoleChangeDecisionRequest
 {
     [Required]
+    [StringLength(VersionToken.MaxLength)]
     public string Version { get; init; } = "";
 }
 
@@ -55,6 +56,7 @@ public sealed record RoleChangeDecisionRequest
 public sealed record RejectRoleChangeRequest
 {
     [Required]
+    [StringLength(VersionToken.MaxLength)]
     public string Version { get; init; } = "";
 
     [Required]

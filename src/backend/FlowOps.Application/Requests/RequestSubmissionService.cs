@@ -18,7 +18,8 @@ public sealed class RequestSubmissionService(
     CompanyCalendar calendar,
     TimeProvider time,
     AccessRules access,
-    RequestDetailsReader details)
+    RequestDetailsReader details,
+    PostCommitPublisher realtime)
 {
     public async Task<RequestDetailsDto> SubmitPurchaseAsync(SubmitPurchaseRequest body, CancellationToken ct)
     {
@@ -59,9 +60,12 @@ public sealed class RequestSubmissionService(
         Request request, TaskAssigneeResolver.Requester requester, Guid managerId, DateTimeOffset now, CancellationToken ct)
     {
         db.Requests.Add(request);
-        db.Notifications.AddRange(NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], now));
+        var notifications = NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], now).ToList();
+        db.Notifications.AddRange(notifications);
         await db.SaveChangesAsync(ct);
-        // Realtime "task assigned" push lands with IRealtimePublisher (BE-14); clients refetch meanwhile.
+        await realtime.NotificationsAsync(notifications);
+        await realtime.RequestChangedAsync(request.Id);
+        await realtime.TasksChangedAsync(request, [request.OpenTask!], []);
         var me = await access.ForCurrentUserAsync(ct);
         return await details.ReadAsync(request.Id, me, ct)
             ?? throw new InvalidOperationException("A request the caller just submitted must be visible to them.");

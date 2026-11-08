@@ -209,6 +209,13 @@ Errors: 400, 403 `task.not_eligible` / `task.self_decision`, 404, 409 `task.alre
 
 Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
 
+As built (BE-12):
+- **Order of checks.** Not visible → 404; visible but not assigned → 403 `task.not_eligible`; your own request → 403 `task.self_decision`; stale `version` on an **open** task → 409 `concurrency.conflict` before any work; then the domain's 409s. A task that is already decided answers `task.already_decided` whatever `version` is sent, so a second click says what happened.
+- **`version`** is required and at most 20 characters (400 otherwise); any other value the server never issued is a stale version (409).
+- **Races.** Of two simultaneous decisions exactly one gets 204. The other gets 409: `concurrency.conflict` if it raced the save, or `task.already_decided` if it loaded after the winner committed.
+- **Inbox.** `Open` lists only tasks the caller may decide now (the same `TaskEligibility` source as `availableActions`), so a role-queue member never sees their own request. `Done` lists tasks the caller decided. `keyDetail` is `"JOD 1,250.500"` (currency, thousands separator, 3 decimals) or `"3 days · Annual"` (`"1 day"` when it's one).
+- **Notifications** (WORKFLOWS.md §1.4): the next task's eligible deciders get `TaskAssigned`; the requester gets `StepApproved`, `RequestApproved` (purchase ready for procurement), `RequestCompleted` or `RequestRejected`. The rejection notice repeats the decider's reason (cut to 500 characters); no notification contains a leave reason. Logs hold ids and the outcome only.
+
 ## 6. Notifications
 
 | Method & path | Notes | Success |
@@ -224,6 +231,13 @@ type NotificationDto = { id: string; type: "TaskAssigned"|"RequestApproved"|"Req
   title: string; body: string; requestId: string | null; taskId: string | null; createdAt: string; readAt: string | null };
 ```
 
+As built (BE-13):
+- **Own only.** Every query is scoped to the signed-in user. Another user's id, or an unknown id, gives 404 (never 403). Administrators see only notifications addressed to them; they get no request notifications.
+- **Order and filters.** Newest first (`createdAt`, then `id`). `unreadOnly=true` lists only `readAt: null`. `unread-count` counts the same set. Paging follows §1 (`page` ≥ 1, `pageSize` 1–100; anything else gives 400).
+- **Marking read.** `POST /{id}/read` sets `readAt` once; repeating it keeps the first time (204). `read-all` marks every unread notification of the caller and returns 204, also when there is nothing to mark.
+- **Links.** `requestId` / `taskId` point to the request and task the notification is about. Role-change notifications (`RoleChange*`) have neither; the client links them to the role-changes screen by `type`.
+- **Text.** `title` and `body` are plain text rendered when the notification was created (`NotificationFactory`). They never contain a leave reason.
+
 ## 7. Dashboard
 
 `GET /api/dashboard` — auth → 200 `DashboardDto`. Sections the caller lacks capability for are `null`.
@@ -235,6 +249,15 @@ type DashboardDto = {
   admin: { activeUsers: number; departments: number; stalledTasks: number } | null;               // admin.manage
 };
 ```
+
+As built (BE-15):
+- **myRequests** counts the caller's own requests by status; `recent` is the newest 5 (by submission). An administrator without `Employee` gets zeros and `[]`, not `null`.
+- **myTasks** (`tasks.view`): `open` and `oldestOpenCreatedAt` cover exactly the tasks in the caller's Open inbox (§5). `decidedLast7Days` counts tasks the caller decided in the last 7 × 24 hours.
+- **recentActivity**: the 10 newest activity entries on requests the caller can see (R1–R3), newest first, comments included. It is the same data `GET /requests/{id}/activity` returns, so administrators get `[]`.
+- **admin** (`admin.manage`): `activeUsers` counts active accounts, `departments` counts active departments, and `stalledTasks` counts the same tasks as `GET /admin/stalled-tasks`.
+- **Inactive caller** (deactivated, session not yet re-validated): an empty dashboard (zeros, `[]`, `null` sections).
+- **Cost:** four SQL round trips (access context, one statement with every count, recent requests, recent activity). A test checks this.
+- **Freshness:** the client refetches the dashboard on every realtime event (§9). Admin numbers have no event of their own and refresh on refetch.
 
 ## 8. Administration — policy `Admin`
 
@@ -315,6 +338,8 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 `type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
 No request details (privacy): admins see metadata only.
 
+As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.
+
 ## 9. Real-time (SignalR)
 
 Hub: `/hubs/notifications` (cookie auth; same origin). Users are mapped to their own connection group by user id. Server → client only; clients never invoke hub methods in Phase 1.
@@ -328,6 +353,20 @@ Hub: `/hubs/notifications` (cookie auth; same origin). Users are mapped to their
 Payloads are **hints**: never render data from them. Sent only after the database commit. On reconnect the client invalidates everything listed above.
 
 `requestChanged` goes to everyone who can currently see the request **and is connected**; `tasksChanged` goes to the decider, the next assignee(s), and members of affected role queues.
+
+As built (BE-14):
+- **Hub.** `/hubs/notifications` needs a session (no session → 401; `mustChangePassword` → 403). A browser request from another origin (its `Origin` host differs from the API's host) → 403 `auth.forbidden`. Clients are addressed by user id (SignalR's user = the `NameIdentifier` claim), so a user's tabs all receive their events and nobody else's. Antiforgery doesn't apply: the hub has no client-callable methods (see AUTHORIZATION.md §1.3). WebSockets, server-sent events and long polling are all enabled.
+- **Connection lifetime.** Logout, a password change or reset, and deactivation close all of that user's open connections at once (their HTTP sessions end at the next re-validation anyway). A connection also closes when its session cookie expires. The client reconnects; a revoked session then gets 401.
+- **Who gets what.**
+
+  | Change | `notificationCreated` | `requestChanged` | `tasksChanged` |
+  |---|---|---|---|
+  | Submit | each new notification's recipient | everyone who can see the request (`AccessRules.ViewerIds`, R1–R3) | the first task's eligible deciders |
+  | Decision | each new notification's recipient | everyone who can see it now | the decider, everyone who could decide the decided task, everyone who may decide the next one |
+  | Comment | each new notification's recipient | everyone who can see it | — |
+  | Role change (propose, approve, reject) | each new notification's recipient (`requestId: null`) | — | — |
+- **Only after commit.** If the save fails, nothing is published, and a rejected command (4xx) publishes nothing. If publishing fails after the commit, the request still succeeds and a warning is logged (`PostCommitPublisher`); clients catch up when they refetch.
+- **Inactive users** receive no `requestChanged`/`tasksChanged`, and deactivation closes their connections.
 
 ---
 

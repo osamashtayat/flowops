@@ -134,22 +134,22 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Tests:** `TESTING.md` §3.3 visibility rows; reason masking; comment notifications.
 - **Follow-up BE-11b (`Done`, security review):** HR reads a leave reason only through the HR task (a former manager who also holds HrOfficer doesn't); `page` capped at 10,000 (was a 500 on overflow); extra negative tests. Activity returns the newest 500 entries and comments are rate-limited per user (BE-11c, #37). Open: #38 (frontend hint).
 
-### BE-12 — Inbox & decisions (approve/reject/fulfill) · `Todo`
+### BE-12 — Inbox & decisions (approve/reject/fulfill) · `Done`
 - **Objective:** `TaskQueryService` (`GET /tasks`), `TaskDecisionService` (one pipeline, `CODE_STANDARDS.md` §2.4), concurrency mapping, decision notifications.
 - **Deps:** BE-11. **AC:** `WORKFLOWS.md` §2–5 behaviour exactly.
 - **Tests:** `TESTING.md` §3.2 full paths, §3.3 decision rows, §3.4 all concurrency tests.
 - **Contract:** `InboxItemDto.actions` is in the contract (DTO, openapi, API_CONTRACT §5). `GET /tasks` must fill it from the same eligibility source as `availableActions.actions` (`[]` for Done items), with a test.
 - **Note:** highest-risk task — request an `architecture-reviewer` and `security-reviewer` pass before merging.
 
-### BE-13 — Notifications API · `Todo`
+### BE-13 — Notifications API · `Done`
 - **Objective:** `API_CONTRACT.md` §6. **Deps:** BE-12. **Tests:** own-only access; read-all; unread count.
 
-### BE-14 — Real-time hub & post-commit publishing · `Todo`
+### BE-14 — Real-time hub & post-commit publishing · `Done`
 - **Objective:** `/hubs/notifications`, user groups, `SignalRRealtimePublisher`; services publish after `SaveChangesAsync`.
 - **Deps:** BE-13. **AC:** events and recipients per `API_CONTRACT.md` §9; publisher failures are logged, never fail the request.
 - **Tests:** `TESTING.md` §3.5; one hub connection test with cookie auth.
 
-### BE-15 — Dashboard & stalled tasks · `Todo`
+### BE-15 — Dashboard & stalled tasks · `Done`
 - **Objective:** `GET /dashboard`, `GET /admin/stalled-tasks`. **Deps:** BE-12.
 - **AC:** dashboard is ≤ 4 SQL round-trips; capability-gated sections are `null`.
 - **Tests:** per-capability shapes; stalled reasons both detected.
@@ -201,9 +201,10 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** `UI_SPEC.md` §4.6 reusing `DecisionDialog`/`useDecideTask` from FE-09. **Deps:** FE-09 (+ BE-12).
 - **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29). Leave decision dialogs carry the visibility note (#38).
 
-### FE-11 — Notifications & realtime · `Todo`
+### FE-11 — Notifications & realtime · `Done` (notifications on the real API, checked in the browser 2026-11-07; the SignalR client is built against the contract but the hub isn't on `main` until BE-14, see #53)
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).
 - **Deps:** FE-04 (+ BE-13/14). **Tests:** invalidation mapping per event; optimistic mark-read rollback on error.
+- **Notes:** role-change notifications (no request/task id) open `/admin/role-changes` (the screen itself is FE-13b). The realtime client retries a missing hub quietly and is off in unit tests and while the dev API is mocked. Verify live updates once BE-14 is merged.
 
 ### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).

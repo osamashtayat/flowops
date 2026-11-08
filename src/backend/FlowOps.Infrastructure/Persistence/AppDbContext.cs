@@ -52,6 +52,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         [DepartmentConfiguration.NameIndex] = (ErrorCodes.DepartmentDuplicate, "A department with this name already exists."),
         [IdentityTableNames.UserNameIndex] = (ErrorCodes.UserDuplicateEmail, "A user with this email already exists."),
         // Two concurrent role edits adding the same role: the loser sees the winner's row.
+        // Defence in depth for two simultaneous decisions (WORKFLOWS.md §5): xmin normally stops the second one first.
+        ["ux_work_tasks_open_per_request"] = (ErrorCodes.ConcurrencyConflict, "Someone else changed this task. Reload to see the latest state."),
         // Two proposals racing for the same administrator: the second one sees the first.
         [RoleChangeConfiguration.PendingPerUserIndex] =
             (ErrorCodes.RoleChangeAlreadyPending, "You already have a role change waiting for approval."),

@@ -108,6 +108,57 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
     }
 
     [Fact]
+    public async Task ViewerIds_AreExactlyTheUsersWhoCanViewEachRequest()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (_, rules) = Services(scope);
+        var wrong = new List<string>();
+
+        foreach (var (name, id) in org.Requests)
+        {
+            var expected = Visible.Where(v => v.Value.Contains(name)).Select(v => v.Key).Order(StringComparer.Ordinal).ToArray();
+            var actual = (await rules.ViewerIds(id).ToListAsync(Ct))
+                .Select(u => org.Users.Single(x => x.Value == u).Key).Order(StringComparer.Ordinal).ToArray();
+            if (!actual.SequenceEqual(expected))
+            {
+                wrong.Add($"{name}: expected [{string.Join(",", expected)}] but got [{string.Join(",", actual)}]");
+            }
+        }
+
+        wrong.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Stalled_IsExactlyTheOpenTasksWithoutEligibleDeciders()
+    {
+        var org = await AccessOrg.SeedAsync(Factory);
+        await using (var arrange = Factory.Services.CreateAsyncScope())
+        {
+            // karim (P1's manager) and fiona leave: P1 has no decider, PF's queue is left with only its requester finny.
+            await arrange.ServiceProvider.GetRequiredService<AppDbContext>().Users
+                .Where(u => u.Id == org.Users["karim"] || u.Id == org.Users["fiona"])
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false), Ct);
+        }
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var (db, _) = Services(scope);
+        var stalled = (await TaskEligibility.Stalled(db).Select(x => x.Request.Id).ToListAsync(Ct)).Select(org.RequestName).Order(StringComparer.Ordinal);
+        var withoutDecider = new List<string>();
+        foreach (var request in await db.Requests.Include(r => r.Tasks).ToListAsync(Ct))
+        {
+            if (request.OpenTask is { } open
+                && !await TaskEligibility.EligibleDeciders(db, open.AssigneeUserId, open.AssigneeRole, request.RequesterId).AnyAsync(Ct))
+            {
+                withoutDecider.Add(org.RequestName(request.Id));
+            }
+        }
+
+        stalled.ShouldBe(withoutDecider.Order(StringComparer.Ordinal));
+        stalled.ShouldBe(["P1", "PF"]);
+    }
+
+    [Fact]
     public async Task VisibleTo_SecondLevelManagerLosesAndGainsR2WithTheManagerLink()
     {
         var org = await AccessOrg.SeedAsync(Factory);

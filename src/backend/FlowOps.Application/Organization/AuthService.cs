@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FlowOps.Application.Organization;
 
 /// <summary>Auth use cases (API_CONTRACT.md §3). The actor always comes from <see cref="ICurrentUser"/>.</summary>
-public sealed class AuthService(IIdentitySignIn signIn, IAppDbContext db, ICurrentUser currentUser)
+public sealed class AuthService(IIdentitySignIn signIn, IAppDbContext db, ICurrentUser currentUser, PostCommitPublisher realtime)
 {
     public async Task<CurrentUserDto> LoginAsync(LoginRequest body, CancellationToken ct)
     {
@@ -14,14 +14,22 @@ public sealed class AuthService(IIdentitySignIn signIn, IAppDbContext db, ICurre
         return await LoadAsync(userId, ct);
     }
 
-    public Task LogoutAsync() => signIn.SignOutAsync();
+    /// <summary>Ends every session of the caller (the stamp rotates), including open hub connections.</summary>
+    public async Task LogoutAsync()
+    {
+        var userId = currentUser.Id;
+        await signIn.SignOutAsync();
+        await realtime.SessionsEndedAsync(userId);
+    }
 
     public Task<CurrentUserDto> GetCurrentAsync(CancellationToken ct) => LoadAsync(currentUser.Id, ct);
 
-    public Task ChangePasswordAsync(ChangePasswordRequest body)
+    /// <summary>Other sessions end; the caller's is refreshed. Hub connections all close, and this one reconnects.</summary>
+    public async Task ChangePasswordAsync(ChangePasswordRequest body)
     {
         ArgumentNullException.ThrowIfNull(body);
-        return signIn.ChangePasswordAsync(currentUser.Id, body.CurrentPassword, body.NewPassword);
+        await signIn.ChangePasswordAsync(currentUser.Id, body.CurrentPassword, body.NewPassword);
+        await realtime.SessionsEndedAsync(currentUser.Id);
     }
 
     private async Task<CurrentUserDto> LoadAsync(Guid userId, CancellationToken ct)
