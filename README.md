@@ -99,6 +99,50 @@ The objective is to keep controllers focused on HTTP concerns while placing busi
 
 ---
 
+## Getting Started (local development)
+
+```bash
+cp .env.example .env                 # then edit the placeholder values
+docker compose up -d db              # PostgreSQL on localhost:5432
+set -a; source .env; set +a          # or put the same values in dotnet user-secrets
+dotnet tool restore
+dotnet ef database update --project src/backend/FlowOps.Infrastructure --startup-project src/backend/FlowOps.Api
+dotnet run --project src/backend/FlowOps.Api                  # API on https://localhost:7180
+cd src/frontend && npm install && npm run dev                 # SPA on http://localhost:5173
+```
+
+### Demo data (Development only)
+
+Start the API once with `--seed-demo` to create a demo company:
+
+```bash
+dotnet run --project src/backend/FlowOps.Api -- --seed-demo
+```
+
+- It runs only when `ASPNETCORE_ENVIRONMENT=Development`; in any other environment the API refuses to start.
+- It is idempotent: if the demo company already exists, nothing is added. Apply the migrations first.
+- It creates 3 departments (Engineering, Finance, Operations), 11 users and 13 purchase and leave requests covering
+  every state, including two stalled tasks and one pending administrator role change.
+
+Every demo account uses the password **`FlowOps-Demo-2026!`**. This is a development-only test value, not a secret;
+never seed a shared or production database.
+
+| Email | Role(s) | Notes |
+|---|---|---|
+| `alice.admin@demo.flowops.test` | Administrator | Reviews Omar's pending role change |
+| `omar.admin@demo.flowops.test` | Administrator | Has a pending change to his own roles |
+| `dana.director@demo.flowops.test` | Employee | Operations; manages Samir, Farah, Hana, Yousef, Nour |
+| `samir.manager@demo.flowops.test` | Employee | Engineering manager of Lina and Karim |
+| `lina.dev@demo.flowops.test` | Employee | Engineering |
+| `karim.dev@demo.flowops.test` | Employee | Engineering |
+| `farah.finance@demo.flowops.test` | Employee, FinanceOfficer | The only finance officer |
+| `hana.hr@demo.flowops.test` | Employee, HrOfficer | |
+| `yousef.procurement@demo.flowops.test` | Employee, ProcurementOfficer | |
+| `nour.ops@demo.flowops.test` | Employee | Her old purchase still waits for Rami |
+| `rami.former@demo.flowops.test` | Employee | Inactive (left the company); cannot sign in |
+
+---
+
 ## Development Roadmap
 
 ### Phase 1 — Core Business Application
