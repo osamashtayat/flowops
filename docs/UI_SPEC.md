@@ -23,6 +23,7 @@ Visual rules: `DESIGN_SYSTEM.md`. Data: `API_CONTRACT.md` (every field shown her
 | `/admin/users` | UsersPage | `admin.manage` | `GET /users` |
 | `/admin/users/new`, `/admin/users/:id` | UserFormPage | `admin.manage` | `POST/PUT /users`, `/roles` |
 | `/admin/departments` | DepartmentsPage (inline create/edit dialogs) | `admin.manage` | `/departments` |
+| `/admin/role-changes` | RoleChangesPage | `admin.manage` | `GET /admin/role-changes` |
 | `/admin/stalled-tasks` | StalledTasksPage | `admin.manage` | `GET /admin/stalled-tasks` |
 | `/forbidden` | ForbiddenPage (403) | — | — |
 | `*` | NotFoundPage | — | — |
@@ -45,7 +46,7 @@ Filters, search, tab and page live in the **URL query string** so views are shar
 | New request (primary button in sidebar) | `requests.submit` |
 | Inbox (with open count) | `tasks.view` |
 | Team requests | `tasks.view` |
-| Administration ▸ Users / Departments / Stalled tasks | `admin.manage` |
+| Administration ▸ Users / Departments / Role changes / Stalled tasks | `admin.manage` |
 
 ## 4. Pages
 
@@ -91,7 +92,7 @@ Empty Open: "You're all caught up." Completed tab shows outcome badge and decide
 Bell in TopBar with unread count (`aria-label="Notifications, 3 unread"`); click opens a popover with the latest 8 and "View all". Full page: list with unread highlighted (`bg-primary-soft` + dot), "Mark all as read". Clicking an item marks it read (optimistic) and navigates to the request.
 
 ### 4.8 Administration
-- **Users:** table (name, email, department, manager, roles as small neutral chips, status), search + department + role filters, "New user". UserFormPage: display name, email (create only), initial password (create only), department (select), manager (searchable select of active users, excluding self), roles (checkbox group), active toggle (edit only). "Reset password" in a secondary section with confirm. Errors `user.manager_cycle`, `user.last_admin`, `user.self_administration` shown as banner messages. On the signed-in administrator's own record roles, manager and the active toggle are read-only with a short explanation, and the manager picker never offers the signed-in administrator.
+- **Users:** table (name, email, department, manager, roles as small neutral chips, status), search + department + role filters, "New user". UserFormPage: display name, email (create only), initial password (create only), department (select), manager (searchable select of active users, excluding self), roles (checkbox group), active toggle (edit only). "Reset password" in a secondary section with confirm. Errors `user.manager_cycle`, `user.last_admin`, `user.self_administration` shown as banner messages. On the signed-in administrator's own record the manager and the active toggle are read-only with a short explanation (own roles go through a role change, below), and the manager picker never offers the signed-in administrator.
 - **Departments:** table (name, code, members, status) + create/edit dialog.
 - **Role changes** (`/admin/role-changes`, ADR-0012 §8): filter by status (default Pending); table of administrator, proposed roles with "Now: …", proposed time, status badge with decision details (and the rejection reason) and Approve / Reject / Cancel buttons shown only from the server's `availableActions`, each behind a confirmation dialog (reject needs a reason). A 409/422 shows the mapped message in the dialog and refetches the list. The edit-user form never offers to *add* Administrator to an existing user (create still does); on your own record, saving changed roles shows "Role change sent. Waiting for another administrator." and opens this list. Manager and Active stay read-only on your own record.
 - **Stalled tasks:** table (request number, type, stage, assignee, reason, open since) with guidance text per reason ("Add an active Finance officer").
