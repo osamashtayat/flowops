@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { ADMIN_LIMITS } from '@/lib/api/limits'
-import { ROLES } from './labels'
+import { ROLES } from '@/lib/format/labels'
 
 /**
  * Client-side checks mirroring docs/API_CONTRACT.md §8 for fast feedback; the server validates

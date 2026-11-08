@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { requestStatusPresentation } from '@/lib/format/status'
 import type { RequestStatus, RequestType } from '@/lib/api/types'
-import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '../labels'
+import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '@/lib/format/labels'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
 import { useDebouncedUrlSearch } from '@/lib/useDebouncedUrlSearch'
 

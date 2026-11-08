@@ -240,7 +240,7 @@ Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxy
 GitHub Actions: backend build + domain tests + integration tests (Docker available on ubuntu runners), OpenAPI drift check, frontend typecheck/lint/test/build. **Deps:** BE-04, BE-03.
 
 ### QA-01 — Security review pass · `Todo` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08, BE-08d.
-### QA-02 — Architecture review pass · `Todo` — `architecture-reviewer` agent over whole backend + frontend structure. **Deps:** BE-15, FE-10.
+### QA-02 — Architecture review pass · `Done` (2026-11-09) — `architecture-reviewer` agent over whole backend + frontend structure. **Deps:** BE-15, FE-10. Layering, thin controllers, one save per use case and post-commit realtime hold. Fixed in the frontend: enum labels in one home (`lib/format/labels.ts`), one helper for 400 field errors and for "2xx without a body", neutral decision copy (no step order), shared search debounce, `useCapability` in the sidebar, `UserForm` split. Raised: #83, #84, #85 (backend), #86 (docs), #87, #88 (frontend, decision-needed).
 ### QA-03 — UI/UX review pass · `Done` (2026-11-09) — `review-ui` skill over all pages at 360/768/1280 px on the real API. **Deps:** FE-13. Fixed: decision card first on mobile request details, Previous/Next kept together, inbox action buttons described by request number, one primary "New request" on an empty dashboard. Open: #66 (money format), #67 (open dialog vanishes on realtime refresh).
 ### QA-04 — E2E smoke (optional) · `Todo` — Playwright: purchase happy path across 4 users; leave rejection. **Deps:** OPS-01.
 

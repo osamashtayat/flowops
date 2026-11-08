@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/Card'
 import type { RequestDetailsDto } from '@/lib/api/types'
 import { formatDateOnly } from '@/lib/format/date'
 import { formatMoney } from '@/lib/format/money'
-import { LEAVE_TYPE_LABELS } from '../labels'
+import { LEAVE_TYPE_LABELS } from '@/lib/format/labels'
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (

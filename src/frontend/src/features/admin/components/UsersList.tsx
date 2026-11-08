@@ -16,7 +16,7 @@ import type { Role, UserDto } from '@/lib/api/types'
 import { useDebouncedUrlSearch } from '@/lib/useDebouncedUrlSearch'
 import { useUrlState } from '@/lib/useUrlState'
 import { useDepartments, useUsers } from '../api'
-import { ROLES, ROLE_NAMES } from '../labels'
+import { ROLES, ROLE_NAMES } from '@/lib/format/labels'
 
 const URL_DEFAULTS = { page: 1, pageSize: 20, search: '', department: '', role: '', inactive: '' }
 const SEARCH_MAX = 100
