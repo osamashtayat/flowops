@@ -1,0 +1,104 @@
+# OPS-02: every push to main and every pull request. Mirrors the local commands in AGENTS.md §6.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  backend:
+    name: Backend (build, tests, contract)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore
+
+      # TreatWarningsAsErrors is on in Directory.Build.props; -warnaserror keeps "0 warnings" true even if that changes.
+      - name: Build (0 warnings)
+        run: dotnet build --no-restore -warnaserror
+
+      - name: Domain tests
+        run: dotnet test tests/backend/FlowOps.Domain.Tests --no-build --logger "trx;LogFileName=domain.trx"
+
+      # Testcontainers starts postgres:17-alpine on the runner's Docker.
+      - name: Integration tests
+        run: dotnet test tests/backend/FlowOps.Api.IntegrationTests --no-build --logger "trx;LogFileName=integration.trx"
+
+      # ContractTests compare JSON semantically; this also catches byte-level drift (formatting, ordering).
+      - name: OpenAPI drift check
+        run: |
+          ./scripts/export-openapi.sh
+          git diff --exit-code -- contracts/openapi.json \
+            || { echo "::error file=contracts/openapi.json::out of date: run ./scripts/export-openapi.sh and commit the result"; exit 1; }
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: tests/backend/**/TestResults/*.trx
+          retention-days: 7
+
+  frontend:
+    name: Frontend (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Generated types must match the committed contract (never hand-edited, AGENTS.md §3).
+      - name: API types drift check
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/lib/api/schema.d.ts \
+            || { echo "::error file=src/frontend/src/lib/api/schema.d.ts::out of date: run npm run api:types and commit the result"; exit 1; }
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

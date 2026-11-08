@@ -230,7 +230,7 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### OPS-01 — Full-stack Docker Compose · `Todo`
 Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxying `/api` and `/hubs`) services; one command brings up the app. **Deps:** BE-05, FE-04.
 
-### OPS-02 — CI pipeline · `Todo`
+### OPS-02 — CI pipeline · `Done`
 GitHub Actions: backend build + domain tests + integration tests (Docker available on ubuntu runners), OpenAPI drift check, frontend typecheck/lint/test/build. **Deps:** BE-04, BE-03.
 
 ### QA-01 — Security review pass · `Todo` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08, BE-08d.
