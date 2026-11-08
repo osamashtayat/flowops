@@ -68,6 +68,16 @@ describe('Inbox — Open', () => {
     expect(within(first).getByRole('button', { name: 'Reject' })).toBeInTheDocument()
   })
 
+  it('tells the rows\' identical action buttons apart by request number for screen readers', async () => {
+    financeInbox()
+    const grid = await openTable()
+    await waitFor(() => expect(bodyRows(grid)).toHaveLength(3))
+    for (const row of bodyRows(grid)) {
+      const number = within(row).getByText(/^FO-2026-/).textContent ?? ''
+      expect(within(row).getByRole('button', { name: 'Approve' })).toHaveAccessibleDescription(`Request ${number}`)
+    }
+  })
+
   it('offers only Fulfill on a fulfilment task', async () => {
     server.use(http.get('/api/tasks', () => HttpResponse.json({ items: [ITEM], page: 1, pageSize: 20, totalCount: 1 })))
     financeInbox()

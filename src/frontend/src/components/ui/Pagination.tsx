@@ -60,12 +60,15 @@ export function Pagination({
             ))}
           </Select>
         </div>
-        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          Previous
-        </Button>
-        <Button variant="secondary" size="sm" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
-          Next
-        </Button>
+        {/* Kept together so a narrow screen never wraps Next onto a line of its own. */}
+        <div className="flex gap-3">
+          <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            Previous
+          </Button>
+          <Button variant="secondary" size="sm" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
+            Next
+          </Button>
+        </div>
       </div>
     </nav>
   )
