@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
 import { decisionPresentation } from '../decisions'
@@ -17,11 +17,16 @@ export interface DecisionActionsProps {
 /** The decision buttons for one task and the dialog they open. Used by the request page and the inbox. */
 export function DecisionActions({ taskId, version, stage, requestType, requestNumber, actions }: DecisionActionsProps) {
   const [chosen, setChosen] = useState<TaskAction | null>(null)
+  // In the inbox every row has its own "Approve"; the request number tells them apart for screen readers.
+  const describedBy = useId()
   return (
     <>
       <div className="flex flex-wrap gap-3">
+        <span id={describedBy} className="sr-only">
+          Request {requestNumber}
+        </span>
         {actions.map((action) => (
-          <Button key={action} variant={action === 'reject' ? 'secondary' : 'primary'} onClick={() => setChosen(action)}>
+          <Button key={action} variant={action === 'reject' ? 'secondary' : 'primary'} aria-describedby={describedBy} onClick={() => setChosen(action)}>
             {decisionPresentation(action, stage, requestType).buttonLabel}
           </Button>
         ))}

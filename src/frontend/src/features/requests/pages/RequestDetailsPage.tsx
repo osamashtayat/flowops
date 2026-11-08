@@ -72,9 +72,12 @@ export function RequestDetailsPage() {
           <RequestDetailsCard request={request} />
           <ApprovalSteps tasks={request.tasks} />
         </div>
-        <div className="space-y-6">
+        {/* Below lg the columns stack; the decider's action comes first instead of after the details (QA-03). */}
+        <div className="max-lg:contents lg:space-y-6">
           <RequestSummaryCard request={request} />
-          <RequestActionsCard request={request} />
+          <div className="empty:hidden max-lg:order-first">
+            <RequestActionsCard request={request} />
+          </div>
           <RequestActivityCard requestId={request.id} requestType={request.type} canComment={request.canComment} />
         </div>
       </div>
