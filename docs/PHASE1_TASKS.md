@@ -239,7 +239,8 @@ Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxy
 ### OPS-02 — CI pipeline · `Done`
 GitHub Actions: backend build + domain tests + integration tests (Docker available on ubuntu runners), OpenAPI drift check, frontend typecheck/lint/test/build. **Deps:** BE-04, BE-03.
 
-### QA-01 — Security review pass · `Todo` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08, BE-08d.
+### QA-01 — Security review pass · `Done` — `security-reviewer` agent over auth, access rules, decisions, admin. **Deps:** BE-12, BE-08, BE-08d.
+- **As run (2026-11-09):** whole backend at 21f917f, plus the hub, the seeder, Docker and CI. No Critical or High findings, so there were no in-scope fixes. Findings filed: #76 (Medium, stale admin claims), #77, #78, #79 (Low). Notes added to #48 and #43. Report: `docs/reports/2026-11-09-qa-01-security.md`.
 ### QA-02 — Architecture review pass · `Todo` — `architecture-reviewer` agent over whole backend + frontend structure. **Deps:** BE-15, FE-10.
 ### QA-03 — UI/UX review pass · `Done` (2026-11-09) — `review-ui` skill over all pages at 360/768/1280 px on the real API. **Deps:** FE-13. Fixed: decision card first on mobile request details, Previous/Next kept together, inbox action buttons described by request number, one primary "New request" on an empty dashboard. Open: #66 (money format), #67 (open dialog vanishes on realtime refresh).
 ### QA-04 — E2E smoke (optional) · `Todo` — Playwright: purchase happy path across 4 users; leave rejection. **Deps:** OPS-01.
