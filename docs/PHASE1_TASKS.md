@@ -149,6 +149,10 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Deps:** BE-13. **AC:** events and recipients per `API_CONTRACT.md` §9; publisher failures are logged, never fail the request.
 - **Tests:** `TESTING.md` §3.5; one hub connection test with cookie auth.
 
+### BE-14b — Hub connection cap (#55) · `Done`
+- **Objective:** a signed-in user can't exhaust server memory and sockets with hub connections. Each user may hold at most `FlowOps:Realtime:MaxConnectionsPerUser` (default 10) open connections. A connection beyond that is closed with an error and no reconnect; the existing ones keep working. No negotiate rate limit: negotiated-but-unconnected connections are disposed by SignalR after a short timeout, so the open-connection cap is the bound that matters.
+- **Tests:** `RealtimeTests` (cap refused with the others intact, other users unaffected).
+
 ### BE-15 — Dashboard & stalled tasks · `Done`
 - **Objective:** `GET /dashboard`, `GET /admin/stalled-tasks`. **Deps:** BE-12.
 - **AC:** dashboard is ≤ 4 SQL round-trips; capability-gated sections are `null`.
