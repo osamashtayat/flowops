@@ -1,66 +1,191 @@
 # FlowOps
 
-Internal requests, routed and tracked. Employees submit equipment-purchase and leave requests; FlowOps routes them through managers and finance/HR/procurement officers, records every decision, and keeps everyone notified in real time.
+### Enterprise Workflow & Business Process Management Platform
 
-**Status:** Phase 1 architecture complete; implementation in progress — see [`docs/PHASE1_TASKS.md`](docs/PHASE1_TASKS.md).
+**FlowOps** is a full-stack workflow and business process management platform designed to help organizations manage requests, coordinate tasks, track activities, and streamline internal operations.
 
-| | |
+The project aims to replace fragmented workflows, manual follow-ups, and disconnected tools with a centralized, structured, and scalable system.
+
+Built with **ASP.NET Core (.NET 10)** and **React + TypeScript**, FlowOps emphasizes clean architecture, maintainability, separation of concerns, and real-world software engineering practices.
+
+**Project Status:** 🚧 Active Development
+
+---
+
+## Overview
+
+Organizations often rely on spreadsheets, email threads, and disconnected applications to manage everyday processes. This makes it difficult to track responsibilities, monitor progress, and maintain visibility across teams.
+
+FlowOps addresses these challenges by providing a unified workspace where organizations can manage their operational workflows.
+
+The platform is being developed incrementally, beginning with a functional business application and evolving toward a configurable workflow engine.
+
+## Key Features
+
+The following capabilities define the initial product scope and roadmap.
+
+### Organization & User Management
+- Organization-based user and data management.
+- Secure authentication and authorization.
+- Role-based access control.
+- User identity and access management.
+
+### Request Management
+- Create, manage, and track business requests.
+- Monitor request statuses and progress.
+- Organize requests within their respective organizations.
+- Maintain visibility into request lifecycles.
+
+### Task Management
+- Coordinate tasks associated with business operations.
+- Track task assignments and progress.
+- Support structured collaboration and accountability.
+
+### Activity Tracking & Notifications
+- Record important activities and operational changes.
+- Maintain a history of relevant actions.
+- Provide notifications for workflow-related events.
+
+### Workflow Automation — Planned
+- Configurable workflow definitions.
+- Reusable workflow steps and transitions.
+- Conditional routing and business rules.
+- Automated task creation and execution.
+- Extensible workflow processing.
+
+*Features are being delivered progressively and may not all be available in the current development version.*
+
+---
+
+## Technology Stack
+
+| Layer | Technologies |
 |---|---|
-| Backend | ASP.NET Core (.NET 10), EF Core, PostgreSQL, ASP.NET Core Identity (cookie auth), SignalR |
-| Frontend | React, TypeScript (strict), Vite, Tailwind CSS v4, TanStack Query, React Router |
-| Tests | xUnit + Testcontainers (PostgreSQL); Vitest + Testing Library |
-| Architecture | Modular monolith, four backend layers — [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Backend | C#, ASP.NET Core Web API, .NET 10 |
+| Frontend | React, TypeScript, Vite |
+| Database | SQL Server, Entity Framework Core |
+| Authentication | ASP.NET Core Identity, JWT |
+| Data Access | Entity Framework Core |
+| API Design | RESTful APIs, DTOs |
+| State Management | TanStack Query, Zustand |
+| Styling | Tailwind CSS |
+| Infrastructure & Tools | Docker, Git, GitHub |
 
-## Getting started
+## Architecture & Engineering Principles
 
-Prerequisites: .NET 10 SDK, Node.js ≥ 22, Docker.
+FlowOps is designed with an emphasis on code quality, maintainability, and extensibility.
 
-```bash
-cp .env.example .env                       # then edit the placeholder passwords
-docker compose up -d db                    # PostgreSQL on 127.0.0.1:5432
+### Separation of Concerns
 
-# Backend. ASP.NET Core does not read .env: give the API its settings through user-secrets
-# (or export .env into your shell first: set -a; source .env; set +a)
-dotnet dev-certs https --trust
-dotnet tool restore                        # installs the pinned dotnet-ef
-dotnet user-secrets --project src/backend/FlowOps.Api set "ConnectionStrings:FlowOps" "Host=localhost;Port=5432;Database=flowops;Username=flowops;Password=<POSTGRES_PASSWORD from .env>"
-# First administrator: created once at start-up, must change the password at first sign-in.
-# Sign in with this email and password (the same values as FlowOps__BootstrapAdmin__Email / __Password in .env).
-dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Email" "admin@flowops.local"
-dotnet user-secrets --project src/backend/FlowOps.Api set "FlowOps:BootstrapAdmin:Password" "<12+ chars, upper, lower, digit, symbol>"
-dotnet ef database update --project src/backend/FlowOps.Infrastructure --startup-project src/backend/FlowOps.Api
-dotnet run --project src/backend/FlowOps.Api        # https://localhost:7180
+Responsibilities are divided across clearly defined layers:
 
-# Frontend
-cd src/frontend
-npm install
-npm run dev                                # http://localhost:5173 (proxies /api and /hubs to the API)
-```
+- **API Layer:** Handles HTTP requests, input validation, API contracts, and responses.
+- **Application Layer:** Coordinates use cases and application-level operations.
+- **Domain Layer:** Represents core business entities, rules, and concepts.
+- **Infrastructure Layer:** Manages database persistence, identity integration, and external dependencies.
+- **Frontend Layer:** Provides reusable UI components, application state, and API integration.
 
-### Checks
-```bash
-dotnet test                                # backend (integration tests need Docker)
-cd src/frontend && npm run typecheck && npm run lint && npm test && npm run build
-```
+The objective is to keep controllers focused on HTTP concerns while placing business operations in appropriate application and domain services.
 
-## Documentation
+### Engineering Practices
 
-| Doc | What it answers |
-|---|---|
-| [PRD](docs/PRD.md) | What we're building, for whom, acceptance criteria |
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | Layers, boundaries, what goes where |
-| [DOMAIN_MODEL](docs/DOMAIN_MODEL.md) | Entities, statuses, invariants, transitions |
-| [WORKFLOWS](docs/WORKFLOWS.md) | Purchase and leave processes, edge cases, concurrency |
-| [AUTHORIZATION](docs/AUTHORIZATION.md) | Auth design, permission matrix, data visibility |
-| [API_CONTRACT](docs/API_CONTRACT.md) | Endpoints, DTOs, errors, SignalR events |
-| [UI_SPEC](docs/UI_SPEC.md) | Pages, routes, states, role-specific UX |
-| [DESIGN_SYSTEM](docs/DESIGN_SYSTEM.md) | Beige design tokens, components, accessibility |
-| [CODE_STANDARDS](docs/CODE_STANDARDS.md) | Separation of concerns, DRY, SOLID — with examples |
-| [TESTING](docs/TESTING.md) | Test strategy, required scenarios, commands |
-| [PHASE1_TASKS](docs/PHASE1_TASKS.md) | Implementation backlog |
-| [ROADMAP](docs/ROADMAP.md) | Phase 2/3 evolution |
-| [AGENT_HANDOFF](docs/AGENT_HANDOFF.md) | How coding sessions coordinate |
-| [decisions/](docs/decisions/README.md) | Architecture Decision Records |
+- **SOLID Principles:** Promote modular, testable, and maintainable components.
+- **DRY (Don't Repeat Yourself):** Extract shared logic into reusable components and utilities.
+- **Dependency Injection:** Reduce coupling and enable flexible dependency management.
+- **DTO-Based API Contracts:** Separate externally exposed data from internal domain models.
+- **Asynchronous Programming:** Use async operations for I/O-bound backend workflows.
+- **Consistent Error Handling:** Provide predictable errors across application boundaries.
+- **Scalable Design:** Introduce abstractions where they support real requirements without unnecessary complexity.
 
-## Working with AI coding agents
-`AGENTS.md` is the shared instruction file for any agent; `CLAUDE.md` imports it for Claude Code and adds `.claude/` rules, specialist agents and skills (`/implement-feature BE-01`, `/verify-feature`, `/review-change`, `/review-ui`).
+---
+
+## Development Roadmap
+
+### Phase 1 — Core Business Application
+
+Establish a functional, end-to-end business management platform.
+
+- [ ] Complete authentication and authorization.
+- [ ] Implement organization management.
+- [ ] Complete request and task management.
+- [ ] Integrate activity tracking and notifications.
+- [ ] Connect backend services with the frontend.
+- [ ] Validate core business workflows through integration testing.
+
+### Phase 2 — Configurable Workflow Engine
+
+Transform the application into a flexible workflow management platform.
+
+- [ ] Introduce workflow definitions.
+- [ ] Implement configurable steps and transitions.
+- [ ] Support conditional routing.
+- [ ] Implement workflow execution and state management.
+- [ ] Support reusable workflow templates.
+
+### Phase 3 — Enterprise Capabilities
+
+Extend the platform for larger organizations and advanced operational requirements.
+
+- [ ] Advanced permissions and access policies.
+- [ ] Audit trails and operational monitoring.
+- [ ] Analytics and reporting dashboards.
+- [ ] Workflow versioning.
+- [ ] Performance and reliability improvements.
+- [ ] Production-oriented observability and deployment.
+
+*The roadmap reflects planned development and is not a declaration of completed functionality.*
+
+---
+
+## Security Considerations
+
+Security is an important part of the platform's architecture.
+
+The intended security model includes:
+
+- Authentication through ASP.NET Core Identity.
+- JWT-based API authorization.
+- Role-based access control.
+- Organization-level data isolation.
+- Server-side input validation.
+- Secure handling of credentials and application secrets.
+
+Security-sensitive functionality requires testing and review before production deployment.
+
+---
+
+## Project Goals
+
+FlowOps is being developed to achieve three primary objectives:
+
+**1. Deliver a useful business application**
+
+Build a platform that addresses practical operational challenges rather than serving only as a technical demonstration.
+
+**2. Apply production-oriented software engineering**
+
+Design and implement a maintainable full-stack application using established architectural principles, appropriate abstractions, and disciplined development practices.
+
+**3. Establish a foundation for future extensibility**
+
+Create an architecture capable of supporting increasingly complex business processes without requiring fundamental redesign.
+
+---
+
+## Contributing
+
+FlowOps is currently under active development.
+
+Feedback, suggestions, bug reports, and technical discussions are welcome through GitHub Issues.
+
+## Author
+
+**Osama Shtayat**
+
+Computer Engineering | Software Engineering | Backend Development
+
+[GitHub](https://github.com/osamashtayat)
+
+---
+
+**FlowOps — Bringing structure, visibility, and efficiency to business workflows.**
