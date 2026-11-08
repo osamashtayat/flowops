@@ -45,6 +45,7 @@ describe('REQUEST_LIMITS match contracts/openapi.json', () => {
     ['CreateDepartmentRequest', 'name', ADMIN_LIMITS.departmentNameMax],
     ['UpdateDepartmentRequest', 'name', ADMIN_LIMITS.departmentNameMax],
     ['CreateDepartmentRequest', 'code', ADMIN_LIMITS.departmentCodeMax],
+    ['RejectRoleChangeRequest', 'reason', ADMIN_LIMITS.roleChangeReasonMax],
   ] as const)('admin %s.%s max length', (schema, property, limit) => {
     expect(maxLength(schema, property)).toBe(limit)
   })

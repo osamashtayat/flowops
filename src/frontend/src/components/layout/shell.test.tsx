@@ -30,7 +30,7 @@ describe('navigationFor (capability → items)', () => {
     const nav = navigationFor(['admin.manage'])
     expect(nav.canSubmitRequests).toBe(false)
     expect(labels(nav.primary)).toEqual(['Dashboard', 'My requests', 'Notifications'])
-    expect(labels(nav.admin)).toEqual(['Users', 'Departments', 'Stalled tasks'])
+    expect(labels(nav.admin)).toEqual(['Users', 'Departments', 'Role changes', 'Stalled tasks'])
   })
 
   it('shows nothing extra for an empty capability list', () => {
@@ -43,7 +43,7 @@ describe('navigationFor (capability → items)', () => {
     const all: Capability[] = ['requests.submit', 'tasks.view', 'admin.manage']
     const nav = navigationFor(all)
     expect(nav.primary).toHaveLength(5)
-    expect(nav.admin).toHaveLength(3)
+    expect(nav.admin).toHaveLength(4)
   })
 })
 
@@ -60,7 +60,7 @@ describe('sidebar per signed-in user', () => {
     ['employee', ['New request', 'Dashboard', 'My requests', 'Notifications']],
     ['manager', ['New request', 'Dashboard', 'My requests', 'Team requests', 'Inbox, 3 open', 'Notifications']],
     ['finance', ['New request', 'Dashboard', 'My requests', 'Team requests', 'Inbox, 3 open', 'Notifications']],
-    ['admin', ['Dashboard', 'My requests', 'Notifications', 'Users', 'Departments', 'Stalled tasks']],
+    ['admin', ['Dashboard', 'My requests', 'Notifications', 'Users', 'Departments', 'Role changes', 'Stalled tasks']],
   ]
 
   it.each(cases)('%s sees exactly their items', async (user, expected) => {

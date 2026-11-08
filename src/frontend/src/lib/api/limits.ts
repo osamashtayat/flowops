@@ -49,4 +49,6 @@ export const ADMIN_LIMITS = {
   departmentNameMax: 100,
   /** CreateDepartmentRequest.code, 1–16, letters, digits and hyphens */
   departmentCodeMax: 16,
+  /** RejectRoleChangeRequest.reason, 1–500 */
+  roleChangeReasonMax: 500,
 } as const
