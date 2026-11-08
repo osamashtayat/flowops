@@ -102,3 +102,16 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # OPS-01: the Docker images (api, migrations bundle, web) still build. Images are not pushed anywhere.
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build compose images
+        env:
+          POSTGRES_PASSWORD: ci-build-only
+        run: docker compose build

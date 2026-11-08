@@ -46,7 +46,7 @@ public static class LoginRateLimiting
             options.AddPolicy(PerIpPolicy, http =>
             {
                 var limits = http.RequestServices.GetRequiredService<IOptions<LoginRateLimitOptions>>().Value;
-                // Behind a reverse proxy this is the proxy's address until forwarded headers are configured (OPS-01).
+                // Behind a reverse proxy this is the proxy's address unless forwarded headers are enabled, as the Docker stack does (OPS-01).
                 var ip = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                 return RateLimitPartition.GetFixedWindowLimiter(ip, _ => Window(limits.PerIpPermitLimit, limits.PerIpWindow));
             });

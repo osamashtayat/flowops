@@ -227,8 +227,14 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 
 ## Operations & quality
 
-### OPS-01 — Full-stack Docker Compose · `Todo`
+### OPS-01 — Full-stack Docker Compose · `Done`
 Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxying `/api` and `/hubs`) services; one command brings up the app. **Deps:** BE-05, FE-04.
+- **As built:** `docker compose up -d --build` → `db` → `migrate` (one-shot EF Core migrations bundle, `src/backend/Dockerfile` target `migrations`) → `api` (non-root aspnet image, HTTP 8080 inside the network, **no published port**) → `web` (`src/frontend/Dockerfile`: nginx-unprivileged on https://localhost:8443).
+  - **TLS at nginx.** The cookies are `Secure` and antiforgery refuses non-HTTPS requests. The certificate is self-signed for localhost and generated at container start, never baked into the image; a mounted certificate takes precedence.
+  - **Forwarded headers.** nginx replaces `X-Forwarded-For`/`-Proto` and the api sets `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, so the per-IP login limit sees clients. Trusting every sender is safe only because nginx is the API's sole caller.
+  - **Keys.** Data-protection keys live on the `flowops-keys` volume, so sessions survive restarts.
+  - **CSP.** nginx sends the same CSP as the API.
+  - No code change.
 
 ### OPS-02 — CI pipeline · `Done`
 GitHub Actions: backend build + domain tests + integration tests (Docker available on ubuntu runners), OpenAPI drift check, frontend typecheck/lint/test/build. **Deps:** BE-04, BE-03.

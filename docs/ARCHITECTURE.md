@@ -21,7 +21,7 @@ flowchart LR
   API --> INF
 ```
 
-Same origin everywhere: Vite proxies `/api` and `/hubs` in development; a reverse proxy serves both in deployment. No CORS.
+Same origin everywhere: Vite proxies `/api` and `/hubs` in development; a reverse proxy serves both in deployment (`docker compose up`: nginx terminates TLS and proxies `/api` and `/hubs`, OPS-01). No CORS.
 
 ---
 
