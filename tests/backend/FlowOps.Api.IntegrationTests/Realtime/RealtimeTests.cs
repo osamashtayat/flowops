@@ -6,11 +6,14 @@ using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using FlowOps.Infrastructure.Persistence;
+using FlowOps.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FlowOps.Api.IntegrationTests.Realtime;
 
@@ -252,6 +255,59 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Hub_BeyondThePerUserCap_RefusesTheNewConnectionAndKeepsTheOthers()
+    {
+        var max = Factory.Services.GetRequiredService<IOptions<RealtimeConnectionOptions>>().Value.MaxConnectionsPerUser;
+        var open = new List<HubSession>();
+        try
+        {
+            for (var i = 0; i < max; i++)
+            {
+                open.Add(await ConnectAsync(_karim, HttpTransportType.WebSockets));
+            }
+
+            await using var extra = BuildConnection(await SessionCookieAsync(_karim), HttpTransportType.WebSockets);
+            var error = await StartAndAwaitCloseAsync(extra);
+
+            error.ShouldNotBeNull().Message.ShouldContain("Too many open connections");
+            open.ShouldAllBe(s => s.Connection.State == HubConnectionState.Connected);
+            Factory.Logs.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Mentions("refused"));
+        }
+        finally
+        {
+            foreach (var session in open)
+            {
+                await session.DisposeAsync();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Hub_PerUserCap_DoesNotLimitOtherUsers()
+    {
+        var max = Factory.Services.GetRequiredService<IOptions<RealtimeConnectionOptions>>().Value.MaxConnectionsPerUser;
+        var open = new List<HubSession>();
+        try
+        {
+            for (var i = 0; i < max; i++)
+            {
+                open.Add(await ConnectAsync(_karim, HttpTransportType.LongPolling));
+            }
+
+            await using var omar = await ConnectAsync(_omar, HttpTransportType.LongPolling);
+
+            omar.Connection.State.ShouldBe(HubConnectionState.Connected);
+        }
+        finally
+        {
+            foreach (var session in open)
+            {
+                await session.DisposeAsync();
+            }
+        }
+    }
+
     // ---- Helpers ---------------------------------------------------------------------------------------------------
 
     private static RealtimeEvent Event(string name, Guid? requestId, params TestUser[] recipients) =>
@@ -300,11 +356,21 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
     /// <summary>A real hub connection over <paramref name="transport"/>, authenticated by the session cookie from a real login.</summary>
     private async Task<HubSession> ConnectAsync(TestUser user, HttpTransportType transport)
     {
+        var connection = BuildConnection(await SessionCookieAsync(user), transport);
+        await connection.StartAsync(Ct);
+        return new HubSession(connection);
+    }
+
+    private async Task<string> SessionCookieAsync(TestUser user)
+    {
         using var client = Factory.CreateHttpsClient();
         using var login = await FlowOpsApiFactory.LoginAsync(client, user.Email, user.Password);
         login.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var cookie = login.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("__Host-flowops=", StringComparison.Ordinal)).Split(';')[0];
-        var connection = new HubConnectionBuilder()
+        return login.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("__Host-flowops=", StringComparison.Ordinal)).Split(';')[0];
+    }
+
+    private HubConnection BuildConnection(string cookie, HttpTransportType transport) =>
+        new HubConnectionBuilder()
             .WithUrl(new Uri(Factory.Server.BaseAddress, "hubs/notifications"), options =>
             {
                 options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
@@ -318,8 +384,28 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
                 };
             })
             .Build();
-        await connection.StartAsync(Ct);
-        return new HubSession(connection);
+
+    /// <summary>
+    /// The server's refusal arrives either while starting (handshake) or as a close right after; returns the error either way.
+    /// </summary>
+    private static async Task<Exception?> StartAndAwaitCloseAsync(HubConnection connection)
+    {
+        var closed = new TaskCompletionSource<Exception?>();
+        connection.Closed += error =>
+        {
+            closed.TrySetResult(error);
+            return Task.CompletedTask;
+        };
+        try
+        {
+            await connection.StartAsync(Ct);
+        }
+        catch (Exception error) when (error is HubException or InvalidOperationException or IOException)
+        {
+            return error;
+        }
+
+        return await closed.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
     }
 
     private static ChannelReader<(string Name, JsonElement Payload)> Listen(HubConnection connection)
