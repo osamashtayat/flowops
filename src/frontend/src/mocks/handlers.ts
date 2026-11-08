@@ -322,7 +322,7 @@ export const adminHandlers = [
   ),
 ]
 
-/** Approve / reject / fulfil — backend BE-12 not merged, but these act on the mock requests above, so only tests use them. */
+/** Approve / reject / fulfil on the mock requests above (tests and the mocked dev API). */
 export const decisionHandlers = [
   ...(['approve', 'reject', 'fulfill'] as const).map((action) =>
     http.post<{ taskId: string }, { version: string; comment?: string | null; reason?: string; note?: string | null }, Failure | null>(

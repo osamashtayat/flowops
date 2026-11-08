@@ -193,28 +193,32 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 ### FE-08 — My requests & Team requests · `Done` (real API since BE-11; checked in the browser 2026-11-06)
 - **Objective:** `UI_SPEC.md` §4.3. **Deps:** FE-04, FE-05 (+ BE-11).
 
-### FE-09 — Request details · `Done` (details, activity and comments on the real API since BE-11; decisions wait for BE-12)
+### FE-09 — Request details · `Done` (real API since BE-11/BE-12; approve, reject, fulfil, HR confirm and the 409 path checked in the browser 2026-11-09)
 - **Objective:** `UI_SPEC.md` §4.5 incl. `ActivityTimeline`, comment box, `DecisionDialog` + `useDecideTask`.
 - **Deps:** FE-08, FE-06 (+ BE-11/12). **Tests:** actions only from `availableActions`; 409 path; restricted reason display.
 
-### FE-10 — Inbox · `Done` (against MSW mocks; real integration waits for BE-12)
+### FE-10 — Inbox · `Done` (real API since BE-12; checked in the browser 2026-11-09 across manager, finance, procurement and HR, incl. Completed tab and live updates)
 - **Objective:** `UI_SPEC.md` §4.6 reusing `DecisionDialog`/`useDecideTask` from FE-09. **Deps:** FE-09 (+ BE-12).
 - **Notes:** inline actions come from `InboxItemDto.actions` (contract since #29). Leave decision dialogs carry the visibility note (#38).
 
-### FE-11 — Notifications & realtime · `Done` (notifications on the real API, checked in the browser 2026-11-07; the SignalR client is built against the contract but the hub isn't on `main` until BE-14, see #53)
+### FE-11 — Notifications & realtime · `Done` (notifications on the real API since BE-13; live updates over `/hubs/notifications` since BE-14 — bell, inbox, nav count and dashboard update without reload, and missed events are picked up after an API restart; checked in the browser 2026-11-09)
 - **Objective:** `NotificationBell`, notifications page, `lib/realtime` (SignalR client → query invalidation per `API_CONTRACT.md` §9, reconnect handling).
 - **Deps:** FE-04 (+ BE-13/14). **Tests:** invalidation mapping per event; optimistic mark-read rollback on error.
-- **Notes:** role-change notifications (no request/task id) open `/admin/role-changes` (the screen itself is FE-13b). The realtime client retries a missing hub quietly and is off in unit tests and while the dev API is mocked. Verify live updates once BE-14 is merged.
+- **Notes:** role-change notifications (no request/task id) open `/admin/role-changes` (the screen itself is FE-13b). The realtime client retries a missing hub quietly and is off in unit tests and while the dev API is mocked. Decision toasts are raised from the mutation hook, not `mutate()`, because a realtime refetch can unmount the decided row before the response arrives (FE-14).
 
-### FE-12 — Dashboard · `Done` (against MSW mocks; real integration waits for BE-15)
+### FE-12 — Dashboard · `Done` (real API since BE-15; employee, manager and administrator dashboards checked in the browser 2026-11-09, `null` sections hidden)
 - **Objective:** `UI_SPEC.md` §4.2. **Deps:** FE-05, FE-08 (+ BE-15).
 
-### FE-13 — Administration screens · `Done` (users and departments on the real API, checked in the browser 2026-11-06; stalled tasks stay on MSW until BE-15)
+### FE-13 — Administration screens · `Done` (users and departments on the real API, checked in the browser 2026-11-06; stalled tasks on the real API since BE-15, both reasons checked in the browser 2026-11-09)
 - **Objective:** `UI_SPEC.md` §4.8. **Deps:** FE-04, FE-05, FE-06 (+ BE-08, BE-15 for stalled).
 - **Notes:** on the admin's own record roles, manager and Active are read-only with an explanation, and the admin is not offered as a manager (see #27 for the open question on self-deactivation and the error code name).
 
 ### FE-13b — Role-change screens (ADR-0012) · `Done` (real API since BE-08d; checked in the browser 2026-11-09 with two administrators: Administrator not addable, 202 → "Waiting for another administrator", approve/reject/cancel from `availableActions`, 409 toast + refetch)
 - **Objective:** ADR-0012 §8: the edit-roles form can't add `Administrator`; "Waiting for another administrator" after a 202 on your own roles; a pending/decided "Role changes" list with approve, reject and cancel from `availableActions`. **Deps:** FE-13, BE-08d (contract).
+
+### FE-14 — Real-API integration pass · `Done` (2026-11-09)
+- **Objective:** run FE-09…FE-13 against the merged backend (BE-12…BE-15) in the browser with several users and roles; fix frontend mismatches, raise backend/contract ones as issues. **Deps:** BE-12, BE-13, BE-14, BE-15.
+- **Notes:** found and fixed: no success toast after any decision on the real API (realtime refetch unmounted the dialog before `mutate()` callbacks ran); HR confirmation dialog said the leave "moves on to the next step". No contract mismatches found.
 
 ## Operations & quality
 
