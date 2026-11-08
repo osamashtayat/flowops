@@ -111,6 +111,26 @@ dotnet run --project src/backend/FlowOps.Api                  # API on https://l
 cd src/frontend && npm install && npm run dev                 # SPA on http://localhost:5173
 ```
 
+### Full stack in Docker
+
+```bash
+cp .env.example .env                 # then edit the placeholder values
+docker compose up -d --build         # db → migrate (one-shot) → api → web
+```
+
+Open **https://localhost:8443**. nginx serves the SPA over HTTPS with a self-signed certificate it creates for localhost
+on first start, so your browser shows a warning; accept it, or mount a trusted certificate (for example from
+[mkcert](https://github.com/FiloSottile/mkcert)) as `tls.crt` and `tls.key` at `/etc/nginx/certs`. HTTPS is required: the
+session and antiforgery cookies are `Secure`. nginx proxies `/api` and `/hubs` to the API, which publishes no port of
+its own. Sign in with the bootstrap administrator from `.env`.
+
+To load the demo data (below) into the Docker database, run the API once in Development with the flag, and stop it with
+Ctrl+C once it logs "Demo data seeded":
+
+```bash
+docker compose run --rm -e ASPNETCORE_ENVIRONMENT=Development api --seed-demo
+```
+
 ### Demo data (Development only)
 
 Start the API once with `--seed-demo` to create a demo company:

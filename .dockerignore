@@ -1,0 +1,13 @@
+# Build context for both images is the repo root. Keep secrets and local build output out of images.
+.env
+**/.env
+.git
+.github
+.claude
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/TestResults
+**/*.trx
+docs

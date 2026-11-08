@@ -1,6 +1,10 @@
-# Local development dependencies. Start with: docker compose up -d db
-# The API and web services are added in OPS-01 (docs/PHASE1_TASKS.md).
+# Copy .env.example to .env first (placeholders only, never real secrets). Then:
+#   docker compose up -d --build     full stack (OPS-01): db, migrations, api, web on https://localhost:8443
+#   docker compose up -d db          PostgreSQL only, for `dotnet run` + `npm run dev`
 name: flowops
+
+x-api-environment: &api-environment
+  ConnectionStrings__FlowOps: "Host=db;Port=5432;Database=${POSTGRES_DB:-flowops};Username=${POSTGRES_USER:-flowops};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (copy .env.example)}"
 
 services:
   db:
@@ -20,5 +24,50 @@ services:
       timeout: 3s
       retries: 10
 
+  # One-shot: applies the EF Core migrations and exits. The API starts only after it succeeded.
+  migrate:
+    build:
+      context: .
+      dockerfile: src/backend/Dockerfile
+      target: migrations
+    environment: *api-environment
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: src/backend/Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      <<: *api-environment
+      ASPNETCORE_ENVIRONMENT: ${FLOWOPS_ENVIRONMENT:-Production}
+      FlowOps__CompanyTimeZone: ${FlowOps__CompanyTimeZone:-Asia/Amman}
+      FlowOps__BootstrapAdmin__Email: ${FlowOps__BootstrapAdmin__Email:-}
+      FlowOps__BootstrapAdmin__Password: ${FlowOps__BootstrapAdmin__Password:-}
+      # Trust X-Forwarded-For/-Proto so the per-IP login limit sees the client, not nginx. Safe only because the API
+      # publishes no port: nginx is the only thing that can reach it. Never add a `ports:` entry here.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+    volumes:
+      - flowops-keys:/home/app/.aspnet/DataProtection-Keys
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: src/frontend/Dockerfile
+      target: web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FLOWOPS_WEB_PORT:-8443}:8443"
+    depends_on:
+      - api
+
 volumes:
   flowops-db:
+  flowops-keys:
