@@ -104,7 +104,7 @@ npm test                # Vitest (run mode)
 npm run build
 ```
 
-CI (OPS-02, `.github/workflows/ci.yml`) runs all of the above on every pull request and every push to `main`, on `ubuntu-latest`. There are two jobs. **backend** builds with `-warnaserror`, then runs the domain tests, the integration tests (Testcontainers on the runner's Docker), and the OpenAPI drift check (`./scripts/export-openapi.sh` + `git diff --exit-code contracts/openapi.json`). **frontend** checks API types drift (`npm run api:types` + `git diff --exit-code`), then runs typecheck, lint, test and build. A failing backend job uploads the `.trx` results.
+CI (OPS-02, `.github/workflows/ci.yml`) runs all of the above on every pull request and every push to `main`, on `ubuntu-latest`. There are two jobs. **backend** builds with `-warnaserror`, then runs the domain tests, the integration tests (Testcontainers on the runner's Docker), and the OpenAPI drift check (`./scripts/export-openapi.sh` + `git diff --exit-code contracts/openapi.json`). **frontend** checks API types drift (`npm run api:types` + `git diff --exit-code`), then runs typecheck, lint, test and build. A failing backend job uploads the `.trx` results. A third job, **docker**, runs `docker compose build` so the images (OPS-01) keep building.
 
 ## 5. Quality bar
 - Every bug fix starts with a failing test that reproduces it.
