@@ -192,6 +192,89 @@ public sealed class RoleChangeTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         Factory.Logs.Entries.ShouldContain(e => e.Mentions(bea.Id.ToString()) && e.Mentions(change.GetProperty("id").GetString()!));
     }
 
+    // ---- Approver account age (ADR-0013, #48) -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Approve_ByAnAdminAccountCreatedAfterTheProposal_Returns422AndChangesNothing()
+    {
+        // #48: Ada proposes, then creates a second admin account and tries to approve with it.
+        var (ada, _) = await TwoAdminsAsync();
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "FinanceOfficer");
+        Factory.Clock.Advance(TimeSpan.FromHours(30));
+        var sock = await Given.User("ada2").WithRoles(Roles.Administrator).CreatedAt(Factory.Clock.GetUtcNow()).CreateAsync(Factory);
+        using var sockClient = await Factory.ClientFor(sock);
+
+        using var response = await DecideAsync(sockClient, change, "approve");
+
+        await ProblemAssert.HasCode(response, 422, ErrorCodes.RoleChangeApproverTooNew);
+        (await RolesOfAsync(sockClient, ada.Id)).ShouldBe(AdministratorOnly);
+        (await PendingCountAsync()).ShouldBe(1);
+        (await NotificationsAsync()).ShouldNotContain(n => n.Type == NotificationType.RoleChangeApproved);
+    }
+
+    [Fact]
+    public async Task Approve_ByAnAdminLessThanADayOldAtTheProposal_Returns422()
+    {
+        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        await Given.User("old").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        var young = await Given.User("young").WithRoles(Roles.Administrator)
+            .CreatedAt(Factory.Clock.GetUtcNow() - RoleChange.MinimumApproverAccountAge + TimeSpan.FromMinutes(1)).CreateAsync(Factory);
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        using var youngClient = await Factory.ClientFor(young);
+
+        using var response = await DecideAsync(youngClient, change, "approve");
+
+        await ProblemAssert.HasCode(response, 422, ErrorCodes.RoleChangeApproverTooNew);
+    }
+
+    [Fact]
+    public async Task Approve_ByAnAdminExactlyADayOldAtTheProposal_Applies()
+    {
+        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        var bea = await Given.User("bea").WithRoles(Roles.Administrator)
+            .CreatedAt(Factory.Clock.GetUtcNow() - RoleChange.MinimumApproverAccountAge).CreateAsync(Factory);
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        using var beaClient = await Factory.ClientFor(bea);
+
+        using var response = await DecideAsync(beaClient, change, "approve");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await RolesOfAsync(beaClient, ada.Id)).ShouldBe(["Administrator", "Employee"]);
+    }
+
+    [Fact]
+    public async Task TooNewAdmin_IsOfferedOnlyReject_AndMayReject()
+    {
+        var (ada, _) = await TwoAdminsAsync();
+        using var adaClient = await Factory.ClientFor(ada);
+        var change = await ProposeAsync(adaClient, ada, "Administrator", "Employee");
+        var young = await Given.User("young").WithRoles(Roles.Administrator).CreatedAt(Factory.Clock.GetUtcNow()).CreateAsync(Factory);
+        using var youngClient = await Factory.ClientFor(young);
+
+        var seen = await JsonBody.ReadAsync(await youngClient.GetAsync(ChangeUri(Id(change)), Ct));
+        using var response = await DecideAsync(youngClient, change, "reject");
+
+        Strings(seen, "availableActions").ShouldBe(["reject"]);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonBody.ReadAsync(response)).GetProperty("status").GetString().ShouldBe("Rejected");
+    }
+
+    [Fact]
+    public async Task UpdateRoles_OnSelfWhenTheOnlyOtherAdminIsTooNew_Returns422NoReviewer()
+    {
+        var ada = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        await Given.User("young").WithRoles(Roles.Administrator).CreatedAt(Factory.Clock.GetUtcNow()).CreateAsync(Factory);
+        using var client = await Factory.ClientFor(ada);
+
+        using var response = await client.PutAsJsonAsync(ById(ada.Id, "/roles"), RoleSet("Administrator", "Employee"), Ct);
+
+        await ProblemAssert.HasCode(response, 422, ErrorCodes.RoleChangeNoReviewer);
+        (await PendingCountAsync()).ShouldBe(0);
+    }
+
     [Theory]
     [InlineData("approve")]
     [InlineData("reject")]

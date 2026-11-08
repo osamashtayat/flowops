@@ -26,6 +26,7 @@ public sealed partial class RoleChangeService(
         var change = await LoadForDecisionAsync(id, body.Version, ct);
         var now = time.GetUtcNow();
         change.Approve(currentUser.Id, now);
+        await EnsureOldEnoughToApproveAsync(change, ct);
 
         // Claimed first, so a direct edit committing during this approval fails one of the two (409) instead of being overwritten.
         var currentRoles = await identity.ClaimRolesForChangeAsync(change.UserId, ct);
@@ -85,6 +86,17 @@ public sealed partial class RoleChangeService(
         }
 
         return change;
+    }
+
+    /// <summary>After the domain checks, so self-approval and not-pending keep their own, clearer errors.</summary>
+    private async Task EnsureOldEnoughToApproveAsync(RoleChange change, CancellationToken ct)
+    {
+        var approverCreatedAt = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.CreatedAt).SingleAsync(ct);
+        if (!RoleChange.IsOldEnoughToApprove(approverCreatedAt, change.ProposedAt))
+        {
+            throw new BusinessRuleException(ErrorCodes.RoleChangeApproverTooNew,
+                "Your administrator account is too new to approve this change. An administrator whose account existed at least a day before the request must approve it.");
+        }
     }
 
     private async Task<RoleChange> LoadAsync(Guid id, string version, CancellationToken ct)

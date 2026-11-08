@@ -69,7 +69,7 @@ describe('Edit roles form (ADR-0012)', () => {
   })
 
   it.each([
-    ['role_change.no_reviewer', /only active administrator/i],
+    ['role_change.no_reviewer', /no other administrator can approve/i],
     ['role_change.already_pending', /already have a role change waiting/i],
     ['user.admin_role_on_create_only', /only be given when a new account is created/i],
   ])('maps %s into the banner', async (code, message) => {
@@ -86,7 +86,7 @@ describe('Edit roles form (ADR-0012)', () => {
     await heading('Sami Qasem')
     await userEvent.click(screen.getByLabelText('HR officer'))
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
-    expect(await screen.findByText(/only active administrator/i)).toBeInTheDocument()
+    expect(await screen.findByText(/no other administrator can approve/i)).toBeInTheDocument()
   })
 })
 

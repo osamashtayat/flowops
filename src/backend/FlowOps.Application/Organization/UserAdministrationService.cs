@@ -163,14 +163,14 @@ public sealed partial class UserAdministrationService(
 
     private async Task<RoleChangeDto> ProposeOwnRoleChangeAsync(IReadOnlyList<string> currentRoles, string[] roles, CancellationToken ct)
     {
-        var reviewers = await RoleAssignmentRules.ActiveAdministrators(db).Where(u => u.Id != currentUser.Id).Select(u => u.Id).ToListAsync(ct);
-        if (reviewers.Count == 0)
+        var now = time.GetUtcNow();
+        // Only admins who could actually approve count (ADR-0013): otherwise the change could only ever expire.
+        if (!await RoleAssignmentRules.PossibleApprovers(db, currentUser.Id, now).AnyAsync(ct))
         {
             throw new BusinessRuleException(ErrorCodes.RoleChangeNoReviewer,
-                "You are the only active administrator, so nobody could approve a change to your own roles.");
+                "No other administrator can approve a change to your own roles: there must be another active administrator whose account is at least a day old.");
         }
 
-        var now = time.GetUtcNow();
         if (await db.RoleChanges.SingleOrDefaultAsync(c => c.UserId == currentUser.Id && c.Status == RoleChangeStatus.Pending, ct)
             is { } pending && !pending.ExpireIfDue(now))
         {
@@ -180,6 +180,8 @@ public sealed partial class UserAdministrationService(
         var change = RoleChange.Propose(currentUser.Id, currentRoles, roles, now);
         db.RoleChanges.Add(change);
         var proposerName = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.DisplayName).SingleAsync(ct);
+        // Every other active admin hears about it: even one too new to approve may reject.
+        var reviewers = await RoleAssignmentRules.ActiveAdministrators(db).Where(u => u.Id != currentUser.Id).Select(u => u.Id).ToListAsync(ct);
         var notifications = NotificationFactory.RoleChangePending(change, proposerName, reviewers, now).ToList();
         db.Notifications.AddRange(notifications);
         await SaveAsync(ct);
