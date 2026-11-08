@@ -32,7 +32,11 @@ function basePresentation(action: TaskAction, stage: RequestStage): DecisionPres
         tone: 'primary',
         describe: (number) => ({
           title: `${verb} ${number}?`,
-          description: 'The request moves on to the next step. This cannot be undone.',
+          // HR confirmation is the last leave step (docs/WORKFLOWS.md §3); every other approval hands on.
+          description:
+            verb === 'Confirm'
+              ? 'The leave is approved and the requester is notified. This cannot be undone.'
+              : 'The request moves on to the next step. This cannot be undone.',
         }),
         done: (number) => `${number} ${verb === 'Confirm' ? 'confirmed' : 'approved'}.`,
         reason: { label: 'Comment', required: false, helperText: 'Optional. Visible in the request history.', maxLength: REQUEST_LIMITS.approveCommentMax },

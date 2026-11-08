@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
+import type { MutationOutcome } from '@/lib/api/mutationOutcome'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type {
   CreateDepartmentRequest,
@@ -222,9 +223,11 @@ export interface DecideRoleChangeInput {
  * is refetched, so the buttons always match what the server now allows. An approval also changes
  * the person's roles, so the user queries are refreshed too.
  */
-export function useDecideRoleChange() {
+export function useDecideRoleChange(outcome: MutationOutcome<DecideRoleChangeInput> = {}) {
   const queryClient = useQueryClient()
   return useMutation({
+    // On the hook, not on mutate(): the refetch below drops a decided row from the Pending list and
+    // unmounts its buttons (MutationOutcome).
     mutationFn: async ({ id, action, version, reason }: DecideRoleChangeInput): Promise<RoleChangeDto> => {
       const params = { path: { id } }
       const result =
@@ -235,6 +238,8 @@ export function useDecideRoleChange() {
             : await api.POST('/api/admin/role-changes/{id}/reject', { params, body: { version, reason: reason ?? '' } })
       return required(result.data)
     },
+    onSuccess: (_data, input) => outcome.onSuccess?.(input),
+    onError: (error, input) => outcome.onError?.(error, input),
     onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.roleChangesAll }),
