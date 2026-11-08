@@ -154,9 +154,10 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **AC:** dashboard is ≤ 4 SQL round-trips; capability-gated sections are `null`.
 - **Tests:** per-capability shapes; stalled reasons both detected.
 
-### BE-16 — Development seed data · `Todo`
+### BE-16 — Development seed data · `Done`
 - **Objective:** `--seed-demo` option creating a demo company (3 departments, ~10 users across all roles, sample requests in every state). Dev only.
 - **Deps:** BE-12. **AC:** idempotent; documented credentials in README; never runs in Production.
+- **As built:** `DemoDataSeeder` (Infrastructure/Seeding) with data in `DemoCompany`; builds requests through the `Request` aggregate and notifications through `NotificationFactory`, one `SaveChangesAsync` (users added as entities with Identity's hasher, so no transaction). Throws outside Development. Role-queue tasks are not announced by notification in the seed (eligibility needs the saved data). Tests: `Seeding/DemoDataSeederTests`.
 
 ## Frontend
 
