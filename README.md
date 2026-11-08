@@ -64,7 +64,7 @@ The following capabilities define the initial product scope and roadmap.
 | Backend | C#, ASP.NET Core Web API, .NET 10 |
 | Frontend | React, TypeScript, Vite |
 | Database | SQL Server, Entity Framework Core |
-| Authentication | ASP.NET Core Identity, JWT |
+| Authentication | ASP.NET Core Identity, cookie sessions with antiforgery tokens |
 | Data Access | Entity Framework Core |
 | API Design | RESTful APIs, DTOs |
 | State Management | TanStack Query, Zustand |
@@ -207,12 +207,13 @@ Security is an important part of the platform's architecture.
 
 The intended security model includes:
 
-- Authentication through ASP.NET Core Identity.
-- JWT-based API authorization.
-- Role-based access control.
-- Organization-level data isolation.
-- Server-side input validation.
-- Secure handling of credentials and application secrets.
+- Authentication through ASP.NET Core Identity with a `__Host-` session cookie (HttpOnly, Secure, SameSite=Strict) and
+  antiforgery tokens on every unsafe request (ADR-0003). There are no bearer tokens or JWTs.
+- Role-based policies for coarse access, plus per-request visibility and decision rules enforced server-side
+  (`AccessRules`, `TaskEligibility`; docs/AUTHORIZATION.md). Phase 1 serves one organisation; multi-tenancy is Phase 3.
+- Two-person control for an administrator's own role changes (ADR-0012).
+- Server-side input validation; login and comment rate limits; a per-user cap on real-time connections.
+- Secrets only in environment variables or `dotnet user-secrets`, never in committed files.
 
 Security-sensitive functionality requires testing and review before production deployment.
 
