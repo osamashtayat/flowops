@@ -75,9 +75,16 @@ export function toUserMessage(error: unknown): string {
 }
 
 /**
- * The first server message for a field path (`newPassword`, `estimatedCost.amount`) from a 400
- * response, or undefined. Lets forms show server validation on the right field.
+ * The first server message for a form field from a 400 response, or undefined. A nested path
+ * counts for its field: `estimatedCost.amount` is shown on `estimatedCost`.
  */
 export function serverFieldError(error: unknown, field: string): string | undefined {
-  return error instanceof ApiError ? error.fieldErrors[field]?.[0] : undefined
+  if (!(error instanceof ApiError)) return undefined
+  const key = Object.keys(error.fieldErrors).find((name) => name === field || name.startsWith(`${field}.`))
+  return key ? error.fieldErrors[key]?.[0] : undefined
+}
+
+/** True when a 400 answered per field, so the form shows those instead of a banner. */
+export function hasServerFieldErrors(error: unknown): boolean {
+  return error instanceof ApiError && Object.keys(error.fieldErrors).length > 0
 }

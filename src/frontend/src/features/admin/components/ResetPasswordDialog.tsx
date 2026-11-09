@@ -3,10 +3,9 @@ import { Dialog } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/toastContext'
-import { ApiError } from '@/lib/api/apiError'
 import { ADMIN_LIMITS } from '@/lib/api/limits'
 import { serverFieldError, toUserMessage } from '@/lib/api/problem'
-import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
+import { fieldError, setServerFieldErrors, useZodForm } from '@/lib/forms/useZodForm'
 import { useResetPassword } from '../api'
 import { resetPasswordSchema } from '../schemas'
 
@@ -49,15 +48,12 @@ function ResetPasswordForm({ userId, displayName, onClose }: Omit<ResetPasswordD
           toast.success(`Password reset for ${displayName}.`)
           onClose()
         },
-        onError: (error) => {
-          const message = serverFieldError(error, 'newPassword')
-          if (message) setError('newPassword', { type: 'server', message })
-        },
+        onError: (error) => setServerFieldErrors(error, ['newPassword'], setError),
       },
     )
   }
 
-  const bannerError = reset.error && !(reset.error instanceof ApiError && reset.error.fieldErrors.newPassword) ? toUserMessage(reset.error) : null
+  const bannerError = reset.error && !serverFieldError(reset.error, 'newPassword') ? toUserMessage(reset.error) : null
   return (
     <form noValidate onSubmit={(event) => void handleSubmit(submit)(event)} className="flex flex-col gap-4">
       {bannerError && (

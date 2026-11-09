@@ -2,11 +2,10 @@ import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/FormField'
 import { Textarea } from '@/components/ui/Textarea'
-import { toUserMessage } from '@/lib/api/problem'
+import { serverFieldError, toUserMessage } from '@/lib/api/problem'
 import type { RequestType } from '@/lib/api/types'
 import { withLeaveVisibilityWarning } from '@/lib/format/visibility'
-import { ApiError } from '@/lib/api/apiError'
-import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
+import { fieldError, setServerFieldErrors, useZodForm } from '@/lib/forms/useZodForm'
 import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
 import { useAddComment } from '../api'
 import { commentSchema } from '../schemas'
@@ -22,7 +21,7 @@ export function CommentBox({ requestId, requestType }: { requestId: string; requ
     formState: { errors },
   } = useZodForm(commentSchema, { defaultValues: { body: '' } })
 
-  const serverBody = add.error instanceof ApiError ? add.error.fieldErrors.body?.[0] : undefined
+  const serverBody = serverFieldError(add.error, 'body')
   const bannerMessage = add.isError && !serverBody ? toUserMessage(add.error) : null
 
   return (
@@ -33,10 +32,7 @@ export function CommentBox({ requestId, requestType }: { requestId: string; requ
         void handleSubmit((values) =>
           add.mutate(values.body, {
             onSuccess: () => reset(),
-            onError: (error) => {
-              const message = error instanceof ApiError ? error.fieldErrors.body?.[0] : undefined
-              if (message) setError('body', { type: 'server', message })
-            },
+            onError: (error) => setServerFieldErrors(error, ['body'], setError),
           }),
         )(event)
       }
