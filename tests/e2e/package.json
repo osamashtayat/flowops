@@ -1,0 +1,16 @@
+{
+  "name": "flowops-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stack:up": "./stack.sh up",
+    "stack:down": "./stack.sh down",
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

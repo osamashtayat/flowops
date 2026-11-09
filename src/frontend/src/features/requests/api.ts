@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
+import { requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type { RequestDetailsDto, RequestScope, RequestStatus, RequestType } from '@/lib/api/types'
@@ -17,8 +17,7 @@ function useRefreshAfterSubmit() {
 
 async function created(promise: Promise<{ data?: RequestDetailsDto }>): Promise<RequestDetailsDto> {
   const { data } = await promise
-  if (!data) throw new ApiError({ status: 201, code: UNKNOWN_ERROR_CODE })
-  return data
+  return requireData(data, 201)
 }
 
 export function useSubmitPurchase() {
@@ -84,8 +83,7 @@ export function useRequests(params: RequestListParams) {
           },
         },
       })
-      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-      return data
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
   })
@@ -97,8 +95,7 @@ export function useRequest(id: string) {
     queryKey: queryKeys.requests.detail(id),
     queryFn: async () => {
       const { data } = await api.GET('/api/requests/{id}', { params: { path: { id } } })
-      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-      return data
+      return requireData(data)
     },
   })
 }

@@ -2,14 +2,14 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { DataTable, type DataTableColumn } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Pagination } from '@/components/ui/Pagination'
-import { REQUEST_TYPE_LABELS } from '@/features/requests/labels'
+import { REQUEST_TYPE_LABELS, ROLE_NAMES } from '@/lib/format/labels'
 import { toUserMessage } from '@/lib/api/problem'
 import type { StalledTaskDto } from '@/lib/api/types'
 import { formatRelative } from '@/lib/format/date'
 import { requestStageLabel } from '@/lib/format/status'
 import { useUrlState } from '@/lib/useUrlState'
 import { useStalledTasks } from '../api'
-import { ROLE_NAMES, STALLED_REASONS } from '../labels'
+import { STALLED_REASONS } from '../labels'
 
 const URL_DEFAULTS = { page: 1, pageSize: 20 }
 

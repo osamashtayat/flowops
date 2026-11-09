@@ -5,11 +5,10 @@ import { Dialog } from '@/components/ui/Dialog'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/toastContext'
-import { ApiError } from '@/lib/api/apiError'
 import { ADMIN_LIMITS } from '@/lib/api/limits'
-import { toUserMessage } from '@/lib/api/problem'
+import { hasServerFieldErrors, toUserMessage } from '@/lib/api/problem'
 import type { DepartmentDto } from '@/lib/api/types'
-import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
+import { fieldError, setServerFieldErrors, useZodForm } from '@/lib/forms/useZodForm'
 import { useCreateDepartment, useUpdateDepartment } from '../api'
 import { departmentSchema, type DepartmentValues } from '../schemas'
 
@@ -48,19 +47,13 @@ function DepartmentForm({ department, onClose }: Omit<DepartmentDialogProps, 'op
         toast.success(department ? `${saved.name} was updated.` : `${saved.name} was created.`)
         onClose()
       },
-      onError: (error: unknown) => {
-        if (!(error instanceof ApiError)) return
-        for (const field of ['name', 'code'] as const) {
-          const message = error.fieldErrors[field]?.[0]
-          if (message) setError(field, { type: 'server', message })
-        }
-      },
+      onError: (error: unknown) => setServerFieldErrors(error, ['name', 'code'], setError),
     }
     if (department) update.mutate({ id: department.id, ...values }, options)
     else create.mutate({ name: values.name, code: values.code }, options)
   }
 
-  const hasFieldErrors = mutation.error instanceof ApiError && Object.keys(mutation.error.fieldErrors).length > 0
+  const hasFieldErrors = hasServerFieldErrors(mutation.error)
   return (
     <form noValidate onSubmit={(event) => void handleSubmit(submit)(event)} className="flex flex-col gap-4">
       {mutation.error && !hasFieldErrors && <Alert tone="danger">{toUserMessage(mutation.error)}</Alert>}

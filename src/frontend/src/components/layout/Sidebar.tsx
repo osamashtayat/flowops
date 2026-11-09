@@ -2,6 +2,7 @@ import { NavLink } from 'react-router'
 import { Plus } from 'lucide-react'
 import { useOpenTaskCount } from '@/features/tasks/api'
 import { useSession } from '@/features/session/api'
+import { useCapability } from '@/features/session/useCapability'
 import { cn } from '@/lib/cn'
 import { ButtonLink } from '@/components/ui/ButtonLink'
 import { navigationFor, type NavItem } from './navigation'
@@ -17,7 +18,7 @@ export interface SidebarProps {
 export function Sidebar({ label, onNavigate }: SidebarProps) {
   const { user } = useSession()
   const navigation = navigationFor(user?.capabilities ?? [])
-  const canSeeInbox = user?.capabilities.includes('tasks.view') ?? false
+  const canSeeInbox = useCapability('tasks.view')
   const openTasks = useOpenTaskCount(canSeeInbox)
   const countFor = (item: NavItem) => (item.showsOpenTaskCount ? openTasks.data : undefined)
 

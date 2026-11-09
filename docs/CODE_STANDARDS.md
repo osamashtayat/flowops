@@ -98,6 +98,8 @@ DRY means every piece of business knowledge has **one** authoritative representa
 | Exception → HTTP mapping | `Api/Errors/ProblemDetailsExceptionHandler.cs` |
 | Colours, type, radius | `frontend/src/styles/theme.css` |
 | Status labels/tones | `frontend/src/lib/format/status.ts` |
+| Names of contract enums (request/leave types, roles) | `frontend/src/lib/format/labels.ts` |
+| Server 400 field errors on a form; "2xx without a body" | `lib/api/problem.ts` `serverFieldError` + `lib/forms/useZodForm.ts` `setServerFieldErrors`; `lib/api/apiError.ts` `requireData` |
 | Query keys | `frontend/src/lib/api/queryKeys.ts` |
 | API calls | `frontend/src/features/*/api.ts` via `lib/api/client.ts` |
 | Decision UI + mutation | `DecisionDialog` + `useDecideTask` |

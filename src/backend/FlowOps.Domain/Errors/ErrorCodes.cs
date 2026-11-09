@@ -39,6 +39,7 @@ public static class ErrorCodes
     public const string UserAdminRoleOnCreateOnly = "user.admin_role_on_create_only";
 
     public const string RoleChangeNoReviewer = "role_change.no_reviewer";
+    public const string RoleChangeApproverTooNew = "role_change.approver_too_new";
     public const string RoleChangeAlreadyPending = "role_change.already_pending";
     public const string RoleChangeSelfApproval = "role_change.self_approval";
     public const string RoleChangeNotPending = "role_change.not_pending";

@@ -43,6 +43,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.DepartmentInactive] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.UserAdminRoleOnCreateOnly] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RoleChangeNoReviewer] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.RoleChangeApproverTooNew] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RoleChangeSelfApproval] = StatusCodes.Status422UnprocessableEntity,
 
         [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,

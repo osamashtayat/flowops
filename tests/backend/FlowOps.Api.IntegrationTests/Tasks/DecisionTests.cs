@@ -39,7 +39,7 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         var managerItem = await OpenItemAsync("karim", requestId);
         managerItem.GetProperty("stage").GetString().ShouldBe("ManagerApproval");
         Strings(managerItem, "actions").ShouldBe(["approve", "reject"]);
-        managerItem.GetProperty("request").GetProperty("keyDetail").GetString().ShouldBe("JOD 1,250.500");
+        managerItem.GetProperty("request").GetProperty("keyDetail").GetString().ShouldBe("1,250.500 JOD");
         (await DecideAsync("karim", managerItem, "approve")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
         await ShouldBeAtAsync(requestId, "InReview", "FinanceApproval");
         (await OpenItemAsync("finny", requestId)).ValueKind.ShouldBe(JsonValueKind.Object);

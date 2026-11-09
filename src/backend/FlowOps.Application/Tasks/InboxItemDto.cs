@@ -20,7 +20,7 @@ public sealed record InboxItemDto(
     IReadOnlyList<TaskAction> Actions,
     InboxRequestDto Request);
 
-/// <summary>The request summary plus <see cref="KeyDetail"/>, e.g. "JOD 1,250.500" or "3 days · Annual".</summary>
+/// <summary>The request summary plus <see cref="KeyDetail"/>, e.g. "1,250.500 JOD" or "3 days · Annual".</summary>
 public sealed record InboxRequestDto(
     Guid Id,
     string Number,

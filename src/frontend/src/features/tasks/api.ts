@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
+import { requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import type { MutationOutcome } from '@/lib/api/mutationOutcome'
 import { queryKeys } from '@/lib/api/queryKeys'
@@ -34,8 +34,7 @@ export function useInbox(params: InboxParams) {
     queryKey: queryKeys.tasks.list(params),
     queryFn: async () => {
       const { data } = await api.GET('/api/tasks', { params: { query: params } })
-      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-      return data
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
   })

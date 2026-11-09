@@ -132,4 +132,16 @@ public sealed class RoleChangeTests
         RoleChange.CanDecide(status, Ada, Ada).ShouldBeFalse();
         RoleChange.CanCancel(status, Ada, Ada).ShouldBe(status == RoleChangeStatus.Pending);
     }
+
+    [Theory]
+    [InlineData(-25, true)]
+    [InlineData(-24, true)]
+    [InlineData(-23, false)]
+    [InlineData(1, false)]
+    public void IsOldEnoughToApprove_NeedsAnAccountADayOlderThanTheProposal(int createdHoursFromProposal, bool expected)
+    {
+        var proposedAt = new DateTimeOffset(2026, 11, 9, 9, 0, 0, TimeSpan.Zero);
+
+        RoleChange.IsOldEnoughToApprove(proposedAt.AddHours(createdHoursFromProposal), proposedAt).ShouldBe(expected);
+    }
 }

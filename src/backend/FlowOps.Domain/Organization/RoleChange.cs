@@ -16,6 +16,12 @@ public sealed class RoleChange
     /// <summary>A pending change that nobody decided within this time is expired (ADR-0012 §5).</summary>
     public static readonly TimeSpan Lifetime = TimeSpan.FromHours(72);
 
+    /// <summary>
+    /// How long before the proposal the approver's account must have existed (ADR-0013, #48), so an administrator can't
+    /// create a second admin account and approve their own change with it.
+    /// </summary>
+    public static readonly TimeSpan MinimumApproverAccountAge = TimeSpan.FromHours(24);
+
     private RoleChange(Guid userId, string[] previousRoles, string[] proposedRoles, DateTimeOffset now)
     {
         Id = SequentialGuid.NewV7(now);
@@ -94,6 +100,13 @@ public sealed class RoleChange
     /// </summary>
     public static bool CanDecide(RoleChangeStatus statusNow, Guid userId, Guid actorId) =>
         statusNow == RoleChangeStatus.Pending && actorId != userId;
+
+    /// <summary>
+    /// Approve additionally needs an approver account created at least <see cref="MinimumApproverAccountAge"/> before
+    /// <paramref name="proposedAt"/> (ADR-0013). Reject does not: refusing a change can't be used to gain anything.
+    /// </summary>
+    public static bool IsOldEnoughToApprove(DateTimeOffset approverCreatedAt, DateTimeOffset proposedAt) =>
+        approverCreatedAt <= proposedAt - MinimumApproverAccountAge;
 
     /// <summary>Cancel: only the administrator who asked.</summary>
     public static bool CanCancel(RoleChangeStatus statusNow, Guid userId, Guid actorId) =>

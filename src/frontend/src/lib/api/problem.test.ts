@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import errorCodesSource from '../../../../backend/FlowOps.Domain/Errors/ErrorCodes.cs?raw'
-import { ApiError, NETWORK_ERROR_CODE, UNKNOWN_ERROR_CODE } from './apiError'
-import { PROBLEM_MESSAGES, serverFieldError, toUserMessage } from './problem'
+import { ApiError, NETWORK_ERROR_CODE, requireData, UNKNOWN_ERROR_CODE } from './apiError'
+import { hasServerFieldErrors, PROBLEM_MESSAGES, serverFieldError, toUserMessage } from './problem'
 
 /** Every `public const string X = "code";` in the backend's ErrorCodes.cs. */
 const backendCodes = [...errorCodesSource.matchAll(/public const string \w+ = "([^"]+)";/g)].map((m) => m[1] ?? '')
@@ -70,5 +70,29 @@ describe('serverFieldError', () => {
     expect(serverFieldError(error, 'newPassword')).toBe('Too short.')
     expect(serverFieldError(error, 'other')).toBeUndefined()
     expect(serverFieldError(new Error('x'), 'newPassword')).toBeUndefined()
+  })
+})
+
+describe('serverFieldError / hasServerFieldErrors', () => {
+  const error = new ApiError({ status: 400, code: 'validation', fieldErrors: { 'estimatedCost.amount': ['Enter an amount.'], name: ['Too long.'] } })
+
+  it('finds a field by its exact path or by a nested path under it', () => {
+    expect(serverFieldError(error, 'name')).toBe('Too long.')
+    expect(serverFieldError(error, 'estimatedCost')).toBe('Enter an amount.')
+    expect(serverFieldError(error, 'estimated')).toBeUndefined()
+  })
+
+  it('is empty for anything that is not a 400 with field errors', () => {
+    expect(serverFieldError(new Error('x'), 'name')).toBeUndefined()
+    expect(hasServerFieldErrors(error)).toBe(true)
+    expect(hasServerFieldErrors(new ApiError({ status: 422, code: 'user.last_admin' }))).toBe(false)
+    expect(hasServerFieldErrors(null)).toBe(false)
+  })
+})
+
+describe('requireData', () => {
+  it('passes a body through and turns a missing one into an ApiError with the given status', () => {
+    expect(requireData({ id: 1 })).toEqual({ id: 1 })
+    expect(() => requireData(undefined, 201)).toThrow(expect.objectContaining({ status: 201, code: UNKNOWN_ERROR_CODE }))
   })
 })

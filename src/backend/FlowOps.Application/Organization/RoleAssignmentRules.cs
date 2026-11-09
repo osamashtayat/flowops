@@ -19,6 +19,13 @@ public static class RoleAssignmentRules
         return db.Users.Where(u => u.IsActive && db.UserRoles.Any(r => r.UserId == u.Id && r.RoleName == Roles.Administrator));
     }
 
+    /// <summary>Active administrators other than <paramref name="userId"/> who could approve a change proposed at <paramref name="proposedAt"/> (ADR-0013).</summary>
+    public static IQueryable<UserReadModel> PossibleApprovers(IAppDbContext db, Guid userId, DateTimeOffset proposedAt)
+    {
+        var createdBy = proposedAt - RoleChange.MinimumApproverAccountAge;
+        return ActiveAdministrators(db).Where(u => u.Id != userId && u.CreatedAt <= createdBy);
+    }
+
     public static async Task<string[]> CurrentRolesAsync(IAppDbContext db, Guid userId, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);

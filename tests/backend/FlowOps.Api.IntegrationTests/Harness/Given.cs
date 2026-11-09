@@ -38,6 +38,7 @@ public sealed class UserBuilder(string name)
     private Guid? _departmentId;
     private bool _mustChangePassword;
     private bool _isActive = true;
+    private DateTimeOffset? _createdAt;
 
     /// <summary>Replaces the default role set (<c>Employee</c>).</summary>
     public UserBuilder WithRoles(params string[] roles)
@@ -67,6 +68,16 @@ public sealed class UserBuilder(string name)
         return this;
     }
 
+    /// <summary>
+    /// When the account was created. Default: 30 days before the test clock, i.e. an established account. Rules that depend
+    /// on account age (ADR-0013: role-change approvers) need this to arrange a new account.
+    /// </summary>
+    public UserBuilder CreatedAt(DateTimeOffset createdAt)
+    {
+        _createdAt = createdAt;
+        return this;
+    }
+
     public UserBuilder Inactive()
     {
         _isActive = false;
@@ -90,7 +101,7 @@ public sealed class UserBuilder(string name)
             ManagerId = _managerId,
             IsActive = _isActive,
             MustChangePassword = _mustChangePassword,
-            CreatedAt = factory.Clock.GetUtcNow(),
+            CreatedAt = _createdAt ?? factory.Clock.GetUtcNow().AddDays(-30),
         };
         Ensure(await users.CreateAsync(user, Given.DefaultPassword));
         if (_roles.Count > 0)

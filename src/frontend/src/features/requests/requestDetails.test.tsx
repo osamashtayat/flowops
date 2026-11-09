@@ -140,9 +140,9 @@ describe('request details', () => {
       renderRoutes(routes, PURCHASE_PATH)
       expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
-      // The last leave step closes the request; it doesn't hand on to another one.
+      // The dialog doesn't claim what comes next; the step order is the server's (FixedProcesses).
       await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-      expect(await within(await screen.findByRole('dialog')).findByText(/The leave is approved and the requester is notified/)).toBeInTheDocument()
+      expect(await within(await screen.findByRole('dialog')).findByText(/Your decision is recorded in the request history/)).toBeInTheDocument()
     })
   })
 

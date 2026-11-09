@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
+import { requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type { PagedNotifications, UnreadCountDto } from '@/lib/api/types'
@@ -17,8 +17,7 @@ export function useNotifications(params: NotificationListParams, enabled = true)
     queryKey: queryKeys.notifications.list(params),
     queryFn: async () => {
       const { data } = await api.GET('/api/notifications', { params: { query: params } })
-      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-      return data
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
     enabled,
@@ -31,8 +30,7 @@ export function useUnreadCount() {
     queryKey: queryKeys.notifications.unread,
     queryFn: async () => {
       const { data } = await api.GET('/api/notifications/unread-count')
-      if (!data) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-      return data.count
+      return requireData(data).count
     },
   })
 }
