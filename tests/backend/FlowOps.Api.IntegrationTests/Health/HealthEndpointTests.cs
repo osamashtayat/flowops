@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace FlowOps.Api.IntegrationTests.Health;
 
-public sealed class HealthEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HealthEndpointTests(NoDatabaseApiFactory factory) : IClassFixture<NoDatabaseApiFactory>
 {
     [Fact]
     public async Task GetHealth_Anonymous_Returns200WithStatusOk()

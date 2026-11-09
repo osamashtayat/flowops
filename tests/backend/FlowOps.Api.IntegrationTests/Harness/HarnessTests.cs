@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -20,6 +21,15 @@ public sealed class HarnessTests(FlowOpsApiFactory factory) : DatabaseTest(facto
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
         json.RootElement.GetProperty("status").GetString().ShouldBe("ok");
+    }
+
+    [Fact]
+    public void Host_ReadsNoUserSecretsAndUsesTheTestDatabase()
+    {
+        var config = (IConfigurationRoot)Factory.Services.GetRequiredService<IConfiguration>();
+
+        TestHostIsolationTests.AssertNoUserSecrets(config);
+        config.GetConnectionString("FlowOps").ShouldBe(Factory.ConnectionString);
     }
 
     [Fact]

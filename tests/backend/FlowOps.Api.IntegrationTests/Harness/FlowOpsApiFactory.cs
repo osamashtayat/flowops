@@ -115,11 +115,8 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("ConnectionStrings:FlowOps", ConnectionString);
-        // Development loads the developer's user-secrets; a configured bootstrap admin would seed before migrations.
-        // BootstrapAdminTests sets its own values on top.
-        builder.UseSetting("FlowOps:BootstrapAdmin:Email", "");
-        builder.UseSetting("FlowOps:BootstrapAdmin:Password", "");
+        // The test database, no user-secrets, no bootstrap admin (#69). BootstrapAdminTests sets its own values on top.
+        builder.IsolateFromDeveloperMachine(ConnectionString);
         // The whole suite signs in from one address with the same few emails; LoginRateLimitTests sets real limits.
         builder.UseSetting("FlowOps:LoginRateLimit:PerIpPermitLimit", "100000");
         builder.UseSetting("FlowOps:LoginRateLimit:PerEmailPermitLimit", "100000");
