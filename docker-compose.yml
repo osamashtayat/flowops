@@ -44,7 +44,8 @@ services:
     restart: unless-stopped
     environment:
       <<: *api-environment
-      ASPNETCORE_ENVIRONMENT: ${FLOWOPS_ENVIRONMENT:-Production}
+      # Explicit, no default (#79): pick Production or Development in .env (README, "Full stack in Docker").
+      ASPNETCORE_ENVIRONMENT: ${FLOWOPS_ENVIRONMENT:?Set FLOWOPS_ENVIRONMENT in .env to Production or Development (copy .env.example)}
       FlowOps__CompanyTimeZone: ${FlowOps__CompanyTimeZone:-Asia/Amman}
       FlowOps__BootstrapAdmin__Email: ${FlowOps__BootstrapAdmin__Email:-}
       FlowOps__BootstrapAdmin__Password: ${FlowOps__BootstrapAdmin__Password:-}

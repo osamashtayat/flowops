@@ -19,6 +19,6 @@ npx playwright test
 ```
 
 `./stack.sh up` always starts from an empty database, and it never touches the dev stack (`flowops` project, port 8443/5432).
-Override ports with `E2E_WEB_PORT` / `E2E_DB_PORT` and the URL with `E2E_BASE_URL`. `./stack.sh logs` prints the api and web logs after a failure; `npx playwright show-trace test-results/<test>/trace.zip` replays it.
+Override ports with `E2E_WEB_PORT` / `E2E_DB_PORT` and the URL with `E2E_BASE_URL`. `stack.sh` sets the stack's environment itself (`FLOWOPS_ENVIRONMENT=Development`, an empty bootstrap admin) so a local `.env` never leaks in. The tests sign in with the BE-16 demo accounts; if a bootstrap admin is ever needed, pass `E2E_BOOTSTRAP_ADMIN_EMAIL` / `E2E_BOOTSTRAP_ADMIN_PASSWORD` from the CI environment or secrets, never from a committed file. `./stack.sh logs` prints the api and web logs after a failure; `npx playwright show-trace test-results/<test>/trace.zip` replays it.
 
 Titles carry a per-run suffix, so the specs can run repeatedly against the same stack.
