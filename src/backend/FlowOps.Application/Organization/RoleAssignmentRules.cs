@@ -19,6 +19,19 @@ public static class RoleAssignmentRules
         return db.Users.Where(u => u.IsActive && db.UserRoles.Any(r => r.UserId == u.Id && r.RoleName == Roles.Administrator));
     }
 
+    /// <summary>
+    /// 403 <c>auth.forbidden</c> unless <paramref name="actorId"/> is an active administrator in the database. Every admin
+    /// write calls it first: the Admin policy reads session claims, which stay up to a minute stale after a demotion or
+    /// deactivation (#76).
+    /// </summary>
+    public static async Task EnsureActiveAdministratorAsync(IAppDbContext db, Guid actorId, CancellationToken ct)
+    {
+        if (!await ActiveAdministrators(db).AnyAsync(u => u.Id == actorId, ct))
+        {
+            throw new ForbiddenException();
+        }
+    }
+
     /// <summary>Active administrators other than <paramref name="userId"/> who could approve a change proposed at <paramref name="proposedAt"/> (ADR-0013).</summary>
     public static IQueryable<UserReadModel> PossibleApprovers(IAppDbContext db, Guid userId, DateTimeOffset proposedAt)
     {

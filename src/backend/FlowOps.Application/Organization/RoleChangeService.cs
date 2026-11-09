@@ -80,11 +80,7 @@ public sealed partial class RoleChangeService(
     private async Task<RoleChange> LoadForDecisionAsync(Guid id, string version, CancellationToken ct)
     {
         var change = await LoadAsync(id, version, ct);
-        if (!await RoleAssignmentRules.ActiveAdministrators(db).AnyAsync(u => u.Id == currentUser.Id, ct))
-        {
-            throw new ForbiddenException();
-        }
-
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         return change;
     }
 

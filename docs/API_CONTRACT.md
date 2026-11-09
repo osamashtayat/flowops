@@ -262,6 +262,8 @@ As built (BE-15):
 
 ## 8. Administration — policy `Admin`
 
+Every admin **write** (user create, update, roles and reset-password; department create and update; role-change approve and reject) first re-checks in the database that the caller is still an active `Administrator`, because the policy reads session claims that can be up to a minute stale. A just-demoted or just-deactivated admin gets 403 `auth.forbidden` and nothing changes (#76).
+
 ### Departments
 | Method & path | Body | Success | Errors |
 |---|---|---|---|
