@@ -1,6 +1,7 @@
 using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Notifications;
+using FlowOps.Application.Organization;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Requests;
 
@@ -41,11 +42,24 @@ public sealed class RequestSubmissionService(
         return await SaveAsync(request, requester, managerId, now, ct);
     }
 
-    /// <summary>Department first (422 <c>request.department_not_assigned</c>), then the manager (422 <c>request.manager_not_assigned</c>).</summary>
+    /// <summary>
+    /// The submitter's current state from the database, not the session claims (#77): inactive → 401
+    /// <c>auth.unauthenticated</c>, no longer allowed to submit → 403 <c>auth.forbidden</c>. Then department (422
+    /// <c>request.department_not_assigned</c>) and manager (422 <c>request.manager_not_assigned</c>). All before anything is staged.
+    /// </summary>
     private async Task<(TaskAssigneeResolver.Requester Requester, Guid DepartmentId, Guid ManagerId)> LoadSubmitterAsync(CancellationToken ct)
     {
-        var requester = await TaskAssigneeResolver.LoadRequesterAsync(db, currentUser.Id, ct)
-            ?? throw new AuthenticationFailedException(ErrorCodes.AuthUnauthenticated, "Your session has ended. Please sign in again.");
+        var requester = await TaskAssigneeResolver.LoadRequesterAsync(db, currentUser.Id, ct);
+        if (requester is not { IsActive: true })
+        {
+            throw new AuthenticationFailedException(ErrorCodes.AuthUnauthenticated, "Your session has ended. Please sign in again.");
+        }
+
+        if (!CapabilityRules.For(requester.Roles, isManager: false).Contains(Capability.RequestsSubmit))
+        {
+            throw new ForbiddenException();
+        }
+
         var departmentId = requester.DepartmentId
             ?? throw new BusinessRuleException(ErrorCodes.RequestDepartmentNotAssigned,
                 "You are not in a department yet. Ask an administrator to assign one.");

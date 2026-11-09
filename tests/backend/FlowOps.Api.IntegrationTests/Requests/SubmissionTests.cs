@@ -5,7 +5,9 @@ using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Organization;
+using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -351,6 +353,52 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         using var response = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
 
         await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
+    }
+
+    [Fact]
+    public async Task Submit_ByUserDeactivatedInsideTheRevalidationWindow_Returns401AndPersistsNothing()
+    {
+        var org = await OrgAsync();
+        using var client = await Factory.ClientFor(org.Lina);
+        await ChangeUserAsync(org.Lina.Id, (user, _) => { user.IsActive = false; return Task.CompletedTask; });
+
+        // Still inside the 1-minute claim re-validation: the cookie authenticates, the database says inactive (#77).
+        using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
+        using var leave = await client.PostAsJsonAsync(Leave, LeaveBody(Today.AddDays(1), Today.AddDays(1)), Ct);
+
+        await ProblemAssert.HasCode(purchase, 401, ErrorCodes.AuthUnauthenticated);
+        await ProblemAssert.HasCode(leave, 401, ErrorCodes.AuthUnauthenticated);
+        await AssertNothingPersistedAsync();
+    }
+
+    [Fact]
+    public async Task Submit_ByUserWhoseEmployeeRoleWasJustRemoved_Returns403AndPersistsNothing()
+    {
+        var org = await OrgAsync();
+        using var client = await Factory.ClientFor(org.Lina);
+        await ChangeUserAsync(org.Lina.Id, async (user, users) =>
+        {
+            (await users.RemoveFromRoleAsync(user, Roles.Employee)).Succeeded.ShouldBeTrue();
+            (await users.AddToRoleAsync(user, Roles.FinanceOfficer)).Succeeded.ShouldBeTrue();
+        });
+
+        using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
+        using var leave = await client.PostAsJsonAsync(Leave, LeaveBody(Today.AddDays(1), Today.AddDays(1)), Ct);
+
+        await ProblemAssert.HasCode(purchase, 403, ErrorCodes.AuthForbidden);
+        await ProblemAssert.HasCode(leave, 403, ErrorCodes.AuthForbidden);
+        await AssertNothingPersistedAsync();
+    }
+
+    /// <summary>Changes the user straight in the store, as an admin's write would, without ending the caller's session.</summary>
+    private async Task ChangeUserAsync(Guid userId, Func<ApplicationUser, UserManager<ApplicationUser>, Task> change)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await users.FindByIdAsync(userId.ToString());
+        user.ShouldNotBeNull();
+        await change(user, users);
+        (await users.UpdateAsync(user)).Succeeded.ShouldBeTrue();
     }
 
     private async Task<(TestUser Lina, TestUser Karim, Guid SalesId)> OrgAsync()
