@@ -54,6 +54,31 @@ public sealed class BootstrapAdminTests(FlowOpsApiFactory factory) : DatabaseTes
         (await AdministratorsAsync()).Select(u => u.Email).ShouldBe(["ada@flowops.test"]);
     }
 
+    [Theory]
+    [InlineData(BootstrapAdminOptions.PasswordPlaceholder)]
+    [InlineData("change-me-Local-Only-1")]
+    public async Task Startup_WithAPlaceholderPassword_RefusesToStartAndCreatesNoAdmin(string placeholder)
+    {
+        await using var app = WithBootstrapConfig(placeholder);
+
+        var error = Should.Throw<InvalidOperationException>(() => _ = app.Services);
+
+        error.Message.ShouldContain("placeholder");
+        error.Message.ShouldNotContain(placeholder);
+        (await AdministratorsAsync()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Startup_WithAPlaceholderPasswordWhenAnAdminExists_StartsAndChangesNothing()
+    {
+        await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+
+        await using var app = WithBootstrapConfig(BootstrapAdminOptions.PasswordPlaceholder);
+        _ = app.Services;
+
+        (await AdministratorsAsync()).Select(u => u.Email).ShouldBe(["ada@flowops.test"]);
+    }
+
     [Fact]
     public async Task Startup_WithoutConfig_CreatesNothing()
     {
@@ -61,10 +86,10 @@ public sealed class BootstrapAdminTests(FlowOpsApiFactory factory) : DatabaseTes
         (await AdministratorsAsync()).ShouldBeEmpty();
     }
 
-    private WebApplicationFactory<Program> WithBootstrapConfig() =>
+    private WebApplicationFactory<Program> WithBootstrapConfig(string password = Password) =>
         Factory.WithWebHostBuilder(b => b
             .UseSetting("FlowOps:BootstrapAdmin:Email", Email)
-            .UseSetting("FlowOps:BootstrapAdmin:Password", Password));
+            .UseSetting("FlowOps:BootstrapAdmin:Password", password));
 
     private async Task<IList<ApplicationUser>> AdministratorsAsync()
     {

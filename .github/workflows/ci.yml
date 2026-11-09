@@ -114,6 +114,7 @@ jobs:
       - name: Build compose images
         env:
           POSTGRES_PASSWORD: ci-build-only
+          FLOWOPS_ENVIRONMENT: Production
         run: docker compose build
 
   # QA-04: Playwright smoke against the compose stack with the BE-16 demo data (tests/e2e/README.md).

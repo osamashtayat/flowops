@@ -14,6 +14,16 @@ public sealed class BootstrapAdminOptions
 {
     public const string Section = "FlowOps:BootstrapAdmin";
 
+    /// <summary>The value <c>.env.example</c> ships. It is public, so it must never become a real password (#79).</summary>
+    public const string PasswordPlaceholder = "CHANGE-ME-before-first-start";
+
+    /// <summary>
+    /// Passwords the app refuses to bootstrap with: the current placeholder, and the one <c>.env.example</c> shipped before
+    /// #79 (it passed the password policy, and copies of it may still be in local <c>.env</c> files).
+    /// </summary>
+    public static readonly IReadOnlySet<string> KnownPlaceholders =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { PasswordPlaceholder, "change-me-Local-Only-1" };
+
     public string? Email { get; set; }
 
     public string? Password { get; set; }
@@ -49,6 +59,14 @@ public sealed partial class BootstrapAdminSeeder(
         if ((await users.GetUsersInRoleAsync(Roles.Administrator)).Count > 0)
         {
             return;
+        }
+
+        // Only when it would actually create the admin: an install bootstrapped long ago is not stopped by stale config.
+        if (BootstrapAdminOptions.KnownPlaceholders.Contains(config.Password.Trim()))
+        {
+            throw new InvalidOperationException(
+                $"Bootstrap administrator not created: {BootstrapAdminOptions.Section}:Password is still the published placeholder. " +
+                "Set a strong password of your own (README, \"Full stack in Docker\").");
         }
 
         // Create + role assignment are two Identity saves; one transaction keeps a half-made admin from surviving.
