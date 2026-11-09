@@ -1,0 +1,8 @@
+# QA-04 overlay on the OPS-01 stack: the API runs in Development and seeds the BE-16 demo company
+# (`--seed-demo` refuses to run in any other environment) before it starts serving.
+# Used only through ./stack.sh, under its own compose project, so it never touches the dev database.
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    command: ["--seed-demo"]

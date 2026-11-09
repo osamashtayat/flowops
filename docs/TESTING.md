@@ -13,7 +13,7 @@ Rules for agents: `.claude/rules/testing.md`.
 | API integration | `tests/backend/FlowOps.Api.IntegrationTests` | xUnit v3, `WebApplicationFactory`, Testcontainers.PostgreSql, Respawn | Real HTTP → real auth → real SQL: authorization, persistence, concurrency, contracts | seconds |
 | Architecture | same integration project, `Architecture/` | reflection / NetArchTest | Layer dependencies (ARCHITECTURE.md §3), no controller uses DbContext | ms |
 | Frontend unit/component | colocated `*.test.ts(x)` | Vitest, Testing Library, user-event, jest-dom, MSW | Components, hooks, forms, guards, error handling | ms |
-| E2E smoke (optional, end of Phase 1) | `e2e/` | Playwright | Two happy paths in a real browser | minutes |
+| E2E smoke (QA-04) | `tests/e2e` | Playwright on the compose stack with the BE-16 demo data | Purchase across 4 users; leave rejection, in a real browser | minutes |
 
 **No mocked-DbContext service tests.** Application behaviour is tested through the API against PostgreSQL; that is where authorization, SQL translation of `AccessRules`, constraints and `xmin` actually live. Mocks are used only for `TimeProvider` (`FakeTimeProvider`) and the realtime publisher (recording fake).
 
@@ -102,9 +102,12 @@ npm run typecheck
 npm run lint            # oxlint (incl. no-fetch-outside-lib/api, no-danger, no-any) + design-token check
 npm test                # Vitest (run mode)
 npm run build
+
+# E2E smoke (from tests/e2e; needs Docker) — see tests/e2e/README.md
+./stack.sh up && npx playwright test; ./stack.sh down
 ```
 
-CI (OPS-02, `.github/workflows/ci.yml`) runs all of the above on every pull request and every push to `main`, on `ubuntu-latest`. There are two jobs. **backend** builds with `-warnaserror`, then runs the domain tests, the integration tests (Testcontainers on the runner's Docker), and the OpenAPI drift check (`./scripts/export-openapi.sh` + `git diff --exit-code contracts/openapi.json`). **frontend** checks API types drift (`npm run api:types` + `git diff --exit-code`), then runs typecheck, lint, test and build. A failing backend job uploads the `.trx` results. A third job, **docker**, runs `docker compose build` so the images (OPS-01) keep building.
+CI (OPS-02, `.github/workflows/ci.yml`) runs all of the above on every pull request and every push to `main`, on `ubuntu-latest`. There are two jobs. **backend** builds with `-warnaserror`, then runs the domain tests, the integration tests (Testcontainers on the runner's Docker), and the OpenAPI drift check (`./scripts/export-openapi.sh` + `git diff --exit-code contracts/openapi.json`). **frontend** checks API types drift (`npm run api:types` + `git diff --exit-code`), then runs typecheck, lint, test and build. A failing backend job uploads the `.trx` results. A third job, **docker**, runs `docker compose build` so the images (OPS-01) keep building. A fourth, **e2e** (QA-04), starts a fresh compose stack with the demo data (`tests/e2e/stack.sh up`), runs the Playwright smoke, prints the api/web logs and uploads the report on failure, and always tears the stack down.
 
 ## 5. Quality bar
 - Every bug fix starts with a failing test that reproduces it.
