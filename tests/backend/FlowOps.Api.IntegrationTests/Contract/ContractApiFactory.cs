@@ -1,3 +1,4 @@
+using FlowOps.Api.IntegrationTests.Harness;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -25,18 +26,10 @@ public sealed class ContractApiFactory : WebApplicationFactory<Program>
         return client;
     }
 
-    /// <summary>
-    /// Never opened: requests that reach a controller only need the DbContext to be constructible. Set explicitly so the
-    /// tests don't depend on a connection string in the developer's user-secrets (absent in CI, OPS-02).
-    /// </summary>
-    private const string UnusedConnectionString = "Host=contract-tests.invalid;Database=unused";
-
-    // Development loads the developer's user-secrets; a configured bootstrap admin would make start-up open the database.
+    // Requests that reach a controller only need the DbContext to be constructible; it is never opened (OPS-02, #69).
     protected override void ConfigureWebHost(IWebHostBuilder builder) =>
         builder
-            .UseSetting("ConnectionStrings:FlowOps", UnusedConnectionString)
-            .UseSetting("FlowOps:BootstrapAdmin:Email", "")
-            .UseSetting("FlowOps:BootstrapAdmin:Password", "")
+            .IsolateFromDeveloperMachine()
             .ConfigureTestServices(services =>
         {
             services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
