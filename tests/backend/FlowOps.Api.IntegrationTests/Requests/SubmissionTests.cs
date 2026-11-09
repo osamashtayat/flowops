@@ -5,11 +5,10 @@ using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Organization;
-using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using static FlowOps.Api.IntegrationTests.Organization.UsersApiTests;
 
 namespace FlowOps.Api.IntegrationTests.Requests;
 
@@ -18,6 +17,7 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
 {
     private static readonly Uri Purchase = new("/api/requests/purchase", UriKind.Relative);
     private static readonly Uri Leave = new("/api/requests/leave", UriKind.Relative);
+    private static readonly string[] FinanceOnly = ["FinanceOfficer"];
 
     // TestClock starts Mon 2026-03-02 09:00 Asia/Amman (06:00 UTC).
     private static readonly DateOnly Today = new(2026, 3, 2);
@@ -360,7 +360,9 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
     {
         var org = await OrgAsync();
         using var client = await Factory.ClientFor(org.Lina);
-        await ChangeUserAsync(org.Lina.Id, (user, _) => { user.IsActive = false; return Task.CompletedTask; });
+        using var admin = await AdminClientAsync(Factory);
+        (await admin.PutAsJsonAsync(ById(org.Lina.Id),
+            new { displayName = "Lina", departmentId = org.SalesId, managerId = org.Karim.Id, isActive = false }, Ct)).EnsureSuccessStatusCode();
 
         // Still inside the 1-minute claim re-validation: the cookie authenticates, the database says inactive (#77).
         using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
@@ -376,11 +378,8 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
     {
         var org = await OrgAsync();
         using var client = await Factory.ClientFor(org.Lina);
-        await ChangeUserAsync(org.Lina.Id, async (user, users) =>
-        {
-            (await users.RemoveFromRoleAsync(user, Roles.Employee)).Succeeded.ShouldBeTrue();
-            (await users.AddToRoleAsync(user, Roles.FinanceOfficer)).Succeeded.ShouldBeTrue();
-        });
+        using var admin = await AdminClientAsync(Factory);
+        (await admin.PutAsJsonAsync(ById(org.Lina.Id, "/roles"), new { roles = FinanceOnly }, Ct)).EnsureSuccessStatusCode();
 
         using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
         using var leave = await client.PostAsJsonAsync(Leave, LeaveBody(Today.AddDays(1), Today.AddDays(1)), Ct);
@@ -388,17 +387,6 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         await ProblemAssert.HasCode(purchase, 403, ErrorCodes.AuthForbidden);
         await ProblemAssert.HasCode(leave, 403, ErrorCodes.AuthForbidden);
         await AssertNothingPersistedAsync();
-    }
-
-    /// <summary>Changes the user straight in the store, as an admin's write would, without ending the caller's session.</summary>
-    private async Task ChangeUserAsync(Guid userId, Func<ApplicationUser, UserManager<ApplicationUser>, Task> change)
-    {
-        await using var scope = Factory.Services.CreateAsyncScope();
-        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var user = await users.FindByIdAsync(userId.ToString());
-        user.ShouldNotBeNull();
-        await change(user, users);
-        (await users.UpdateAsync(user)).Succeeded.ShouldBeTrue();
     }
 
     private async Task<(TestUser Lina, TestUser Karim, Guid SalesId)> OrgAsync()
