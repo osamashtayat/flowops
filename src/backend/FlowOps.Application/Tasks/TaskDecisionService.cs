@@ -42,7 +42,7 @@ public sealed partial class TaskDecisionService(
         var request = await access.VisibleTo(db.Requests.Include(r => r.Tasks), me)
             .SingleOrDefaultAsync(r => r.Tasks.Any(t => t.Id == taskId), ct) ?? throw new NotFoundException();
         var task = request.Tasks.Single(t => t.Id == taskId);
-        TaskEligibility.EnsureCanDecide(request.RequesterId, task, me);
+        TaskEligibility.EnsureCanDecide(request, task, me);
         // Only an open task can be stale; a decided one gets the domain's clearer "already decided".
         if (task.IsOpen && (!VersionToken.TryParse(version, out var seen) || seen != task.Version))
         {
@@ -75,7 +75,7 @@ public sealed partial class TaskDecisionService(
         var notifications = new List<Notification>();
         if (result.NextTask is { } next)
         {
-            var deciders = await TaskEligibility.EligibleDeciders(db, next.AssigneeUserId, next.AssigneeRole, request.RequesterId).ToListAsync(ct);
+            var deciders = await TaskEligibility.EligibleDeciders(db, request, next).ToListAsync(ct);
             notifications.AddRange(NotificationFactory.TaskAssigned(request, next, requester.DisplayName, deciders, now));
         }
 

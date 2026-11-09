@@ -25,6 +25,7 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
         { ErrorCodes.AuthPasswordChangeRequired, 403 },
         { ErrorCodes.TaskNotEligible, 403 },
         { ErrorCodes.TaskSelfDecision, 403 },
+        { ErrorCodes.TaskAlreadyParticipated, 403 },
         { ErrorCodes.NotFound, 404 },
         { ErrorCodes.TaskAlreadyDecided, 409 },
         { ErrorCodes.TaskNotCurrent, 409 },

@@ -39,7 +39,7 @@ public sealed class RequestCommentService(IAppDbContext db, AccessRules access, 
         var active = await db.Users.Where(u => u.IsActive && candidates.Contains(u.Id)).Select(u => u.Id).ToListAsync(ct);
         if (request.OpenTask is { } open)
         {
-            active.AddRange(await TaskEligibility.EligibleDeciders(db, open.AssigneeUserId, open.AssigneeRole, request.RequesterId).ToListAsync(ct));
+            active.AddRange(await TaskEligibility.EligibleDeciders(db, request, open).ToListAsync(ct));
         }
 
         return active;

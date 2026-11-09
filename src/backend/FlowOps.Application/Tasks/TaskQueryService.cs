@@ -20,10 +20,10 @@ public sealed class TaskQueryService(IAppDbContext db, AccessRules access)
         var rows = query.Status == WorkTaskStatus.Open
             ? TaskEligibility.DecidableBy(requests, me)
                 .OrderBy(x => x.Task.CreatedAt).ThenBy(x => x.Task.Id)
-                .Select(x => new TaskRow(x.Task, x.Request.Id, x.Request.RequesterId))
+                .Select(x => new TaskRow(x.Task, x.Request.Id, x.Request.RequesterId, x.Request.Tasks.Select(t => t.DecidedById).ToList()))
             : DecidedBy(requests, me)
                 .OrderByDescending(x => x.Task.DecidedAt).ThenByDescending(x => x.Task.Id)
-                .Select(x => new TaskRow(x.Task, x.Request.Id, x.Request.RequesterId));
+                .Select(x => new TaskRow(x.Task, x.Request.Id, x.Request.RequesterId, x.Request.Tasks.Select(t => t.DecidedById).ToList()));
 
         var page = await rows.ToPagedResultAsync(query, ct);
         var requestIds = page.Items.Select(r => r.RequestId).Distinct().ToList();
@@ -43,7 +43,7 @@ public sealed class TaskQueryService(IAppDbContext db, AccessRules access)
     private static InboxItemDto ToDto(TaskRow row, RequestSummaries.SummaryRow summary, AccessContext me)
     {
         var task = row.Task;
-        var actions = TaskEligibility.AvailableActions(row.RequesterId, task, me)?.Actions ?? [];
+        var actions = TaskEligibility.AvailableActions(row.RequesterId, row.DeciderIds, task, me)?.Actions ?? [];
         var request = new InboxRequestDto(
             summary.Id, summary.Number.Value, summary.Type, summary.Title, summary.Requester, summary.Department,
             summary.Status, summary.Stage, summary.SubmittedAt, summary.ClosedAt, summary.KeyDetail);
@@ -52,5 +52,5 @@ public sealed class TaskQueryService(IAppDbContext db, AccessRules access)
             task.DecidedAt, actions, request);
     }
 
-    private sealed record TaskRow(WorkTask Task, Guid RequestId, Guid RequesterId);
+    private sealed record TaskRow(WorkTask Task, Guid RequestId, Guid RequesterId, List<Guid?> DeciderIds);
 }

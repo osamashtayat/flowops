@@ -146,7 +146,7 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 - **`TaskEligibility`** (static):
   - **`AssignedTo(me)`** is the T1/T2 expression. The in-memory check uses the same expression, compiled once per context.
   - **`DecidableBy(requests, me)`** yields `DecidableTask { Request, Task }`: open tasks the caller may decide now, excluding their own requests. The inbox projects both in one query.
-  - **`FailureCode` / `EnsureCanDecide(requesterId, task, me)`**: not assigned or inactive → `task.not_eligible`; then the requester → `task.self_decision`.
+  - **`FailureCode` / `EnsureCanDecide(requesterId, task, me)`**: not assigned or inactive → `task.not_eligible`; then the requester → `task.self_decision`; then someone who decided another task of the request → `task.already_participated` (**T3, separation of duties**, #50, decided 2026-11-09: every step is decided by a different person; a step whose only eligible members already took part shows as stalled).
   - **`AvailableActions(requesterId, openTask, me)`** takes only what a projection supplies. It returns the task's `WorkTask.AllowedActions` plus its `version`, or `null` for a decided task or a non-eligible caller.
   - **Open/current/already-decided stay the domain's 409s**: a late decider gets `task.already_decided`, not 403.
 - **Administrator never gets a task.** The domain refuses Administrator as a role queue (`AssigneeRule`/`Assignee.ForRole`), which is what makes "admins see nothing" hold.

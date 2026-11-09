@@ -19,6 +19,7 @@ public static class ErrorCodes
 
     public const string TaskNotEligible = "task.not_eligible";
     public const string TaskSelfDecision = "task.self_decision";
+    public const string TaskAlreadyParticipated = "task.already_participated";
     public const string TaskAlreadyDecided = "task.already_decided";
     public const string TaskNotCurrent = "task.not_current";
     public const string TaskInvalidAction = "task.invalid_action";

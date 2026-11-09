@@ -42,8 +42,7 @@ public sealed partial class PostCommitPublisher(
             var recipients = actors.ToHashSet();
             foreach (var task in tasks)
             {
-                recipients.UnionWith(await TaskEligibility
-                    .EligibleDeciders(db, task.AssigneeUserId, task.AssigneeRole, request.RequesterId).ToListAsync(Ct));
+                recipients.UnionWith(await TaskEligibility.EligibleDeciders(db, request, task).ToListAsync(Ct));
             }
 
             await publisher.TasksChangedAsync(recipients, Ct);

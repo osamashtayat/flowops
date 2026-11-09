@@ -20,6 +20,7 @@ export const PROBLEM_MESSAGES = {
 
   'task.not_eligible': "You can't decide this task.",
   'task.self_decision': "You can't decide your own request.",
+  'task.already_participated': 'You decided an earlier step of this request. Another person has to decide this one.',
   'task.already_decided': 'Someone else already handled this task. The inbox has been refreshed.',
   'task.not_current': 'This step is no longer the current one. The request has been refreshed.',
   'task.invalid_action': "That action isn't available for this task.",

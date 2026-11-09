@@ -50,7 +50,7 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 |---|---|---|
 | 400 | Malformed body / DataAnnotations failure | `validation` |
 | 401 | No/expired session | `auth.unauthenticated` |
-| 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision`, `role_change.not_proposer` |
+| 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision`, `task.already_participated`, `role_change.not_proposer` |
 | 404 | Not found **or not visible** to caller | `not_found` |
 | 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email`, `role_change.already_pending`, `role_change.not_pending`, `role_change.stale` |
 | 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `user.admin_role_on_create_only`, `department.inactive`, `role_change.no_reviewer`, `role_change.approver_too_new`, `role_change.self_approval` |
@@ -205,7 +205,7 @@ type InboxItemDto = {
 | `POST /api/tasks/{taskId}/reject` | `{ version: string; reason: string }` (reason 1–2000, not whitespace) | 204 |
 | `POST /api/tasks/{taskId}/fulfill` | `{ version: string; note?: string \| null }` | 204 |
 
-Errors: 400, 403 `task.not_eligible` / `task.self_decision`, 404, 409 `task.already_decided` / `task.not_current` / `task.invalid_action` / `request.closed` / `concurrency.conflict`, 422 (next-step assignee unresolvable — not expected in Phase 1 since role queues always resolve).
+Errors: 400, 403 `task.not_eligible` / `task.self_decision` / `task.already_participated` (you decided an earlier step of this request, #50), 404, 409 `task.already_decided` / `task.not_current` / `task.invalid_action` / `request.closed` / `concurrency.conflict`, 422 (next-step assignee unresolvable — not expected in Phase 1 since role queues always resolve).
 
 Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
 
