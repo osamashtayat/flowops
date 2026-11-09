@@ -14,6 +14,12 @@ export POSTGRES_PORT="${E2E_DB_PORT:-55432}"
 # Throwaway database inside a throwaway stack; not a secret (AGENTS.md: no real secrets in source).
 export POSTGRES_PASSWORD="${E2E_DB_PASSWORD:-e2e-only-not-secret}"
 export POSTGRES_DB=flowops POSTGRES_USER=flowops
+# Set here so compose never takes them from a developer's .env (#79). The overlay runs the api in Development anyway.
+export FLOWOPS_ENVIRONMENT=Development
+# The smoke tests sign in with the BE-16 demo accounts, so no bootstrap admin is needed. If one is wanted, CI passes it
+# as E2E_BOOTSTRAP_ADMIN_EMAIL / E2E_BOOTSTRAP_ADMIN_PASSWORD (env or secrets); it never comes from a committed file.
+export FlowOps__BootstrapAdmin__Email="${E2E_BOOTSTRAP_ADMIN_EMAIL:-}"
+export FlowOps__BootstrapAdmin__Password="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-}"
 
 compose() { docker compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yml "$@"; }
 base_url="https://localhost:${FLOWOPS_WEB_PORT}"

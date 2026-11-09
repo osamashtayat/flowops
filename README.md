@@ -114,9 +114,16 @@ cd src/frontend && npm install && npm run dev                 # SPA on http://lo
 ### Full stack in Docker
 
 ```bash
-cp .env.example .env                 # then edit the placeholder values
+cp .env.example .env                 # then edit the placeholder values (below)
 docker compose up -d --build         # db → migrate (one-shot) → api → web
 ```
+
+Before the first start, set in `.env`:
+- **`FLOWOPS_ENVIRONMENT`** (required, no default): the API's `ASPNETCORE_ENVIRONMENT`. Use `Production` for anything
+  reachable by others (strict CSP, no OpenAPI document, demo data refused); `Development` only on your own machine.
+- **`FlowOps__BootstrapAdmin__Password`**: a strong password of your own. `.env.example` ships a public placeholder and the
+  API **refuses to start** while it is still that value. Leave the email and password empty to create no administrator.
+- **`POSTGRES_PASSWORD`**: any value of your own.
 
 Open **https://localhost:8443**. nginx serves the SPA over HTTPS with a self-signed certificate it creates for localhost
 on first start, so your browser shows a warning; accept it, or mount a trusted certificate (for example from
