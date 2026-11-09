@@ -271,6 +271,40 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             .ShouldBe(["fiona", "karim"]);
     }
 
+    [Theory]
+    [InlineData("approve")]
+    [InlineData("reject")]
+    public async Task Decision_OnADeactivatedRequestersRequest_StillAppliesButDoesNotNotifyThem(string action)
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        var item = await OpenItemAsync("karim", requestId);
+        await SetActiveAsync("lina", isActive: false);
+
+        using var response = await DecideAsync("karim", item, action, reason: action == "reject" ? "Not needed" : null);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        await ShouldBeAtAsync(requestId, action == "reject" ? "Rejected" : "InReview", action == "reject" ? "Closed" : "FinanceApproval", viewer: "karim");
+        (await NotificationsAsync(requestId)).ShouldNotContain(n => n.RecipientId == _users["lina"].Id && n.Type != NotificationType.TaskAssigned,
+            "an inactive requester gets no outcome notification (#56)");
+        Factory.Realtime.Events.ShouldNotContain(e => e.Name == "notificationCreated" && e.Recipients.Contains(_users["lina"].Id));
+    }
+
+    [Fact]
+    public async Task Decision_AfterTheRequesterIsReactivated_NotifiesThemAgain()
+    {
+        await SeedOrgAsync();
+        var requestId = await SubmitPurchaseAsync("lina");
+        await SetActiveAsync("lina", isActive: false);
+        await DecideAsync("karim", await OpenItemAsync("karim", requestId), "approve");
+        await SetActiveAsync("lina", isActive: true);
+
+        await DecideAsync("fiona", await OpenItemAsync("fiona", requestId), "approve");
+
+        (await NotificationsAsync(requestId)).Where(n => n.RecipientId == _users["lina"].Id).Select(n => n.Type)
+            .ShouldBe([NotificationType.RequestApproved]);
+    }
+
     [Fact]
     public async Task RoleMemberDeactivatedWithASessionStillOpen_Returns404()
     {
@@ -482,6 +516,15 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         }
     }
 
+    private async Task SetActiveAsync(string user, bool isActive)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<FlowOps.Infrastructure.Identity.ApplicationUser>>();
+        var entity = await users.FindByIdAsync(_users[user].Id.ToString());
+        entity!.IsActive = isActive;
+        (await users.UpdateAsync(entity)).Succeeded.ShouldBeTrue();
+    }
+
     private string Name(Guid id) => _users.Single(u => u.Value.Id == id).Key;
 
     private Task<HttpClient> ClientAsync(string user) => Factory.ClientFor(_users[user]);
@@ -541,9 +584,10 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
     private static string[] Strings(JsonElement element, string property) =>
         [.. element.GetProperty(property).EnumerateArray().Select(e => e.GetString()!)];
 
-    private async Task ShouldBeAtAsync(Guid requestId, string status, string stage)
+    /// <summary>Reads the request as <paramref name="viewer"/> (default: its requester, who must be active to sign in).</summary>
+    private async Task ShouldBeAtAsync(Guid requestId, string status, string stage, string? viewer = null)
     {
-        using var lina = await Factory.ClientFor(await RequesterOfAsync(requestId));
+        using var lina = await Factory.ClientFor(viewer is null ? await RequesterOfAsync(requestId) : _users[viewer]);
         var details = await JsonBody.ReadAsync(await lina.GetAsync(new Uri($"/api/requests/{requestId}", UriKind.Relative), Ct));
         details.GetProperty("status").GetString().ShouldBe(status);
         details.GetProperty("stage").GetString().ShouldBe(stage);
