@@ -12,15 +12,20 @@ namespace FlowOps.Application.Requests;
 /// </summary>
 public static class TaskAssigneeResolver
 {
-    /// <summary>The submitter as submission needs them: server-side department and manager (I14).</summary>
-    public sealed record Requester(Guid Id, string DisplayName, Guid? DepartmentId, Guid? ManagerId, bool ManagerIsActive);
+    /// <summary>
+    /// The submitter as submission needs them: server-side department and manager (I14), plus their current active flag
+    /// and roles from the database, because the session's claims can be up to a minute stale (#77).
+    /// </summary>
+    public sealed record Requester(
+        Guid Id, string DisplayName, Guid? DepartmentId, Guid? ManagerId, bool ManagerIsActive, bool IsActive, IReadOnlyCollection<string> Roles);
 
     public static Task<Requester?> LoadRequesterAsync(IAppDbContext db, Guid requesterId, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);
         return db.Users.AsNoTracking().Where(u => u.Id == requesterId)
             .Select(u => new Requester(u.Id, u.DisplayName, u.DepartmentId, u.ManagerId,
-                db.Users.Any(m => m.Id == u.ManagerId && m.IsActive)))
+                db.Users.Any(m => m.Id == u.ManagerId && m.IsActive), u.IsActive,
+                db.UserRoles.Where(r => r.UserId == u.Id).Select(r => r.RoleName).ToList()))
             .SingleOrDefaultAsync(ct);
     }
 
