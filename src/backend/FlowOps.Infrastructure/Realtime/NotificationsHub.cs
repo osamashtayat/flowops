@@ -1,4 +1,6 @@
+using FlowOps.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -13,15 +15,16 @@ namespace FlowOps.Infrastructure.Realtime;
 /// </summary>
 [Authorize]
 public sealed partial class NotificationsHub(
-    HubConnectionRegistry connections, IOptions<RealtimeConnectionOptions> options, ILogger<NotificationsHub> logger) : Hub
+    HubConnectionRegistry connections, SignInManager<ApplicationUser> signIn, IOptions<RealtimeConnectionOptions> options,
+    ILogger<NotificationsHub> logger) : Hub
 {
     public const string Path = "/hubs/notifications";
 
     /// <summary>
-    /// Over the cap, throwing makes SignalR close the new connection with an error and no reconnect; it is never registered,
-    /// so <see cref="OnDisconnectedAsync"/> (which SignalR then skips) has nothing to remove.
+    /// Over the cap, or when the session was already revoked, throwing makes SignalR close the new connection with an error
+    /// and no reconnect. SignalR then skips <see cref="OnDisconnectedAsync"/>, so a refused connection is removed here.
     /// </summary>
-    public override Task OnConnectedAsync()
+    public override async Task OnConnectedAsync()
     {
         var max = options.Value.MaxConnectionsPerUser;
         if (!connections.TryAdd(Context, max))
@@ -30,7 +33,15 @@ public sealed partial class NotificationsHub(
             throw new HubException("Too many open connections. Close another FlowOps tab and reload.");
         }
 
-        return base.OnConnectedAsync();
+        // After registering, so a session ended from now on is caught by AbortAll, and one ended before by this check (#78).
+        if (await signIn.ValidateSecurityStampAsync(Context.User) is null)
+        {
+            connections.Remove(Context);
+            LogRevokedSession(logger, Context.UserIdentifier);
+            throw new HubException("Your session has ended. Please sign in again.");
+        }
+
+        await base.OnConnectedAsync();
     }
 
     public override Task OnDisconnectedAsync(Exception? exception)
@@ -41,4 +52,7 @@ public sealed partial class NotificationsHub(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Hub connection of user {UserId} refused: already {Max} open")]
     private static partial void LogRefused(ILogger logger, string? userId, int max);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Hub connection of user {UserId} refused: session revoked or user inactive")]
+    private static partial void LogRevokedSession(ILogger logger, string? userId);
 }
