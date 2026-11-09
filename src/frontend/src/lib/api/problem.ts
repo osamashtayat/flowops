@@ -38,7 +38,9 @@ export const PROBLEM_MESSAGES = {
   'user.admin_role_on_create_only':
     'The Administrator role can only be given when a new account is created.',
   'role_change.no_reviewer':
-    'You are the only active administrator, so nobody could approve a change to your own roles.',
+    'No other administrator can approve a change to your own roles: another active administrator whose account is at least a day old is needed.',
+  'role_change.approver_too_new':
+    'Your administrator account is too new to approve this change. An administrator whose account existed at least a day before the request must approve it.',
   'role_change.already_pending': 'You already have a role change waiting for approval.',
   'role_change.self_approval': 'Another administrator has to decide on your own role change.',
   'role_change.not_pending': 'This role change is no longer waiting for a decision.',

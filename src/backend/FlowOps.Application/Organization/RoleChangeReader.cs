@@ -50,7 +50,8 @@ public sealed class RoleChangeReader(IAppDbContext db, ICurrentUser currentUser,
             ? new PagedResult<Row>(await rows.ToListAsync(ct), 1, 1, 1)
             : await rows.ToPagedResultAsync(page, ct);
         var now = time.GetUtcNow();
-        return result.Map(row => row.ToDto(now, currentUser.Id));
+        var actorCreatedAt = await db.Users.Where(u => u.Id == currentUser.Id).Select(u => u.CreatedAt).SingleOrDefaultAsync(ct);
+        return result.Map(row => row.ToDto(now, currentUser.Id, actorCreatedAt));
     }
 
     private sealed record Row(
@@ -58,23 +59,30 @@ public sealed class RoleChangeReader(IAppDbContext db, ICurrentUser currentUser,
         DateTimeOffset ProposedAt, DateTimeOffset ExpiresAt, UserRef? DecidedBy, DateTimeOffset? DecidedAt, string? RejectionReason,
         uint Version)
     {
-        public RoleChangeDto ToDto(DateTimeOffset now, Guid actorId)
+        public RoleChangeDto ToDto(DateTimeOffset now, Guid actorId, DateTimeOffset actorCreatedAt)
         {
             var status = RoleChange.StatusAt(Status, ExpiresAt, now);
             return new RoleChangeDto(
                 Id, User, ToRoles(ProposedRoles), ToRoles(PreviousRoles), status, ProposedAt, ExpiresAt, DecidedBy,
                 status == RoleChangeStatus.Expired ? DecidedAt ?? ExpiresAt : DecidedAt,
-                RejectionReason, VersionToken.Format(Version), Actions(status, actorId));
+                RejectionReason, VersionToken.Format(Version), Actions(status, actorId, actorCreatedAt));
         }
 
-        private List<RoleChangeAction> Actions(RoleChangeStatus status, Guid actorId)
+        private List<RoleChangeAction> Actions(RoleChangeStatus status, Guid actorId, DateTimeOffset actorCreatedAt)
         {
             if (RoleChange.CanCancel(status, User.Id, actorId))
             {
                 return [RoleChangeAction.Cancel];
             }
 
-            return RoleChange.CanDecide(status, User.Id, actorId) ? [RoleChangeAction.Approve, RoleChangeAction.Reject] : [];
+            if (!RoleChange.CanDecide(status, User.Id, actorId))
+            {
+                return [];
+            }
+
+            return RoleChange.IsOldEnoughToApprove(actorCreatedAt, ProposedAt)
+                ? [RoleChangeAction.Approve, RoleChangeAction.Reject]
+                : [RoleChangeAction.Reject];
         }
 
         private static List<Role> ToRoles(IEnumerable<string> roles) => [.. roles.Select(Enum.Parse<Role>).Order()];

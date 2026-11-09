@@ -42,6 +42,7 @@ public sealed class ProblemDetailsTests(ErrorPipelineFactory factory) : IClassFi
         { ErrorCodes.DepartmentInactive, 422 },
         { ErrorCodes.UserAdminRoleOnCreateOnly, 422 },
         { ErrorCodes.RoleChangeNoReviewer, 422 },
+        { ErrorCodes.RoleChangeApproverTooNew, 422 },
         { ErrorCodes.RoleChangeSelfApproval, 422 },
         { ErrorCodes.RoleChangeAlreadyPending, 409 },
         { ErrorCodes.RoleChangeNotPending, 409 },
