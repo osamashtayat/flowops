@@ -8,6 +8,7 @@ import { MOCK_USERS } from '@/mocks/users'
 import { setMockUser } from '@/mocks/state'
 import { server } from '@/mocks/server'
 import { renderRoutes } from '@/test/renderRoutes'
+import { queryKeys } from '@/lib/api/queryKeys'
 
 /** Seed 1: a purchase in Finance approval from the mock employee. Seed 3 is a leave. */
 const PURCHASE = '5eed0000-0000-4000-8000-000000000001'
@@ -139,9 +140,9 @@ describe('request details', () => {
       renderRoutes(routes, PURCHASE_PATH)
       expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
-      // The last leave step closes the request; it doesn't hand on to another one.
+      // The dialog doesn't claim what comes next; the step order is the server's (FixedProcesses).
       await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-      expect(await within(await screen.findByRole('dialog')).findByText(/The leave is approved and the requester is notified/)).toBeInTheDocument()
+      expect(await within(await screen.findByRole('dialog')).findByText(/Your decision is recorded in the request history/)).toBeInTheDocument()
     })
   })
 
@@ -194,6 +195,33 @@ describe('request details', () => {
       await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))
       await userEvent.click(await screen.findByRole('button', { name: 'Approve request' }))
       await waitFor(() => expect(body).toEqual({ version: 'v1', comment: null }))
+    })
+
+    it('says so when the decision is no longer this user\'s while its dialog is open (#67)', async () => {
+      setMockUser('finance')
+      const { queryClient } = renderRoutes(routes, PURCHASE_PATH)
+      await userEvent.click(await screen.findByRole('button', { name: 'Reject' }))
+      await userEvent.type(within(await screen.findByRole('dialog')).getByLabelText(/^Reason/), 'Over budget')
+      server.use(http.get('/api/requests/:id', () => HttpResponse.json(detailsFor('finance', PURCHASE, () => ({ availableActions: null })))))
+      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(PURCHASE) })
+      expect(await screen.findByText('FO-2026-000800 is no longer waiting for your decision, so the dialog was closed.')).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    it('closes an open dialog when a refresh hands the page a different task', async () => {
+      setMockUser('finance')
+      const { queryClient } = renderRoutes(routes, PURCHASE_PATH)
+      await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))
+      await screen.findByRole('dialog')
+      server.use(
+        http.get('/api/requests/:id', () =>
+          HttpResponse.json(detailsFor('finance', PURCHASE, (r) => ({ availableActions: { ...r.availableActions, taskId: 'another-task', version: 'v9' }, tasks: [...r.tasks, { ...r.tasks[1], id: 'another-task' }] }))),
+        ),
+      )
+      await queryClient.invalidateQueries({ queryKey: queryKeys.requests.detail(PURCHASE) })
+      expect(await screen.findByText(/no longer waiting for your decision/)).toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     })
 
     it('on a 409 shows the mapped message, closes the dialog and refetches', async () => {

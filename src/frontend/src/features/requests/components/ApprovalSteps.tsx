@@ -3,7 +3,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { WorkTaskDto } from '@/lib/api/types'
 import { formatDateTime } from '@/lib/format/date'
 import { requestStageLabel, taskStatusPresentation } from '@/lib/format/status'
-import { ROLE_LABELS } from '../labels'
+import { ROLE_LABELS } from '@/lib/format/labels'
 
 function assigneeText(assignee: WorkTaskDto['assignee']): string {
   if (assignee.user) return assignee.user.displayName

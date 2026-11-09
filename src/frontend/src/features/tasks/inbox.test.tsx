@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { routes } from '@/app/routes'
+import { api } from '@/lib/api/client'
 import { currentActor } from '@/mocks/actor'
 import { decideMockTask } from '@/mocks/requestWorkflow'
 import { server } from '@/mocks/server'
@@ -43,6 +44,15 @@ const ITEM: InboxItemDto = {
 function financeInbox(path = '/inbox') {
   setMockUser('finance')
   return renderRoutes(routes, path)
+}
+
+/** Decides an open task straight in the mock store, as another session would; the screen doesn't know yet. */
+async function decideElsewhere(match: (item: InboxItemDto) => boolean) {
+  const { data } = await api.GET('/api/tasks', { params: { query: { status: 'Open', page: 1, pageSize: 100 } } })
+  const item = data?.items.find(match)
+  const actor = await currentActor()
+  if (!item || !actor) throw new Error('test setup: no such open task')
+  expect(decideMockTask(actor, item.taskId, 'approve', item.version, null)).toBeNull()
 }
 
 describe('Inbox — Open', () => {
@@ -135,6 +145,37 @@ describe('Inbox — Open', () => {
     await userEvent.click(within(bodyRows(grid)[0] as HTMLElement).getByRole('button', { name: 'Approve' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Approve request' }))
     expect(await screen.findByText(`${number} approved.`)).toBeInTheDocument()
+    expect(screen.queryByText(/no longer waiting for your decision/)).toBeNull()
+  })
+
+  it('says so when the task is decided elsewhere while its dialog is open (#67)', async () => {
+    const { queryClient } = financeInbox()
+    const grid = await openTable()
+    await waitFor(() => expect(bodyRows(grid)).toHaveLength(3))
+    const row = bodyRows(grid)[0] as HTMLElement
+    const number = within(row).getByText(/^FO-2026-/).textContent ?? ''
+    await userEvent.click(within(row).getByRole('button', { name: 'Reject' }))
+    await userEvent.type(within(await screen.findByRole('dialog')).getByLabelText(/^Reason/), 'Over budget')
+
+    await decideElsewhere((item) => item.request.number === number)
+    invalidateForEvent(queryClient, 'tasksChanged', {})
+
+    expect(await screen.findByText(`${number} is no longer waiting for your decision, so the dialog was closed.`)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('stays quiet when the dialog was closed before the task left the list', async () => {
+    const { queryClient } = financeInbox()
+    const grid = await openTable()
+    await waitFor(() => expect(bodyRows(grid)).toHaveLength(3))
+    const row = bodyRows(grid)[0] as HTMLElement
+    const number = within(row).getByText(/^FO-2026-/).textContent ?? ''
+    await userEvent.click(within(row).getByRole('button', { name: 'Reject' }))
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await decideElsewhere((item) => item.request.number === number)
+    invalidateForEvent(queryClient, 'tasksChanged', {})
+    await waitFor(() => expect(bodyRows(grid)).toHaveLength(2))
+    expect(screen.queryByText(/no longer waiting for your decision/)).toBeNull()
   })
 
   it('requires a reason to reject', async () => {

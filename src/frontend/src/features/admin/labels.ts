@@ -1,15 +1,5 @@
 import type { Role, StalledTaskReason } from '@/lib/api/types'
-
-/** One person's role as a chip or checkbox label. (`ROLE_LABELS` in requests/labels is the plural group name.) */
-export const ROLE_NAMES: Record<Role, string> = {
-  Administrator: 'Administrator',
-  Employee: 'Employee',
-  FinanceOfficer: 'Finance officer',
-  HrOfficer: 'HR officer',
-  ProcurementOfficer: 'Procurement officer',
-}
-
-export const ROLES = Object.keys(ROLE_NAMES) as Role[]
+import { ROLE_NAMES } from '@/lib/format/labels'
 
 /** Why a task is stalled and what an administrator can do about it (docs/UI_SPEC.md §4.8). */
 export const STALLED_REASONS: Record<StalledTaskReason, { label: string; guidance: (role: Role | null) => string }> = {

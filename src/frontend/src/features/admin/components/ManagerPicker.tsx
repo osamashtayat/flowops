@@ -3,9 +3,9 @@ import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { toUserMessage } from '@/lib/api/problem'
+import { SEARCH_DEBOUNCE_MS } from '@/lib/useDebouncedUrlSearch'
 import { useUsers } from '../api'
 
-const SEARCH_DEBOUNCE_MS = 300
 const RESULT_LIMIT = 20
 
 export interface ManagerPickerProps {

@@ -31,6 +31,12 @@ export class ApiError extends Error {
   }
 }
 
+/** A call that must answer with a body (200, or 201 for a create) but did not: a failure, never a silent success. */
+export function requireData<T>(data: T | undefined, status = 200): T {
+  if (data === undefined) throw new ApiError({ status, code: UNKNOWN_ERROR_CODE })
+  return data
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

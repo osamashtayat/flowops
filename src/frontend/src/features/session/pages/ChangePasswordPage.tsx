@@ -5,9 +5,8 @@ import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/toastContext'
-import { ApiError } from '@/lib/api/apiError'
-import { toUserMessage } from '@/lib/api/problem'
-import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
+import { hasServerFieldErrors, toUserMessage } from '@/lib/api/problem'
+import { fieldError, setServerFieldErrors, useZodForm } from '@/lib/forms/useZodForm'
 import { useChangePassword, useLogout, useSession } from '../api'
 import { safeReturnTo } from '../returnTo'
 import { SESSION_LIMITS } from '../limits'
@@ -38,20 +37,13 @@ export function ChangePasswordPage() {
           toast.success('Password changed.')
           void navigate(returnTo, { replace: true })
         },
-        onError: (error) => {
-          // Server rules (e.g. Identity password policy) land on the field they are about.
-          if (error instanceof ApiError) {
-            for (const field of ['currentPassword', 'newPassword'] as const) {
-              const message = error.fieldErrors[field]?.[0]
-              if (message) setError(field, { type: 'server', message })
-            }
-          }
-        },
+        // Server rules (e.g. Identity password policy) land on the field they are about.
+        onError: (error) => setServerFieldErrors(error, ['currentPassword', 'newPassword'], setError),
       },
     )
   }
 
-  const serverMessage = changePassword.error instanceof ApiError && Object.keys(changePassword.error.fieldErrors).length === 0
+  const serverMessage = changePassword.error && !hasServerFieldErrors(changePassword.error)
     ? toUserMessage(changePassword.error)
     : null
 

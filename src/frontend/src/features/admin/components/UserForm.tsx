@@ -6,28 +6,18 @@ import { Checkbox } from '@/components/ui/Checkbox'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { useToast } from '@/components/ui/toastContext'
 import { useSession } from '@/features/session/api'
-import { ApiError } from '@/lib/api/apiError'
 import { ADMIN_LIMITS } from '@/lib/api/limits'
-import { toUserMessage } from '@/lib/api/problem'
-import type { Role, UserDto } from '@/lib/api/types'
+import { serverFieldError, toUserMessage } from '@/lib/api/problem'
+import type { UserDto } from '@/lib/api/types'
 import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
-import { useCreateUser, useDepartments, useSaveUser } from '../api'
-import { userFormSchema, type UserFormValues } from '../schemas'
+import { useDepartments } from '../api'
+import { userFormSchema } from '../schemas'
+import { useUserFormSubmit } from '../useUserFormSubmit'
 import { ManagerPicker } from './ManagerPicker'
 import { RolesField } from './RolesField'
 
 const FIELDS = ['displayName', 'email', 'initialPassword', 'departmentId', 'managerId', 'roles'] as const
-
-/** The first server 400 message for a form field. */
-function serverMessage(error: unknown, field: string): string | undefined {
-  return error instanceof ApiError ? error.fieldErrors[field]?.[0] : undefined
-}
-
-function sameRoles(a: readonly Role[], b: readonly Role[]): boolean {
-  return [...a].sort().join() === [...b].sort().join()
-}
 
 export interface UserFormProps {
   /** The user being edited; omit to create. */
@@ -45,10 +35,7 @@ export function UserForm({ user }: UserFormProps) {
   const { user: me } = useSession()
   const isSelf = user !== undefined && user.id === me?.id
   const navigate = useNavigate()
-  const toast = useToast()
-  const create = useCreateUser()
-  const save = useSaveUser()
-  const mutation = user ? save : create
+  const { submit, mutation } = useUserFormSubmit(user, isSelf)
   const departments = useDepartments(true)
   const [managerName, setManagerName] = useState(user?.manager?.displayName)
 
@@ -70,39 +57,7 @@ export function UserForm({ user }: UserFormProps) {
     },
   })
 
-  function submit(values: UserFormValues) {
-    const links = { departmentId: values.departmentId || null, managerId: values.managerId || null }
-    if (!user) {
-      create.mutate(
-        { email: values.email, displayName: values.displayName, initialPassword: values.initialPassword, roles: values.roles, ...links },
-        {
-          onSuccess: (created) => {
-            toast.success(`${created.displayName} was created.`)
-            void navigate('/admin/users')
-          },
-        },
-      )
-      return
-    }
-    // Own record: send what the server already has for the locked fields, never what the read-only controls hold.
-    const profile = isSelf
-      ? { displayName: values.displayName, departmentId: links.departmentId, managerId: user.manager?.id ?? null, isActive: user.isActive }
-      : { displayName: values.displayName, isActive: values.isActive, ...links }
-    const rolesChanged = !sameRoles(values.roles, user.roles)
-    save.mutate(
-      { id: user.id, profile, roles: rolesChanged ? values.roles : undefined },
-      {
-        onSuccess: ({ user: saved, roleChange }) => {
-          // The server did not apply our own roles; they wait for another administrator.
-          if (roleChange) toast.success('Role change sent. Waiting for another administrator.')
-          else toast.success(`${saved.displayName} was updated.`)
-          void navigate(roleChange ? '/admin/role-changes' : '/admin/users')
-        },
-      },
-    )
-  }
-
-  const failure = (field: string) => serverMessage(mutation.error, field)
+  const failure = (field: string) => serverFieldError(mutation.error, field)
   const banner = mutation.error && !FIELDS.some(failure) ? toUserMessage(mutation.error) : null
   const departmentChoices = (departments.data ?? []).filter((d) => d.isActive || d.id === user?.department?.id)
 
