@@ -8,6 +8,7 @@ using FlowOps.Domain.Organization;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using static FlowOps.Api.IntegrationTests.Organization.UsersApiTests;
 
 namespace FlowOps.Api.IntegrationTests.Requests;
 
@@ -16,6 +17,7 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
 {
     private static readonly Uri Purchase = new("/api/requests/purchase", UriKind.Relative);
     private static readonly Uri Leave = new("/api/requests/leave", UriKind.Relative);
+    private static readonly string[] FinanceOnly = ["FinanceOfficer"];
 
     // TestClock starts Mon 2026-03-02 09:00 Asia/Amman (06:00 UTC).
     private static readonly DateOnly Today = new(2026, 3, 2);
@@ -351,6 +353,40 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         using var response = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
 
         await ProblemAssert.HasCode(response, 403, ErrorCodes.AuthForbidden);
+    }
+
+    [Fact]
+    public async Task Submit_ByUserDeactivatedInsideTheRevalidationWindow_Returns401AndPersistsNothing()
+    {
+        var org = await OrgAsync();
+        using var client = await Factory.ClientFor(org.Lina);
+        using var admin = await AdminClientAsync(Factory);
+        (await admin.PutAsJsonAsync(ById(org.Lina.Id),
+            new { displayName = "Lina", departmentId = org.SalesId, managerId = org.Karim.Id, isActive = false }, Ct)).EnsureSuccessStatusCode();
+
+        // Still inside the 1-minute claim re-validation: the cookie authenticates, the database says inactive (#77).
+        using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
+        using var leave = await client.PostAsJsonAsync(Leave, LeaveBody(Today.AddDays(1), Today.AddDays(1)), Ct);
+
+        await ProblemAssert.HasCode(purchase, 401, ErrorCodes.AuthUnauthenticated);
+        await ProblemAssert.HasCode(leave, 401, ErrorCodes.AuthUnauthenticated);
+        await AssertNothingPersistedAsync();
+    }
+
+    [Fact]
+    public async Task Submit_ByUserWhoseEmployeeRoleWasJustRemoved_Returns403AndPersistsNothing()
+    {
+        var org = await OrgAsync();
+        using var client = await Factory.ClientFor(org.Lina);
+        using var admin = await AdminClientAsync(Factory);
+        (await admin.PutAsJsonAsync(ById(org.Lina.Id, "/roles"), new { roles = FinanceOnly }, Ct)).EnsureSuccessStatusCode();
+
+        using var purchase = await client.PostAsJsonAsync(Purchase, Laptop(), Ct);
+        using var leave = await client.PostAsJsonAsync(Leave, LeaveBody(Today.AddDays(1), Today.AddDays(1)), Ct);
+
+        await ProblemAssert.HasCode(purchase, 403, ErrorCodes.AuthForbidden);
+        await ProblemAssert.HasCode(leave, 403, ErrorCodes.AuthForbidden);
+        await AssertNothingPersistedAsync();
     }
 
     private async Task<(TestUser Lina, TestUser Karim, Guid SalesId)> OrgAsync()

@@ -93,7 +93,7 @@ type SubmitPurchaseRequest = {
   justification: string;   // 1–2000
 };
 ```
-→ **201** `RequestDetailsDto`, `Location: /api/requests/{id}`. Errors: 400, 422 `request.manager_not_assigned` / `request.department_not_assigned`.
+→ **201** `RequestDetailsDto`, `Location: /api/requests/{id}`. Errors: 400, 401 `auth.unauthenticated` (caller deactivated), 403 `auth.forbidden` (caller no longer holds `Employee`), 422 `request.manager_not_assigned` / `request.department_not_assigned`.
 No `department`, `requesterId` or `submittedAt` field is accepted — unknown properties are ignored, and those values come from the server.
 
 ### `POST /api/requests/leave` — policy `CanSubmit`
@@ -109,8 +109,9 @@ type SubmitLeaveRequest = {
 As built (BE-10), for both submit endpoints:
 - **Order of checks.**
   1. Input: field rules → 400.
-  2. Department: none → 422 `request.department_not_assigned`.
-  3. Manager: none, inactive, or the requester → 422 `request.manager_not_assigned`.
+  2. Caller, read from the database rather than the session claims (which can be up to a minute stale, #77): inactive → 401 `auth.unauthenticated`; no `Employee` role → 403 `auth.forbidden`.
+  3. Department: none → 422 `request.department_not_assigned`.
+  4. Manager: none, inactive, or the requester → 422 `request.manager_not_assigned`.
 
   Nothing is saved on any failure.
 - **400 `errors` keys.** Rule failures that the domain finds (e.g. `estimatedCost.amount` > 1,000,000, `startDate` in the past, `endDate` beyond 90 days) also come back as `errors.{field}`, like DataAnnotations failures.
