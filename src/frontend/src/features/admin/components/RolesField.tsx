@@ -1,7 +1,7 @@
 import type { UseFormRegisterReturn } from 'react-hook-form'
 import { Checkbox } from '@/components/ui/Checkbox'
 import type { Role } from '@/lib/api/types'
-import { ROLES, ROLE_NAMES } from '../labels'
+import { ROLES, ROLE_NAMES } from '@/lib/format/labels'
 
 export interface RolesFieldProps {
   /** `register('roles')` from the form. */

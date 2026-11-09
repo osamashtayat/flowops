@@ -14,7 +14,7 @@ import { requestStageLabel, requestStatusPresentation } from '@/lib/format/statu
 import { useUrlState } from '@/lib/useUrlState'
 import { useRequests } from '../api'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
-import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '../labels'
+import { REQUEST_STATUSES, REQUEST_TYPES, REQUEST_TYPE_LABELS } from '@/lib/format/labels'
 import { RequestFilters, type RequestFilterValues } from './RequestFilters'
 
 const URL_DEFAULTS = { page: 1, pageSize: 20, status: '', type: '', search: '' }

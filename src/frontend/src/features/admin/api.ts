@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, UNKNOWN_ERROR_CODE } from '@/lib/api/apiError'
+import { requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import type { MutationOutcome } from '@/lib/api/mutationOutcome'
 import { queryKeys } from '@/lib/api/queryKeys'
@@ -15,12 +15,6 @@ import type {
   UpdateUserRequest,
   UserDto,
 } from '@/lib/api/types'
-
-/** A write that should answer with a body (201/200) but did not: treat as a failure, not as success. */
-function required<T>(data: T | undefined): T {
-  if (data === undefined) throw new ApiError({ status: 200, code: UNKNOWN_ERROR_CODE })
-  return data
-}
 
 export type UserListParams = {
   search: string
@@ -48,7 +42,7 @@ export function useUsers(params: UserListParams) {
           },
         },
       })
-      return required(data)
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
   })
@@ -59,7 +53,7 @@ export function useUser(id: string | undefined) {
     queryKey: queryKeys.admin.user(id ?? ''),
     queryFn: async () => {
       const { data } = await api.GET('/api/users/{id}', { params: { path: { id: id ?? '' } } })
-      return required(data)
+      return requireData(data)
     },
     enabled: id !== undefined,
   })
@@ -72,7 +66,7 @@ export function useDepartments(includeInactive: boolean) {
     queryKey: queryKeys.admin.departments(params),
     queryFn: async () => {
       const { data } = await api.GET('/api/departments', { params: { query: params } })
-      return required(data)
+      return requireData(data)
     },
   })
 }
@@ -93,7 +87,7 @@ export function useCreateUser() {
   return useMutation({
     mutationFn: async (body: CreateUserRequest): Promise<UserDto> => {
       const { data } = await api.POST('/api/users', { body })
-      return required(data)
+      return requireData(data)
     },
     onSuccess: refresh,
   })
@@ -124,11 +118,11 @@ export function useSaveUser() {
   return useMutation({
     mutationFn: async ({ id, profile, roles }: SaveUserInput): Promise<SaveUserResult> => {
       const params = { path: { id } }
-      const saved = required((await api.PUT('/api/users/{id}', { params, body: profile })).data)
+      const saved = requireData((await api.PUT('/api/users/{id}', { params, body: profile })).data)
       if (!roles) return { user: saved, roleChange: null }
       const { data, response } = await api.PUT('/api/users/{id}/roles', { params, body: { roles } })
-      if (response.status === 202) return { user: saved, roleChange: required(data as RoleChangeDto | undefined) }
-      return { user: required(data as UserDto | undefined), roleChange: null }
+      if (response.status === 202) return { user: saved, roleChange: requireData(data as RoleChangeDto | undefined) }
+      return { user: requireData(data as UserDto | undefined), roleChange: null }
     },
     onSettled: async () => {
       await refresh()
@@ -162,7 +156,7 @@ export function useCreateDepartment() {
   return useMutation({
     mutationFn: async (body: CreateDepartmentRequest): Promise<DepartmentDto> => {
       const { data } = await api.POST('/api/departments', { body })
-      return required(data)
+      return requireData(data)
     },
     onSuccess: refresh,
   })
@@ -173,7 +167,7 @@ export function useUpdateDepartment() {
   return useMutation({
     mutationFn: async ({ id, ...body }: UpdateDepartmentRequest & { id: string }): Promise<DepartmentDto> => {
       const { data } = await api.PUT('/api/departments/{id}', { params: { path: { id } }, body })
-      return required(data)
+      return requireData(data)
     },
     onSuccess: refresh,
   })
@@ -184,7 +178,7 @@ export function useStalledTasks(params: { page: number; pageSize: number }) {
     queryKey: queryKeys.admin.stalled(params),
     queryFn: async () => {
       const { data } = await api.GET('/api/admin/stalled-tasks', { params: { query: params } })
-      return required(data)
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
   })
@@ -203,7 +197,7 @@ export function useRoleChanges(params: RoleChangeListParams) {
     queryFn: async () => {
       const query = { status: params.status || undefined, page: params.page, pageSize: params.pageSize }
       const { data } = await api.GET('/api/admin/role-changes', { params: { query } })
-      return required(data)
+      return requireData(data)
     },
     placeholderData: keepPreviousData,
   })
@@ -236,7 +230,7 @@ export function useDecideRoleChange(outcome: MutationOutcome<DecideRoleChangeInp
           : action === 'cancel'
             ? await api.POST('/api/admin/role-changes/{id}/cancel', { params, body: { version } })
             : await api.POST('/api/admin/role-changes/{id}/reject', { params, body: { version, reason: reason ?? '' } })
-      return required(result.data)
+      return requireData(result.data)
     },
     onSuccess: (_data, input) => outcome.onSuccess?.(input),
     onError: (error, input) => outcome.onError?.(error, input),

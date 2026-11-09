@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { ApiError } from '@/lib/api/apiError'
+import { ApiError, requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
 import type { ChangePasswordRequest, CurrentUserDto, LoginRequest } from '@/lib/api/types'
@@ -32,8 +32,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: async (body: LoginRequest): Promise<CurrentUserDto> => {
       const { data } = await api.POST('/api/auth/login', { body })
-      if (!data) throw new ApiError({ status: 200, code: 'unknown' })
-      return data
+      return requireData(data)
     },
     onSuccess: (user) => queryClient.setQueryData(queryKeys.session, user),
   })

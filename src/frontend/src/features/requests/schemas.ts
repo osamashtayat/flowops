@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { calendarDaysInclusive, todayInCompanyZone } from '@/lib/format/date'
 import { moneyAmountSchema } from '@/lib/forms/money'
-import { LEAVE_TYPES } from './labels'
+import { LEAVE_TYPES } from '@/lib/format/labels'
 import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
 
 /**
