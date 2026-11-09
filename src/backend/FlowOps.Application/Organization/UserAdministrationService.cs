@@ -61,6 +61,7 @@ public sealed partial class UserAdministrationService(
     public async Task<UserDto> CreateAsync(CreateUserRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         await EnsureDepartmentCanReceiveAsync(body.DepartmentId, ct);
         if (body.ManagerId is { } managerId)
         {
@@ -81,6 +82,7 @@ public sealed partial class UserAdministrationService(
     public async Task<UserDto> UpdateAsync(Guid id, UpdateUserRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         var current = await db.Users.Where(u => u.Id == id)
             .Select(u => new { u.DepartmentId, u.ManagerId, u.IsActive })
             .SingleOrDefaultAsync(ct) ?? throw new NotFoundException();
@@ -121,6 +123,7 @@ public sealed partial class UserAdministrationService(
     public async Task<RoleUpdateOutcome> UpdateRolesAsync(Guid id, UpdateUserRolesRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         await EnsureExistsAsync(id, ct);
         var roles = RoleNames(body.Roles);
         // Own roles only become a proposal (approval re-checks them); others are claimed so a parallel edit can't be overtaken.
@@ -147,6 +150,7 @@ public sealed partial class UserAdministrationService(
     public async Task ResetPasswordAsync(Guid id, ResetPasswordRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         await EnsureExistsAsync(id, ct);
         if (id == currentUser.Id)
         {

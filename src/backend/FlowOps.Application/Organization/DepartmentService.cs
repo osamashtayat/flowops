@@ -20,6 +20,7 @@ public sealed class DepartmentService(IAppDbContext db, ICurrentUser currentUser
     public async Task<DepartmentDto> CreateAsync(CreateDepartmentRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         var department = Department.Create(body.Name, body.Code, time.GetUtcNow());
         db.Departments.Add(department);
         await db.SaveChangesAsync(ct);
@@ -29,6 +30,7 @@ public sealed class DepartmentService(IAppDbContext db, ICurrentUser currentUser
     public async Task<DepartmentDto> UpdateAsync(Guid id, UpdateDepartmentRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
+        await RoleAssignmentRules.EnsureActiveAdministratorAsync(db, currentUser.Id, ct);
         var department = await db.Departments.SingleOrDefaultAsync(d => d.Id == id, ct) ?? throw new NotFoundException();
         department.Update(body.Name, body.Code, body.IsActive);
         await db.SaveChangesAsync(ct);
