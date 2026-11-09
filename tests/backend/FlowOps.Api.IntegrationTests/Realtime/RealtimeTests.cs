@@ -194,20 +194,33 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             return Task.CompletedTask;
         };
 
-        using var response = how switch
-        {
-            "logout" => await (await Factory.ClientFor(_karim)).PostAsync(new Uri("/api/auth/logout", UriKind.Relative), null, Ct),
-            "password-change" => await (await Factory.ClientFor(_karim)).PostAsJsonAsync(new Uri("/api/auth/change-password", UriKind.Relative),
-                new { currentPassword = _karim.Password, newPassword = "Another-Pa55word-9!" }, Ct),
-            "password-reset" => await (await Factory.ClientFor(admin)).PostAsJsonAsync(new Uri($"/api/users/{_karim.Id}/reset-password", UriKind.Relative),
-                new { newPassword = "Reset-Pa55word-9!" }, Ct),
-            _ => await (await Factory.ClientFor(admin)).PutAsJsonAsync(new Uri($"/api/users/{_karim.Id}", UriKind.Relative),
-                new { displayName = "Karim", departmentId = (Guid?)null, managerId = (Guid?)null, isActive = false }, Ct),
-        };
+        using var response = await EndKarimsSessionsAsync(how, admin);
 
         response.IsSuccessStatusCode.ShouldBeTrue(await response.Content.ReadAsStringAsync(Ct));
         await closed.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
         karimHub.Connection.State.ShouldBe(HubConnectionState.Disconnected);
+    }
+
+    [Theory]
+    [InlineData("logout")]
+    [InlineData("password-change")]
+    [InlineData("password-reset")]
+    [InlineData("deactivation")]
+    public async Task Hub_OpenedWithACookieRevokedButNotYetRevalidated_IsRefused(string how)
+    {
+        var admin = await Given.User("ada").WithRoles(Roles.Administrator).CreateAsync(Factory);
+        var oldCookie = await SessionCookieAsync(_karim);
+
+        using var response = await EndKarimsSessionsAsync(how, admin);
+        response.IsSuccessStatusCode.ShouldBeTrue(await response.Content.ReadAsStringAsync(Ct));
+
+        // The clock isn't advanced: the old cookie still authenticates HTTP calls until re-validation (#78).
+        await using var stale = BuildConnection(oldCookie, HttpTransportType.WebSockets);
+        var error = await StartAndAwaitCloseAsync(stale);
+
+        error.ShouldNotBeNull().Message.ShouldContain("session has ended");
+        stale.State.ShouldBe(HubConnectionState.Disconnected);
+        Factory.Logs.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Mentions("session revoked"));
     }
 
     [Fact]
@@ -309,6 +322,19 @@ public sealed class RealtimeTests(FlowOpsApiFactory factory) : DatabaseTest(fact
     }
 
     // ---- Helpers ---------------------------------------------------------------------------------------------------
+
+    /// <summary>Ends Karim's sessions the way <paramref name="how"/> says, through the API.</summary>
+    private async Task<HttpResponseMessage> EndKarimsSessionsAsync(string how, TestUser admin) => how switch
+        {
+            "logout" => await (await Factory.ClientFor(_karim)).PostAsync(new Uri("/api/auth/logout", UriKind.Relative), null, Ct),
+            "password-change" => await (await Factory.ClientFor(_karim)).PostAsJsonAsync(new Uri("/api/auth/change-password", UriKind.Relative),
+                new { currentPassword = _karim.Password, newPassword = "Another-Pa55word-9!" }, Ct),
+            "password-reset" => await (await Factory.ClientFor(admin)).PostAsJsonAsync(new Uri($"/api/users/{_karim.Id}/reset-password", UriKind.Relative),
+                new { newPassword = "Reset-Pa55word-9!" }, Ct),
+            _ => await (await Factory.ClientFor(admin)).PutAsJsonAsync(new Uri($"/api/users/{_karim.Id}", UriKind.Relative),
+                new { displayName = "Karim", departmentId = (Guid?)null, managerId = (Guid?)null, isActive = false }, Ct),
+        };
+
 
     private static RealtimeEvent Event(string name, Guid? requestId, params TestUser[] recipients) =>
         new(name, [.. recipients.Select(r => r.Id)], null, requestId);
