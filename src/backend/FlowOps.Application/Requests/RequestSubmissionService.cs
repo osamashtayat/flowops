@@ -4,13 +4,14 @@ using FlowOps.Application.Notifications;
 using FlowOps.Application.Organization;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Requests;
+using Microsoft.EntityFrameworkCore;
 
 namespace FlowOps.Application.Requests;
 
 /// <summary>
 /// Submits purchase and leave requests (API_CONTRACT.md §4, WORKFLOWS.md §2–3). Requester, department and time come
 /// from the server (I14); the manager must be assigned and active (I12). One transaction: the request, its first task,
-/// its activities and the manager's notification are saved together.
+/// its activities and the first deciders' notifications are saved together.
 /// </summary>
 public sealed class RequestSubmissionService(
     IAppDbContext db,
@@ -25,21 +26,21 @@ public sealed class RequestSubmissionService(
     public async Task<RequestDetailsDto> SubmitPurchaseAsync(SubmitPurchaseRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var (requester, departmentId, managerId) = await LoadSubmitterAsync(ct);
+        var (requester, departmentId) = await LoadSubmitterAsync(ct);
         var purchase = PurchaseDetails.Create(body.ItemName, body.Description, body.EstimatedCost!.ToMoney("estimatedCost"), body.Justification);
         var now = time.GetUtcNow();
-        var request = Request.SubmitPurchase(await NextNumberAsync(now, ct), requester.Id, departmentId, purchase, managerId, now);
-        return await SaveAsync(request, requester, managerId, now, ct);
+        var request = Request.SubmitPurchase(await NextNumberAsync(now, ct), requester.Id, departmentId, purchase, TaskAssigneeResolver.ResolverFor(requester), now);
+        return await SaveAsync(request, requester, now, ct);
     }
 
     public async Task<RequestDetailsDto> SubmitLeaveAsync(SubmitLeaveRequest body, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(body);
-        var (requester, departmentId, managerId) = await LoadSubmitterAsync(ct);
+        var (requester, departmentId) = await LoadSubmitterAsync(ct);
         var now = time.GetUtcNow();
         var leave = LeaveDetails.Create(body.StartDate!.Value, body.EndDate!.Value, body.LeaveType!.Value, body.Reason, now, calendar.TimeZone);
-        var request = Request.SubmitLeave(await NextNumberAsync(now, ct), requester.Id, departmentId, leave, managerId, now);
-        return await SaveAsync(request, requester, managerId, now, ct);
+        var request = Request.SubmitLeave(await NextNumberAsync(now, ct), requester.Id, departmentId, leave, TaskAssigneeResolver.ResolverFor(requester), now);
+        return await SaveAsync(request, requester, now, ct);
     }
 
     /// <summary>
@@ -47,7 +48,7 @@ public sealed class RequestSubmissionService(
     /// <c>auth.unauthenticated</c>, no longer allowed to submit → 403 <c>auth.forbidden</c>. Then department (422
     /// <c>request.department_not_assigned</c>) and manager (422 <c>request.manager_not_assigned</c>). All before anything is staged.
     /// </summary>
-    private async Task<(TaskAssigneeResolver.Requester Requester, Guid DepartmentId, Guid ManagerId)> LoadSubmitterAsync(CancellationToken ct)
+    private async Task<(TaskAssigneeResolver.Requester Requester, Guid DepartmentId)> LoadSubmitterAsync(CancellationToken ct)
     {
         var requester = await TaskAssigneeResolver.LoadRequesterAsync(db, currentUser.Id, ct);
         if (requester is not { IsActive: true })
@@ -63,7 +64,9 @@ public sealed class RequestSubmissionService(
         var departmentId = requester.DepartmentId
             ?? throw new BusinessRuleException(ErrorCodes.RequestDepartmentNotAssigned,
                 "You are not in a department yet. Ask an administrator to assign one.");
-        return (requester, departmentId, TaskAssigneeResolver.RequireManager(requester));
+        // I12 before a request number is taken, whichever step the process starts with.
+        TaskAssigneeResolver.RequireManager(requester);
+        return (requester, departmentId);
     }
 
     /// <summary>Taken only after all input checks passed, so invalid submissions don't burn numbers.</summary>
@@ -71,10 +74,12 @@ public sealed class RequestSubmissionService(
         RequestNumber.Create(calendar.YearOf(now), await numbers.NextAsync(ct));
 
     private async Task<RequestDetailsDto> SaveAsync(
-        Request request, TaskAssigneeResolver.Requester requester, Guid managerId, DateTimeOffset now, CancellationToken ct)
+        Request request, TaskAssigneeResolver.Requester requester, DateTimeOffset now, CancellationToken ct)
     {
         db.Requests.Add(request);
-        var notifications = NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], now).ToList();
+        // WORKFLOWS.md §1.4: whoever may decide the first task, addressed exactly as after a decision.
+        var deciders = await TaskEligibility.EligibleDeciders(db, request, request.OpenTask!).ToListAsync(ct);
+        var notifications = NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, deciders, now).ToList();
         db.Notifications.AddRange(notifications);
         await db.SaveChangesAsync(ct);
         await realtime.NotificationsAsync(notifications);

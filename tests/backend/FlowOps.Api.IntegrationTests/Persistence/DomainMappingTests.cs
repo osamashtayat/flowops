@@ -44,7 +44,7 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
     {
         var org = await SeedOrgAsync();
         var leave = LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Sick, "Surgery", TestClock.Start, Amman);
-        var submitted = await SaveAsync(Request.SubmitLeave(await NextNumberAsync(), org.Requester, org.Department, leave, org.Manager, TestClock.Start));
+        var submitted = await SaveAsync(Request.SubmitLeave(await NextNumberAsync(), org.Requester, org.Department, leave, _ => Assignee.ForUser(org.Manager), TestClock.Start));
 
         var loaded = await LoadAsync(submitted.Id);
 
@@ -215,7 +215,7 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
     private async Task<Request> NewPurchaseAsync(Org org)
     {
         var details = PurchaseDetails.Create("Laptop", "14-inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken screen");
-        return Request.SubmitPurchase(await NextNumberAsync(), org.Requester, org.Department, details, org.Manager, TestClock.Start);
+        return Request.SubmitPurchase(await NextNumberAsync(), org.Requester, org.Department, details, _ => Assignee.ForUser(org.Manager), TestClock.Start);
     }
 
     private async Task<RequestNumber> NextNumberAsync() =>

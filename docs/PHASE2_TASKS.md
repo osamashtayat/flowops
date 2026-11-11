@@ -58,7 +58,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 
 ## Backend
 
-### P2-BE-01 — First step through the resolver (#83) · `Todo`
+### P2-BE-01 — First step through the resolver (#83) · `Done` (2026-11-11)
 - **Objective:** `Request.Start` takes `Func<ProcessStep, Assignee>` and reuses `ResolveNextAssignee`. Submission notifies via `TaskEligibility.EligibleDeciders`, like decisions. Fix as proposed in #83.
 - **Deps:** none (Phase 1 debt).
 - **Tests:** a first step that is a role queue works with no change outside its process entry. The I12 pre-check is kept.

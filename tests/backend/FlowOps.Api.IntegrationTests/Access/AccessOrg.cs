@@ -44,7 +44,7 @@ internal sealed record AccessOrg(IReadOnlyDictionary<string, Guid> Users, IReadO
         Assignee Resolve(ProcessStep step) =>
             step.Assignee.IsRequesterManager ? Assignee.ForUser(karim.Id) : Assignee.ForRole(step.Assignee.Role!);
         Request Purchase(long seq, string requester) => Request.SubmitPurchase(RequestNumber.Create(2026, seq), users[requester], sales.Id,
-            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), karim.Id, now);
+            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), Resolve, now);
         void Approve(Request request, string actor) =>
             request.DecideTask(request.OpenTask!.Id, users[actor], TaskDecision.Approve(null), Resolve, now);
 
@@ -56,7 +56,7 @@ internal sealed record AccessOrg(IReadOnlyDictionary<string, Guid> Users, IReadO
         Approve(p3, "fiona");
         var l1 = Request.SubmitLeave(RequestNumber.Create(2026, 4), users["lina"], sales.Id,
             LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Annual, "Family", now, TimeZoneInfo.Utc),
-            karim.Id, now);
+            Resolve, now);
         Approve(l1, "karim");
         var pf = Purchase(5, "finny");
         Approve(pf, "karim");

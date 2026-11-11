@@ -479,11 +479,12 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
     private async Task<Guid> SeedLeaveRejectedByManagerAsync(Guid requesterId, Guid departmentId, Guid managerId)
     {
         var now = Factory.Clock.GetUtcNow();
+        Assignee Resolve(ProcessStep step) =>
+            step.Assignee.IsRequesterManager ? Assignee.ForUser(managerId) : Assignee.ForRole(step.Assignee.Role!);
         var leave = Request.SubmitLeave(RequestNumber.Create(2026, 90), requesterId, departmentId,
             LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Sick, "Surgery", now, TimeZoneInfo.Utc),
-            managerId, now);
-        leave.DecideTask(leave.OpenTask!.Id, managerId, TaskDecision.Reject("Too busy"),
-            step => step.Assignee.IsRequesterManager ? Assignee.ForUser(managerId) : Assignee.ForRole(step.Assignee.Role!), now);
+            Resolve, now);
+        leave.DecideTask(leave.OpenTask!.Id, managerId, TaskDecision.Reject("Too busy"), Resolve, now);
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Requests.Add(leave);

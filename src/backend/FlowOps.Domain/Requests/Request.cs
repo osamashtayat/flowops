@@ -74,21 +74,25 @@ public sealed class Request
     /// <summary>The single open task (I4), or <c>null</c> once the request is closed.</summary>
     public WorkTask? OpenTask => _tasks.SingleOrDefault(t => t.IsOpen);
 
+    /// <param name="resolveAssignee">Resolves the first step's assignee, as <see cref="DecideTask"/> does for later steps.</param>
     public static Request SubmitPurchase(
-        RequestNumber number, Guid requesterId, Guid departmentId, PurchaseDetails details, Guid managerId, DateTimeOffset now)
+        RequestNumber number, Guid requesterId, Guid departmentId, PurchaseDetails details,
+        Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(details);
         var request = new Request(number, RequestType.EquipmentPurchase, requesterId, departmentId, now) { Purchase = details };
-        request.Start(managerId, now);
+        request.Start(resolveAssignee, now);
         return request;
     }
 
+    /// <param name="resolveAssignee">Resolves the first step's assignee, as <see cref="DecideTask"/> does for later steps.</param>
     public static Request SubmitLeave(
-        RequestNumber number, Guid requesterId, Guid departmentId, LeaveDetails details, Guid managerId, DateTimeOffset now)
+        RequestNumber number, Guid requesterId, Guid departmentId, LeaveDetails details,
+        Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(details);
         var request = new Request(number, RequestType.Leave, requesterId, departmentId, now) { Leave = details };
-        request.Start(managerId, now);
+        request.Start(resolveAssignee, now);
         return request;
     }
 
@@ -123,7 +127,7 @@ public sealed class Request
 
         var outcome = task.OutcomeFor(decision.Action);
         var nextStep = outcome == WorkTaskOutcome.Rejected ? null : FixedProcesses.Next(Type, task.Stage);
-        var nextAssignee = nextStep is null ? null : ResolveNextAssignee(nextStep, resolveAssignee);
+        var nextAssignee = nextStep is null ? null : ResolveAssignee(nextStep, resolveAssignee);
 
         // Every check and lookup has passed: from here on the aggregate changes.
         task.Complete(outcome, decision.Comment, actorId, now);
@@ -158,27 +162,33 @@ public sealed class Request
     /// Validated before anything changes, so a faulty resolver cannot leave a half-applied decision.
     /// A wrong assignee is a programming error (ArgumentException), not a business-rule violation.
     /// </summary>
-    private static Assignee ResolveNextAssignee(ProcessStep nextStep, Func<ProcessStep, Assignee> resolveAssignee)
+    private static Assignee ResolveAssignee(ProcessStep step, Func<ProcessStep, Assignee> resolveAssignee)
     {
-        var assignee = resolveAssignee(nextStep)
-            ?? throw new ArgumentNullException(nameof(resolveAssignee), $"No assignee was resolved for the {nextStep.Stage} step.");
+        ArgumentNullException.ThrowIfNull(resolveAssignee);
+        var assignee = resolveAssignee(step)
+            ?? throw new ArgumentNullException(nameof(resolveAssignee), $"No assignee was resolved for the {step.Stage} step.");
 
-        return nextStep.Assignee.Accepts(assignee)
+        return step.Assignee.Accepts(assignee)
             ? assignee
-            : throw new ArgumentException($"The resolved assignee does not satisfy the {nextStep.Stage} step's rule.", nameof(resolveAssignee));
+            : throw new ArgumentException($"The resolved assignee does not satisfy the {step.Stage} step's rule.", nameof(resolveAssignee));
     }
 
-    private void Start(Guid managerId, DateTimeOffset now)
+    /// <summary>
+    /// Opens the process's first step through the same resolver path as every later step, so a type whose first step is
+    /// a role queue needs nothing here. The Application layer checks I12 first (manager exists and is active); this guards
+    /// the part the domain can know: a requester is never their own approver (I2).
+    /// </summary>
+    private void Start(Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
-        // The Application layer checks I12 first (manager exists and is active); this guards the part the domain can know.
-        if (managerId == Guid.Empty || managerId == RequesterId)
+        var first = FixedProcesses.First(Type);
+        var assignee = ResolveAssignee(first, resolveAssignee);
+        if (assignee.UserId == RequesterId)
         {
             throw DomainErrors.ManagerNotAssigned();
         }
 
-        var first = FixedProcesses.First(Type);
         Append(ActivityType.Submitted, RequesterId, taskId: null, first.Stage, body: null, now);
-        AdvanceTo(first, Assignee.ForUser(managerId), now);
+        AdvanceTo(first, assignee, now);
     }
 
     private WorkTask AdvanceTo(ProcessStep step, Assignee assignee, DateTimeOffset now)
