@@ -10,7 +10,9 @@ import { LEAVE_TYPES, LEAVE_TYPE_LABELS } from '@/lib/format/labels'
 import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
 import { leaveSchema, type LeaveValues } from '../schemas'
 import { useSubmitOutcome } from '../useSubmitOutcome'
+import { leaveFacts } from '../routeFacts'
 import { RequestFormFrame } from './RequestFormFrame'
+import { RoutePreview } from './RoutePreview'
 
 const FIELDS = ['startDate', 'endDate', 'leaveType', 'reason'] as const
 
@@ -31,7 +33,7 @@ export function LeaveForm() {
     defaultValues: { startDate: '', endDate: '', leaveType: 'Annual', reason: '' },
   })
   const outcome = useSubmitOutcome(setError, FIELDS)
-  const [startDate, endDate] = useWatch({ control, name: ['startDate', 'endDate'] })
+  const [startDate, endDate, leaveType] = useWatch({ control, name: ['startDate', 'endDate', 'leaveType'] })
 
   return (
     <RequestFormFrame
@@ -65,6 +67,7 @@ export function LeaveForm() {
       >
         {(c) => <Textarea {...c} {...register('reason')} />}
       </FormField>
+      <RoutePreview type="Leave" facts={leaveFacts(startDate, endDate, leaveType)} />
     </RequestFormFrame>
   )
 }

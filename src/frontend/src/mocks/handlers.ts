@@ -9,6 +9,8 @@ import type {
   AddCommentRequest,
   DashboardDto,
   PagedRequestSummaries,
+  RoutePreviewDto,
+  RoutePreviewRequest,
   RequestDetailsDto,
   SubmitLeaveRequest,
   SubmitPurchaseRequest,
@@ -60,6 +62,7 @@ import {
   markMockRead,
 } from './notificationStore'
 import { decideMockTask } from './requestWorkflow'
+import { mockPreviewRoute } from './steps'
 import { getMockUserKey, hasChangedMockPassword, markMockPasswordChanged, setMockUser } from './state'
 import {
   MOCK_RATE_LIMITED_EMAIL,
@@ -178,6 +181,15 @@ function submitBlockedBy(user: CurrentUserDto): HttpResponse<ProblemDetails> | n
   return null
 }
 
+/** The first missing field of a route-preview body, named like the contract's `errors` keys; only the facts of `type` are read. */
+function missingRouteFacts(body: RoutePreviewRequest): string | null {
+  if (!body.type) return 'type'
+  if (!body.facts) return 'facts'
+  if (body.type === 'EquipmentPurchase') return body.facts.amount ? null : 'facts.amount'
+  if (!body.facts.leaveType) return 'facts.leaveType'
+  return body.facts.days ? null : 'facts.days'
+}
+
 /** The shared preamble of the request and decision endpoints: who is asking. */
 const NOT_FOUND = () => problem(404, 'not_found')
 /** Request submit, list, details, activity and comments — real in the backend since BE-10/BE-11, so only tests use these. */
@@ -231,6 +243,18 @@ export const requestHandlers = [
     const blocked = submitBlockedBy(user)
     if (blocked) return blocked
     return HttpResponse.json(addMockPurchase(user, await request.json()), { status: 201 })
+  }),
+
+  // The contract's response shape and validation only (API_CONTRACT §4): every step comes back Planned.
+  // Which steps a real workflow skips is the server's rule, so tests that need a Skipped step supply their own response.
+  http.post<never, RoutePreviewRequest, RoutePreviewDto | Failure>('/api/requests/route-preview', async ({ request }) => {
+    const user = await currentActor()
+    if (!user) return problem(401, 'auth.unauthenticated')
+    if (!user.capabilities.includes('requests.submit')) return problem(403, 'auth.forbidden')
+    const body = await request.json()
+    const missing = missingRouteFacts(body)
+    if (missing) return validationProblem({ [missing]: ['This field is required.'] })
+    return HttpResponse.json({ steps: mockPreviewRoute(body.type) })
   }),
 
   http.post<never, SubmitLeaveRequest, RequestDetailsDto | Failure>('/api/requests/leave', async ({ request }) => {

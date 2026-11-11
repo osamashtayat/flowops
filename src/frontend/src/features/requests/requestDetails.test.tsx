@@ -32,7 +32,7 @@ describe('request details', () => {
     expect(screen.getByText('Waiting for: Finance approval')).toBeInTheDocument()
     expect(screen.getByText('Estimated cost')).toBeInTheDocument()
     expect(screen.getByText('100.000 JOD')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Approval steps' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Route' })).toBeInTheDocument()
     expect(screen.getByText('Looks reasonable.')).toBeInTheDocument()
     expect(screen.getByText('Waiting for Any of Finance officers')).toBeInTheDocument()
     expect(await screen.findByText(/submitted the request/)).toBeInTheDocument()

@@ -95,7 +95,7 @@ describe('purchase form', () => {
       justification: 'Old laptop failed',
       estimatedCost: { amount: '1250.5', currency: 'JOD' },
     })
-    expect(await screen.findByText('Request FO-2026-000901 submitted. Your manager has been notified.')).toBeInTheDocument()
+    expect(await screen.findByText('Request FO-2026-000901 submitted.')).toBeInTheDocument()
   })
 
   it('puts a server 400 on the matching field', async () => {

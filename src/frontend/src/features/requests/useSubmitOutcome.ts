@@ -16,7 +16,7 @@ export function useSubmitOutcome<TField extends string>(setError: SetServerError
   const toast = useToast()
   return {
     onSuccess(request: RequestDetailsDto) {
-      toast.success(`Request ${request.number} submitted. Your manager has been notified.`)
+      toast.success(`Request ${request.number} submitted.`)
       void navigate(`/requests/${request.id}`)
     },
     onError(error: unknown) {

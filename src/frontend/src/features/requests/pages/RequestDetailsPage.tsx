@@ -7,12 +7,12 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api/apiError'
 import { toUserMessage } from '@/lib/api/problem'
 import { useRequest } from '../api'
-import { ApprovalSteps } from '../components/ApprovalSteps'
 import { RequestActionsCard } from '../components/RequestActionsCard'
 import { RequestActivityCard } from '../components/RequestActivityCard'
 import { RequestDetailsCard } from '../components/RequestDetailsCard'
 import { RequestHeader } from '../components/RequestHeader'
 import { RequestSummaryCard } from '../components/RequestSummaryCard'
+import { RouteCard } from '../components/RouteCard'
 
 function LoadingSkeleton() {
   return (
@@ -70,7 +70,7 @@ export function RequestDetailsPage() {
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <RequestDetailsCard request={request} />
-          <ApprovalSteps tasks={request.tasks} />
+          <RouteCard request={request} />
         </div>
         {/* Below lg the columns stack; the decider's action comes first instead of after the details (QA-03). */}
         <div className="max-lg:contents lg:space-y-6">

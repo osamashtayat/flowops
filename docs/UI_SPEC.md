@@ -134,7 +134,7 @@ Defaults: `staleTime` 30 s, refetch on window focus, retry 1 for queries (never 
 
 ## 7. Phase 2a: workflows, route and skipped steps (ADR-0014)
 
-Status: **designed** (P2-DOC-01). Built in P2-FE-01 to P2-FE-03 against the contract in API_CONTRACT §4 and §10. Until the backend lands, MSW mocks are generated from `contracts/openapi.json`, as in Phase 1. Built only from `components/ui` and `components/layout`, with theme tokens only.
+Status: **designed** (P2-DOC-01); §7.1 built (P2-FE-01); §7.2 built against MSW mocks (P2-FE-02), real-API verification waits for P2-BE-05. Built in P2-FE-01 to P2-FE-03 against the contract in API_CONTRACT §4 and §10. Until the backend lands, MSW mocks are generated from `contracts/openapi.json`, as in Phase 1. Built only from `components/ui` and `components/layout`, with theme tokens only.
 
 ### 7.1 Steps instead of stages (P2-FE-01)
 - Everywhere a stage is shown today (lists' Stage column, "Waiting for: …", the inbox, the approval-steps card, timeline sentences, stalled tasks), show `step.name` from the server. A closed request (`step: null`) shows its status only.
