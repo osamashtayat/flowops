@@ -45,4 +45,8 @@ public static class ErrorCodes
     public const string RoleChangeNotPending = "role_change.not_pending";
     public const string RoleChangeStale = "role_change.stale";
     public const string RoleChangeNotProposer = "role_change.not_proposer";
+
+    public const string WorkflowDraftExists = "workflow.draft_exists";
+    public const string WorkflowVersionNotDraft = "workflow.version_not_draft";
+    public const string WorkflowInvalid = "workflow.invalid";
 }

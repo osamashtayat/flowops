@@ -13,4 +13,8 @@ public enum Capability
 
     [JsonStringEnumMemberName("admin.manage")]
     AdminManage,
+
+    /// <summary>Edit and publish workflows (ADR-0014 Q1): derived from Administrator, like <see cref="AdminManage"/>.</summary>
+    [JsonStringEnumMemberName("workflows.manage")]
+    WorkflowsManage,
 }

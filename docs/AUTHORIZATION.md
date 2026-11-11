@@ -1,4 +1,4 @@
-# Authentication & Authorization — FlowOps Phase 1
+# Authentication & Authorization — FlowOps Phase 1 and Phase 2a
 
 **Purpose:** how users sign in, what each user may see and do, and where each check lives.
 Decision record: ADR-0003 (cookie auth). Domain terms: `DOMAIN_MODEL.md`.
@@ -72,7 +72,7 @@ Disabled. Same origin in all environments. If an environment ever needs cross-or
 | `FinanceOfficer` | Eligible for `FinanceApproval` role-queue tasks |
 | `HrOfficer` | Eligible for `HrConfirmation` role-queue tasks |
 | `ProcurementOfficer` | Eligible for `ProcurementFulfillment` role-queue tasks |
-| `Administrator` | Manage users, departments, roles, manager links; view stalled-task list |
+| `Administrator` | Manage users, departments, roles, manager links; view stalled-task list. Phase 2a: edit and publish workflows (§8) |
 
 | Derived capability | Computed as |
 |---|---|
@@ -82,7 +82,7 @@ Users may hold several roles. **Administrator grants no request visibility and n
 
 The server returns the capability set from `GET /api/auth/me` (`capabilities: string[]`). The frontend uses that list to show navigation and buttons; it never derives permissions from role names itself.
 
-Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `admin.manage`.
+Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `admin.manage`, `workflows.manage` (Administrator; Phase 2a, ADR-0014 Q1, §8).
 
 ---
 
@@ -112,6 +112,8 @@ Capabilities: `requests.submit`, `tasks.view` (any officer role or isManager), `
 | Approve or reject **another** admin's own role change | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ (not your own: 422 `role_change.self_approval`) |
 | View stalled tasks (metadata only: the `StalledTaskDto` fields, see below) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ |
 | Own notifications | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| *Phase 2a:* preview the route of a request before submitting it | ✅ | ✅ (needs Employee role) | ✅ (needs Employee role) | ✅ (needs Employee role) | ✅ (needs Employee role) | ⛔ unless also Employee |
+| *Phase 2a:* view, edit, validate, preview and **publish** workflows (§8) | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ alone; no second admin (ADR-0014 Q1) |
 
 **Stalled tasks (#58, decided 2026-11-09).** The list returns exactly the fields of `StalledTaskDto` (API_CONTRACT.md §8): task and request ids, request number, type, stage, the assignee (user `UserRef` or role), the reason (`AssigneeInactive` / `NoEligibleRoleMember`) and the open-since time. It never returns request details: purpose, item, cost, dates, leave reason or comments. The request id does not grant access: `GET /api/requests/{id}` stays 404 for administrators.
 
@@ -165,7 +167,7 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 
 | Data | Rule |
 |---|---|
-| Leave `Reason` | Returned only when the caller satisfies R1, R2, or holds `HrOfficer` and the request has an HR task (R3 through the HR queue). Decision comments, rejection reasons and request comments are **not** masked: they are visible to everyone who can see the request. `LeaveDetailsDto.Reason` is `null` otherwise; a boolean `reasonHidden` tells the UI to show "Restricted". |
+| Leave `Reason` | Returned only when the caller satisfies R1, R2, or holds `HrOfficer` and the request has an HR task (R3 through the HR queue). **Phase 2a (P2-BE-06, ADR-0014 Q3):** the HR clause becomes "is an assignee (user, or holder of the role) of a task whose step has `CanReadRestrictedDetails` in the request's pinned version". The seeded v1 HR step has the flag, so results don't change for v1 (a test reruns the Phase 1 matrix). The flag is the only way an officer reads a reason; a skipped step grants nothing. Decision comments, rejection reasons and request comments are **not** masked: they are visible to everyone who can see the request. `LeaveDetailsDto.Reason` is `null` otherwise; a boolean `reasonHidden` tells the UI to show "Restricted". |
 | Leave in notifications | Title/body mention "leave request FO-2026-000123" and dates only. |
 | Password hashes, security stamps, lockout data | Never in any DTO. Users endpoints return `UserDto` (explicit fields). |
 | Logs | Never log request bodies, reasons, comments or passwords. Log ids and outcomes. |
@@ -176,7 +178,7 @@ All resource rules live in **one** Application class, `AccessRules`. Its core me
 
 | Check | Location |
 |---|---|
-| Authenticated? role-level gate (e.g. admin endpoints) | ASP.NET Core **policies** on controllers: `Policies.Authenticated` (fallback), `Policies.Admin`, `Policies.CanSubmit` |
+| Authenticated? role-level gate (e.g. admin endpoints) | ASP.NET Core **policies** on controllers: `Policies.Authenticated` (fallback), `Policies.Admin`, `Policies.CanSubmit`, `Policies.ManageWorkflows` (Phase 2a) |
 | Visibility of a request | `AccessRules.VisibleTo` / `CanViewAsync` (Application) — called by query and command services |
 | Eligibility to decide a task | `TaskEligibility.FailureCode` / `EnsureCanDecide` / `DecidableBy` (Application), after the visibility check |
 | Self-decision | Domain (`Request.DecideTask`) **and** `TaskEligibility` (fail fast with clear code) |
@@ -191,3 +193,26 @@ Resource checks are not implemented as ASP.NET `IAuthorizationHandler`s because 
 
 ## 7. Required security tests
 See `TESTING.md` §3.3. Minimum: every row of §3 with a ⛔ for a ⚙/✅ neighbour has an integration test proving the 403/404.
+
+---
+
+## 8. Phase 2a: workflow administration (ADR-0014)
+
+Status: **designed** (P2-DOC-01). Endpoints exist as 501 stubs behind their final policy, and are implemented in P2-BE-07.
+
+**Who.** The `workflows.manage` capability comes from the `Administrator` role (`CapabilityRules`). Policy `Policies.ManageWorkflows` guards every `/api/admin/workflows/*` endpoint. Everyone else gets 403 `auth.forbidden`. Like every admin write (§6, #76), each workflow **write** (create draft, edit, discard, publish) first re-checks in the database that the caller is still an active Administrator.
+
+**Single-admin publish (owner decision Q1, #98).** One administrator may edit a draft **and** publish it. No second-admin approval is required, unlike ADR-0012 role changes. The owner accepted the risk that one admin can re-route approvals alone. These limits stay in place:
+- **Administrator is never an assignee.** No rule may resolve to the Administrator role (`workflow.administrator_assignee`), and the domain refuses it as a role queue. A workflow still gives no admin any request visibility or decision authority.
+- **I2 and T3 still apply** to whoever is assigned. A `SpecificUser` step can't be decided by the requester, or by anyone who decided an earlier step.
+- **In-flight requests keep their pinned version.** Publishing changes new requests only (WORKFLOWS §6.2).
+- **Everything is attributable.** The version records `CreatedBy`, `PublishedBy` and `PublishedAt`. The version history (`GET …/versions`) shows every published version and who published it.
+- **Audit log.** Every publish writes one structured log entry, `WorkflowPublished`, with: actor id, workflow id, request type, published version id and number, and retired version id. Draft creation and discarding are logged with the actor id and version id. Step contents (names, condition values) are not logged.
+
+If a two-person control is wanted later, the ADR-0012 pending/approve pattern can be added to publishing without changing the model.
+
+**What admins see.** Workflow endpoints return workflow definitions only: steps, rules and conditions. They never return requests, request counts per step or leave reasons. Previews run on facts the admin types in, not on real requests.
+
+**Restricted details.** `CanReadRestrictedDetails` (§5) is a per-step flag the admin sets. Setting it gives that step's assignees the leave reason on requests pinned to that version. The editor warns when it is switched on (UI_SPEC §7). Turning it on for a step doesn't widen visibility of the request itself: that is still R1–R3.
+
+**Requester route preview.** `POST /api/requests/route-preview` needs `requests.submit` (`Policies.CanSubmit`). It reads only the facts in the body and the Published version, and returns step names. It never reveals who holds a role or any other request.
