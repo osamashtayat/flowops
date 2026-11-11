@@ -42,7 +42,7 @@ public static class NotificationFactory
 
     /// <summary>
     /// Tells the requester what a decision did (WORKFLOWS.md §1.4): rejected (with the decider's reason, which is not the
-    /// leave reason), completed, approved (purchase, before procurement) or one step approved.
+    /// leave reason), completed, approved (every approval granted, only fulfilment left; no process step is named) or one step approved.
     /// </summary>
     public static Notification DecisionOutcome(Request request, DecisionResult result, string deciderName, DateTimeOffset now)
     {
@@ -57,7 +57,7 @@ public static class NotificationFactory
             { Status: RequestStatus.Completed } =>
                 (NotificationType.RequestCompleted, $"{request.Number} is complete", $"{deciderName} completed {what}."),
             { Status: RequestStatus.Approved } =>
-                (NotificationType.RequestApproved, $"{request.Number} was approved", $"{deciderName} approved {what}. Procurement is next."),
+                (NotificationType.RequestApproved, $"{request.Number} was approved", $"{deciderName} approved {what}. It is now waiting to be fulfilled."),
             _ =>
                 (NotificationType.StepApproved, $"{request.Number}: a step was approved", $"{deciderName} approved a step of {what}."),
         };
@@ -94,9 +94,7 @@ public static class NotificationFactory
             requestId: null, taskId: null, now);
     }
 
-    private static string TypeLabel(Request request) => request.Type == RequestType.Leave ? "leave request" : "purchase request";
+    private static string TypeLabel(Request request) => RequestTitle.TypeLabel(request.Type);
 
-    private static string Title(Request request) => request.Leave is { } leave
-        ? RequestTitle.ForLeave(leave.LeaveType, leave.StartDate, leave.EndDate)
-        : RequestTitle.ForPurchase(request.Purchase!.ItemName);
+    private static string Title(Request request) => RequestTitle.For(request.Purchase, request.Leave);
 }

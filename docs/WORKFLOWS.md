@@ -50,7 +50,7 @@ There is no explicit `BeginTransaction`: a single `SaveChangesAsync` is atomic i
 | Task created for user | that user | `TaskAssigned` |
 | Task created for role queue | every active role member except the requester | `TaskAssigned` |
 | An approval step approved, more steps follow | requester | `StepApproved` |
-| Request reaches `Approved` (purchase, before procurement) | requester | `RequestApproved` |
+| Request reaches `Approved` (every approval granted, only the fulfilment step left; for purchase, before procurement) | requester | `RequestApproved` (generic text: "It is now waiting to be fulfilled." It never names the next step, #84) |
 | Request `Completed` | requester | `RequestCompleted` |
 | Request `Rejected` | requester | `RequestRejected` (body includes rejection reason) |
 | Comment added | requester + decided/eligible participants except the author | `CommentAdded` |

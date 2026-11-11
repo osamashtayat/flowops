@@ -62,6 +62,9 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             ("lina", NotificationType.StepApproved),
             ("pete", NotificationType.TaskAssigned),
         }.Order());
+        // WORKFLOWS.md §1.4: the approved text names no process step (#84).
+        (await NotificationsAsync(requestId)).Single(n => n.Type == NotificationType.RequestApproved).Body
+            .ShouldBe("Fiona approved your purchase request: Laptop. It is now waiting to be fulfilled.");
         (await ActivityTypesAsync(requestId)).ShouldBe(
             ["Submitted", "TaskAssigned", "Approved", "TaskAssigned", "Approved", "TaskAssigned", "Fulfilled", "Completed"]);
     }

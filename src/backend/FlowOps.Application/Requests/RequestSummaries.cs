@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
@@ -68,15 +69,22 @@ public static class RequestSummaries
 
         public DateTimeOffset? ClosedAt { get; init; }
 
-        public string Title => ItemName is not null
-            ? RequestTitle.ForPurchase(ItemName)
-            : RequestTitle.ForLeave(LeaveType!.Value, LeaveStart!.Value, LeaveEnd!.Value);
+        // The row holds only the columns lists need (never the leave reason), so it dispatches on Type itself rather
+        // than through RequestTitle.For(details); both switches throw for an unknown type instead of guessing (#84).
+        public string Title => Type switch
+        {
+            RequestType.EquipmentPurchase => RequestTitle.ForPurchase(ItemName!),
+            RequestType.Leave => RequestTitle.ForLeave(LeaveType!.Value, LeaveStart!.Value, LeaveEnd!.Value),
+            _ => throw new UnreachableException($"Unknown request type {Type}."),
+        };
 
         /// <summary>The inbox's one-line detail: <c>"1,250.500 JOD"</c> (the same order as the client's money format, #66) or <c>"3 days · Annual"</c> (API_CONTRACT.md §5).</summary>
-        public string KeyDetail => EstimatedAmount is { } amount
-            ? string.Create(CultureInfo.InvariantCulture, $"{amount:#,0.000} {EstimatedCurrency}")
-            : string.Create(CultureInfo.InvariantCulture,
-                $"{LeaveDays} {(LeaveDays == 1 ? "day" : "days")} · {LeaveType}");
+        public string KeyDetail => Type switch
+        {
+            RequestType.EquipmentPurchase => string.Create(CultureInfo.InvariantCulture, $"{EstimatedAmount!.Value:#,0.000} {EstimatedCurrency}"),
+            RequestType.Leave => string.Create(CultureInfo.InvariantCulture, $"{LeaveDays} {(LeaveDays == 1 ? "day" : "days")} · {LeaveType}"),
+            _ => throw new UnreachableException($"Unknown request type {Type}."),
+        };
 
         private int LeaveDays => LeaveDetails.DaysBetween(LeaveStart!.Value, LeaveEnd!.Value);
 
