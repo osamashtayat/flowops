@@ -36,8 +36,8 @@ flowops/
 ├── src/backend/
 │   ├── FlowOps.Domain/          entities, value objects, process definitions, domain errors
 │   ├── FlowOps.Application/     use-case services, DTOs, access rules, ports (interfaces)
-│   ├── FlowOps.Infrastructure/  EF Core DbContext, migrations, Identity stores, SignalR publisher
-│   └── FlowOps.Api/             controllers, auth config, middleware, hub, Program.cs
+│   ├── FlowOps.Infrastructure/  EF Core DbContext, migrations, Identity stores, SignalR hub + publisher
+│   └── FlowOps.Api/             controllers, auth config, middleware, Program.cs (maps the hub)
 ├── tests/backend/
 │   ├── FlowOps.Domain.Tests/          fast unit tests (no I/O)
 │   └── FlowOps.Api.IntegrationTests/  Testcontainers PostgreSQL + WebApplicationFactory
@@ -83,7 +83,7 @@ An architecture test (`NetArchTest.eNhancedEdition` or a hand-written reflection
 
 ### 4.1 Api (HTTP adapter)
 
-**Contains:** controllers, route/attribute config, authentication & authorization *policy* setup, exception→ProblemDetails mapping, must-change-password middleware, `ICurrentUser` implementation, SignalR hub endpoint, OpenAPI config.
+**Contains:** controllers, route/attribute config, authentication & authorization *policy* setup, exception→ProblemDetails mapping, must-change-password middleware, `ICurrentUser` implementation, OpenAPI config. `Program.cs` (the composition root) maps the SignalR hub endpoint; the hub itself (`NotificationsHub`) lives with the SignalR adapter in Infrastructure (§4.4), next to `SignalRRealtimePublisher` and `HubConnectionRegistry`, so all SignalR types stay in one adapter.
 
 **A controller action does exactly:** bind → (attribute) authorize → call **one** service method → map result to HTTP. Target ≤ 10 lines per action; no `try/catch`; no `DbContext`; no `if` on business state.
 
@@ -105,17 +105,20 @@ Organised **by feature folder**, each with its services, DTOs and validators:
 
 ```
 FlowOps.Application/
-├── Common/        ICurrentUser, IAppDbContext, IRealtimePublisher, AppException types,
-│                  PagedResult<T>, PageRequest, Paging extensions
+├── Common/        ICurrentUser, IAppDbContext, IRealtimePublisher, PostCommitPublisher
+│                  (publishes after commit, failures logged not thrown), AppException types,
+│                  PagedResult<T>, PageRequest, Paging extensions, UserReadModel/UserRef
 ├── Access/        AccessRules, TaskEligibility
 ├── Requests/      RequestSubmissionService, RequestQueryService, RequestCommentService,
-│                  TaskAssigneeResolver, RequestNumberGenerator (port), DTOs
-├── Tasks/         TaskDecisionService, TaskQueryService, DTOs
+│                  RequestDetailsReader, TaskAssigneeResolver,
+│                  IRequestNumberSequence (port), DTOs
+├── Tasks/         TaskDecisionService, TaskQueryService, StalledTaskService, DTOs
 ├── Notifications/ NotificationFactory, NotificationService (read/mark), DTOs
 ├── Organization/  AuthService, CapabilityRules, ManagerRelationship, DepartmentService,
-│                  UserAdministrationService, ManagerAssignmentRules,
+│                  UserAdministrationService, RoleChangeService + RoleChangeReader,
+│                  ManagerAssignmentRules, RoleAssignmentRules,
 │                  IIdentitySignIn + IIdentityAdmin (ports), DTOs
-├── Dashboard/     DashboardQueryService, DTOs
+├── Dashboard/     DashboardService, DTOs
 └── DependencyInjection.cs
 ```
 
@@ -136,7 +139,7 @@ FlowOps.Application/
 
 ### 4.4 Infrastructure (technical adapters)
 
-`AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IAppDbContext`, entity configurations (`IEntityTypeConfiguration<T>` one per aggregate), migrations, `RequestNumberGenerator` (PostgreSQL sequence), `IdentityAdmin` (wraps `UserManager`/`RoleManager`), `IdentitySignIn` (wraps `SignInManager`), `SignalRRealtimePublisher`, bootstrap-admin seeding, the Development-only demo seeder (`--seed-demo`, BE-16).
+`AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IAppDbContext`, entity configurations (`IEntityTypeConfiguration<T>` one per aggregate), migrations, `RequestNumberSequence` (PostgreSQL sequence, implements `IRequestNumberSequence`), `IdentityAdmin` (wraps `UserManager`/`RoleManager`), `IdentitySignIn` (wraps `SignInManager`), the SignalR adapter (`NotificationsHub`, `SignalRRealtimePublisher`, `HubConnectionRegistry`; mapped in `Program.cs`), bootstrap-admin seeding, the Development-only demo seeder (`--seed-demo`, BE-16).
 
 Where does `ApplicationUser` live? In **Domain** (`FlowOps.Domain.Organization`) as a plain class *without* Identity base types would require duplication; pragmatic decision: `ApplicationUser : IdentityUser<Guid>` lives in **Infrastructure**, and Application/Domain refer to users through `Guid` ids and small read models (`UserRef`). `IAppDbContext` exposes `IQueryable<UserReadModel> Users` and `IQueryable<UserRoleReadModel> UserRoles` (LINQ projections over the Identity tables, composable and translated to SQL) for queries. See ADR-0002.
 
@@ -180,7 +183,7 @@ sequenceDiagram
 | Time | `TimeProvider` (BCL) injected | DI |
 | Paging | `PageRequest` + `IQueryable.ToPagedResultAsync()` | `Application/Common/Paging.cs` |
 | Logging | `ILogger<T>` + JSON console formatter; request logging middleware with trace ids | Program.cs |
-| Real-time | `IRealtimePublisher` port | Infrastructure |
+| Real-time | `IRealtimePublisher` port; `PostCommitPublisher` calls it after commit | Port + `PostCommitPublisher`: Application/Common; adapter + hub: `Infrastructure/Realtime/` |
 
 No Serilog in Phase 1: the built-in JSON console logger gives structured logs; add Serilog only with a concrete sink requirement.
 
@@ -202,5 +205,7 @@ src/frontend/src/
 ├── lib/format/       dates, money, status labels
 └── styles/theme.css  Tailwind v4 @theme tokens — the ONLY place colours are defined
 ```
+
+**Import direction.** `app/` → `features/*` → `components/*` and `lib/*`; `components/ui` imports neither features nor layout. Exception by design: `components/layout` is the app shell and is session-aware. It imports `features/session` (`useSession`, `useCapability`, `returnTo`), which is the shared session module that every feature and the shell may use, plus two shell widgets that belong to other features (`features/tasks/api` for the open-task count, `features/notifications/components/NotificationBell`). Features do not import each other (none do today), and `features/session` imports nothing from other features.
 
 Data flow: page → feature hook (`useMyRequests`) → `lib/api/client` → API. Server state lives only in TanStack Query. No global client-state library (Context for session only).
