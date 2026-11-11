@@ -39,6 +39,16 @@ public static class TaskAssigneeResolver
                 "You have no active manager to approve this request. Ask an administrator to assign one.");
     }
 
+    /// <summary>
+    /// The resolver the aggregate takes for submission and decisions alike (#83): RequesterManager steps go to the
+    /// requester's current manager (I12, checked only when such a step is reached), role steps to the role queue.
+    /// </summary>
+    public static Func<ProcessStep, Assignee> ResolverFor(Requester requester)
+    {
+        ArgumentNullException.ThrowIfNull(requester);
+        return step => Resolve(step, step.Assignee.IsRequesterManager ? RequireManager(requester) : Guid.Empty);
+    }
+
     /// <summary>Resolves any step; <paramref name="requesterManagerId"/> is used for RequesterManager steps.</summary>
     public static Assignee Resolve(ProcessStep step, Guid requesterManagerId)
     {

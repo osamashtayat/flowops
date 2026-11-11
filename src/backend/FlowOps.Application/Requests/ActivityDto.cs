@@ -10,4 +10,8 @@ public sealed record ActivityDto(
     UserRef? Actor,
     RequestStage? Stage,
     string? Body,
-    DateTimeOffset OccurredAt);
+    DateTimeOffset OccurredAt)
+{
+    /// <summary>The step the entry is about, or <c>null</c> (comments, completion). Replaces <c>stage</c> (ADR-0014 Q2).</summary>
+    public StepRef? Step { get; init; } = Stage is { } stage ? StepRef.For(stage) : null;
+}

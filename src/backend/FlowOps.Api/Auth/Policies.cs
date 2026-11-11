@@ -9,6 +9,9 @@ public static class Policies
     /// <summary>Administration endpoints (API_CONTRACT.md §8).</summary>
     public const string Admin = nameof(Admin);
 
+    /// <summary>Workflow administration (API_CONTRACT.md §10, ADR-0014 Q1): the <c>workflows.manage</c> capability.</summary>
+    public const string ManageWorkflows = nameof(ManageWorkflows);
+
     /// <summary>Submitting requests needs the Employee role, whatever other roles the user holds.</summary>
     public const string CanSubmit = nameof(CanSubmit);
 

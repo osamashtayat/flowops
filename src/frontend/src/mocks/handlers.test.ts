@@ -74,7 +74,7 @@ describe('mock users follow the capability model', () => {
     ['employee', ['Employee'], ['requests.submit']],
     ['manager', ['Employee'], ['requests.submit', 'tasks.view']],
     ['finance', ['Employee', 'FinanceOfficer'], ['requests.submit', 'tasks.view']],
-    ['admin', ['Administrator'], ['admin.manage']],
+    ['admin', ['Administrator'], ['admin.manage', 'workflows.manage']],
   ]
 
   it.each(expected)('%s has roles %j and capabilities %j', async (key, roles, capabilities) => {

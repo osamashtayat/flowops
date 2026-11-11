@@ -52,7 +52,7 @@ public sealed partial class TaskDecisionService(
         var requester = await TaskAssigneeResolver.LoadRequesterAsync(db, request.RequesterId, ct)
             ?? throw new InvalidOperationException("A request's requester always exists: users are never deleted.");
         var now = time.GetUtcNow();
-        var result = request.DecideTask(taskId, me.UserId, decision, step => ResolveAssignee(step, requester), now);
+        var result = request.DecideTask(taskId, me.UserId, decision, TaskAssigneeResolver.ResolverFor(requester), now);
 
         var notifications = await AddNotificationsAsync(request, result, requester, me.UserId, now, ct);
         await SaveAsync(ct);
@@ -63,10 +63,6 @@ public sealed partial class TaskDecisionService(
         await realtime.RequestChangedAsync(request.Id);
         await realtime.TasksChangedAsync(request, result.NextTask is { } next ? [task, next] : [task], [me.UserId]);
     }
-
-    /// <summary>Phase 1 only assigns the first step to the manager, so a manager lookup here is not expected to fail.</summary>
-    private static Assignee ResolveAssignee(ProcessStep step, TaskAssigneeResolver.Requester requester) =>
-        TaskAssigneeResolver.Resolve(step, step.Assignee.IsRequesterManager ? TaskAssigneeResolver.RequireManager(requester) : Guid.Empty);
 
     /// <summary>WORKFLOWS.md §1.4: whoever may decide the next task, and the requester about the outcome.</summary>
     private async Task<List<Notification>> AddNotificationsAsync(

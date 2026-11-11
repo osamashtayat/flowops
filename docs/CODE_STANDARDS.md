@@ -87,6 +87,9 @@ DRY means every piece of business knowledge has **one** authoritative representa
 | Knowledge | Single home |
 |---|---|
 | Process steps and order | `Domain/Requests/FixedProcesses.cs` |
+| A step's key and name on the wire (until P2-BE-04 stores them) | `Application/Requests/StepRef.cs` |
+| A request's route (done / current / planned steps) | `Application/Requests/RequestRoute.cs` |
+| A request's title and type label | `Application/Requests/RequestTitle.cs` |
 | State transitions & invariants | `Domain/Requests/Request.cs`, `WorkTask.cs` |
 | Error codes | `Domain/Errors/ErrorCodes.cs` (+ `frontend/lib/api/problem.ts` messages) |
 | Who can see a request | `Application/Access/AccessRules.cs` |

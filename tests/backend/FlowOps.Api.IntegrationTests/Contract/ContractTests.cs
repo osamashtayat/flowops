@@ -15,6 +15,8 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
     public static TheoryData<string> Endpoints => [.. ContractEndpoints.All.Select(e => e.ToString())];
 
 
+    public static TheoryData<string> Stubs => [.. ContractEndpoints.All.Where(e => e.Stub is not null).Select(e => e.ToString())];
+
     public static TheoryData<string> Protected => [.. ContractEndpoints.All.Where(e => !e.Anonymous).Select(e => e.ToString())];
 
     [Fact]
@@ -74,6 +76,11 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
     [InlineData("GET /api/users", Roles.Employee)]
     [InlineData("POST /api/users/{id}/reset-password", Roles.FinanceOfficer)]
     [InlineData("GET /api/admin/stalled-tasks", Roles.Employee)]
+    [InlineData("POST /api/requests/route-preview", Roles.Administrator)]
+    [InlineData("GET /api/admin/workflows", Roles.Employee)]
+    [InlineData("GET /api/admin/workflows", Roles.HrOfficer)]
+    [InlineData("PUT /api/admin/workflows/{workflowId}/versions/{versionId}", Roles.FinanceOfficer)]
+    [InlineData("POST /api/admin/workflows/{workflowId}/versions/{versionId}/publish", Roles.Employee)]
     public async Task Endpoint_WithoutRequiredRole_Returns403Problem(string endpoint, string role)
     {
         var e = ContractEndpoints.All.Single(x => x.ToString() == endpoint);
@@ -83,6 +90,23 @@ public sealed class ContractTests(ContractApiFactory factory) : IClassFixture<Co
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await CodeOf(response)).ShouldBe(ErrorCodes.AuthForbidden);
+    }
+
+    /// <summary>
+    /// P2-DOC-01 skeleton: route, policy and input validation are final, the body is not. Each row moves to behaviour
+    /// tests when the named task implements it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Stubs))]
+    public async Task SkeletonEndpoint_WithRequiredRole_Returns501UntilImplemented(string endpoint)
+    {
+        var e = ContractEndpoints.All.Single(x => x.ToString() == endpoint);
+        using var client = factory.ClientWithRoles(e.Roles);
+
+        using var response = await SendAsync(client, e);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotImplemented);
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain(e.Stub!);
     }
 
     [Fact]

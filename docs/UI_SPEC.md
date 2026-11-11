@@ -1,4 +1,4 @@
-# UI Specification — FlowOps Phase 1
+# UI Specification — FlowOps Phase 1 and Phase 2a
 
 **Purpose:** pages, routes, navigation, page composition, forms, interaction states, and role-specific experience.
 Visual rules: `DESIGN_SYSTEM.md`. Data: `API_CONTRACT.md` (every field shown here exists there — do not invent fields).
@@ -25,6 +25,8 @@ Visual rules: `DESIGN_SYSTEM.md`. Data: `API_CONTRACT.md` (every field shown her
 | `/admin/departments` | DepartmentsPage (inline create/edit dialogs) | `admin.manage` | `/departments` |
 | `/admin/role-changes` | RoleChangesPage | `admin.manage` | `GET /admin/role-changes` |
 | `/admin/stalled-tasks` | StalledTasksPage | `admin.manage` | `GET /admin/stalled-tasks` |
+| `/admin/workflows` *(Phase 2a, P2-FE-03)* | WorkflowsPage | `workflows.manage` | `GET /admin/workflows` |
+| `/admin/workflows/:workflowId` *(Phase 2a)* | WorkflowEditorPage (Draft editor + version history) | `workflows.manage` | `GET …/versions`, `GET …/versions/:id`, `POST …/draft`, `PUT …/versions/:id`, `…/validate`, `…/preview`, `…/publish` |
 | `/forbidden` | ForbiddenPage (403) | — | — |
 | `*` | NotFoundPage | — | — |
 
@@ -55,6 +57,7 @@ Filters, search, tab and page live in the **URL query string** so views are shar
 | Inbox (with open count) | `tasks.view` |
 | Team requests | `tasks.view` |
 | Administration ▸ Users / Departments / Role changes / Stalled tasks | `admin.manage` |
+| Administration ▸ Workflows *(Phase 2a)* | `workflows.manage` |
 
 ## 4. Pages
 
@@ -126,3 +129,46 @@ notifications.unread: ['notifications', 'unread']
 admin.users / admin.user(id) / admin.departments / admin.stalled
 ```
 Defaults: `staleTime` 30 s, refetch on window focus, retry 1 for queries (never for 4xx), 0 for mutations; queries pause while the connection is lost and mutations fail at once (`networkMode: 'always'`), see §2.1.
+
+---
+
+## 7. Phase 2a: workflows, route and skipped steps (ADR-0014)
+
+Status: **designed** (P2-DOC-01). Built in P2-FE-01 to P2-FE-03 against the contract in API_CONTRACT §4 and §10. Until the backend lands, MSW mocks are generated from `contracts/openapi.json`, as in Phase 1. Built only from `components/ui` and `components/layout`, with theme tokens only.
+
+### 7.1 Steps instead of stages (P2-FE-01)
+- Everywhere a stage is shown today (lists' Stage column, "Waiting for: …", the inbox, the approval-steps card, timeline sentences, stalled tasks), show `step.name` from the server. A closed request (`step: null`) shows its status only.
+- The frontend has **no step names or keys of its own**. `requestStageLabel` and the stage switches in `lib/format/status.ts`, `features/tasks/decisions.ts` and the mocks go away. Logic that needs the kind of task (Approve/Reject vs Fulfill, "Confirm") uses `kind` and `availableActions`, never a key.
+- The "Confirm" label for HR approval (WORKFLOWS §3.1) becomes plain "Approve". Its only source was the hardcoded `HrConfirmation` stage. The step's name already says "HR confirmation".
+
+### 7.2 Planned route and skipped steps (P2-FE-02)
+- **Request details, "Route" card** (replaces the approval-steps stepper; it keeps its per-task detail). One row per `route` entry, in order:
+  - `Done`: check icon, the task's outcome, decider and time;
+  - `Current`: highlighted with `bg-primary-soft` and `aria-current="step"`, with "Waiting for …";
+  - `Planned`: muted text, "Next" on the first one;
+  - `Skipped`: muted, skip icon, "Skipped", and the condition text from the matching `StepSkipped` activity.
+
+  Screen readers get the state in words ("Finance approval, skipped"), not only by colour or icon.
+- **Timeline.** `StepSkipped` reads "The Finance approval step was skipped", with the condition as the entry's body.
+- **New request forms.** Under the form, "What happens next" shows the route from `POST /api/requests/route-preview`, e.g. "Manager approval → Procurement fulfilment". It updates (debounced 300 ms) when the amount, leave type or dates change and are valid. It is hidden while they are invalid; on error it says "Route preview unavailable", which never blocks submitting. The success toast says "Request FO-… submitted." The "Your manager has been notified" part is dropped, because the first step is the workflow's.
+
+### 7.3 Workflow editor (P2-FE-03)
+- **WorkflowsPage.** A table with one row per request type: name, the Published version's number and "published by … on …", a "Draft in progress" badge when there is one, and an "Edit" link.
+- **WorkflowEditorPage** has two tabs, *Draft* and *History*.
+  - **No draft:** a read-only view of the Published steps and an "Edit workflow" button (`POST …/draft`).
+  - **Draft step list:** one card per step. Each card has:
+    - name (Input) and key (Input, filled from the name until edited; monospace);
+    - kind (Select: Approval / Fulfillment);
+    - "Who approves" (Select of `catalogue.assigneeRules`, then a role, department or user picker as the rule needs; Administrator never offered);
+    - an optional "Only if" row: fact, operator and value Selects from `catalogue`, with a money input for `Money` facts and a multi-select for `IsOneOf`. The first step has no "Only if" row, with the helper text "The first step always runs";
+    - "Can read restricted details" (toggle). Switching it on opens a warning: "People assigned to this step will see leave reasons on requests that use this version."
+    - Move up / Move down buttons (keyboard reordering, WCAG; drag is optional) and Remove.
+
+    Under the list are "Add step", "Save draft" (`PUT`, sends `version`), "Discard draft" (ConfirmDialog) and "Check" (`validate`).
+  - **Issues panel.** Errors (danger) and warnings (warning) from `WorkflowValidationDto`, each linked to its step card (`stepKey`) and field; the cards show the same messages inline. Publish is disabled while errors exist.
+  - **Preview panel.** Sample-fact inputs for the request type (amount; leave type and days), then "Preview", which shows the route like §7.2, skipped steps included.
+  - **Publish.** "Publish version N" opens a ConfirmDialog: "New requests will use version N. Requests already in progress keep the version they started with. This is recorded with your name." On success, a toast and the History tab.
+  - **History tab.** Every version (number, status badge, created by/at, published by/at, retired at). Any version can be opened read-only.
+- **Errors.** 409 `concurrency.conflict` on save or publish: "Someone else changed this draft. Reload to see their changes", with a Reload button (no silent overwrite). 409 `workflow.draft_exists` opens the existing draft. 422 `workflow.invalid` re-runs Check and shows the issues.
+- **States:** skeletons, ErrorState with retry, and EmptyState for a version history of one.
+- **Permissions** come from `workflows.manage` only, never from role names.

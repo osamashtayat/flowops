@@ -140,8 +140,16 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The browser comes from Playwright's CDN. Its OS packages come from the Ubuntu mirrors, which were unreachable
+      # for hours on 2026-11-11 (#106); the runner image already has Chrome's libraries, so those packages (mostly
+      # fonts) are best effort and can't turn the check red before a single test has run.
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
+
+      - name: Install Chromium OS dependencies (best effort, #106)
+        continue-on-error: true
+        timeout-minutes: 4
+        run: npx playwright install-deps chromium
 
       - name: Start the stack (fresh database, demo data)
         run: ./stack.sh up

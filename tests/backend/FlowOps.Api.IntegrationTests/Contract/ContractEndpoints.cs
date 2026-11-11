@@ -1,7 +1,7 @@
 namespace FlowOps.Api.IntegrationTests.Contract;
 
 /// <summary>
-/// Every endpoint of docs/API_CONTRACT.md §3–8, with a body that passes input validation and the
+/// Every endpoint of docs/API_CONTRACT.md §3–8 and §10, with a body that passes input validation and the
 /// roles that satisfy its policy. Kept by hand on purpose: it is the check that code matches the design doc.
 /// </summary>
 internal static class ContractEndpoints
@@ -64,12 +64,33 @@ internal static class ContractEndpoints
         new("POST", "/api/admin/role-changes/{id}/reject", $"/api/admin/role-changes/{Id}/reject", """{"version":"7","reason":"Not now"}""", Admin),
         new("POST", "/api/admin/role-changes/{id}/cancel", $"/api/admin/role-changes/{Id}/cancel", """{"version":"7"}""", Admin),
         new("GET", "/api/admin/stalled-tasks", "/api/admin/stalled-tasks?page=2&pageSize=50", null, Admin),
+
+        // §10 Workflows (ADR-0014): contract skeleton from P2-DOC-01, 501 until implemented.
+        new("POST", "/api/requests/route-preview", "/api/requests/route-preview",
+            """{"type":"EquipmentPurchase","facts":{"amount":{"amount":"1500.000","currency":"JOD"}}}""", Employee) { Stub = "P2-BE-05" },
+        new("GET", "/api/admin/workflows", "/api/admin/workflows", null, Admin) { Stub = "P2-BE-07" },
+        new("GET", "/api/admin/workflows/catalogue", "/api/admin/workflows/catalogue", null, Admin) { Stub = "P2-BE-07" },
+        new("GET", "/api/admin/workflows/{workflowId}/versions", $"/api/admin/workflows/{Id}/versions", null, Admin) { Stub = "P2-BE-07" },
+        new("GET", "/api/admin/workflows/{workflowId}/versions/{versionId}", $"/api/admin/workflows/{Id}/versions/{Id}", null, Admin) { Stub = "P2-BE-07" },
+        new("POST", "/api/admin/workflows/{workflowId}/draft", $"/api/admin/workflows/{Id}/draft", null, Admin) { Stub = "P2-BE-07" },
+        new("PUT", "/api/admin/workflows/{workflowId}/versions/{versionId}", $"/api/admin/workflows/{Id}/versions/{Id}",
+            """{"version":"7","steps":[{"key":"manager-approval","name":"Manager approval","kind":"Approval","assignee":{"kind":"RequesterManager","role":null,"departmentId":null,"userId":null},"condition":null,"canReadRestrictedDetails":false},{"key":"finance-approval","name":"Finance approval","kind":"Approval","assignee":{"kind":"Role","role":"FinanceOfficer","departmentId":null,"userId":null},"condition":{"fact":"amount","operator":"GreaterThan","values":["1000.000"]},"canReadRestrictedDetails":false}]}""",
+            Admin) { Stub = "P2-BE-07" },
+        new("DELETE", "/api/admin/workflows/{workflowId}/versions/{versionId}", $"/api/admin/workflows/{Id}/versions/{Id}?version=7", null, Admin) { Stub = "P2-BE-07" },
+        new("POST", "/api/admin/workflows/{workflowId}/versions/{versionId}/validate", $"/api/admin/workflows/{Id}/versions/{Id}/validate", null, Admin) { Stub = "P2-BE-07" },
+        new("POST", "/api/admin/workflows/{workflowId}/versions/{versionId}/preview", $"/api/admin/workflows/{Id}/versions/{Id}/preview",
+            """{"facts":{"leaveType":"Sick","days":3}}""", Admin) { Stub = "P2-BE-07" },
+        new("POST", "/api/admin/workflows/{workflowId}/versions/{versionId}/publish", $"/api/admin/workflows/{Id}/versions/{Id}/publish",
+            """{"version":"7"}""", Admin) { Stub = "P2-BE-07" },
     ];
 }
 
 internal sealed record ContractEndpoint(string Method, string Template, string Url, string? Body, params string[] Roles)
 {
     public bool Anonymous { get; init; }
+
+    /// <summary>The task that implements a contract-skeleton endpoint, which answers 501 until then.</summary>
+    public string? Stub { get; init; }
 
     public ContractEndpoint(string method, string template, string url, string? body, bool Anonymous)
         : this(method, template, url, body) => this.Anonymous = Anonymous;

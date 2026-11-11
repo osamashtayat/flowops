@@ -341,7 +341,7 @@ namespace FlowOps.Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("ck_request_activities_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
 
-                            t.HasCheckConstraint("ck_request_activities_type", "type IN ('Submitted', 'TaskAssigned', 'Approved', 'Rejected', 'Fulfilled', 'Completed', 'CommentAdded')");
+                            t.HasCheckConstraint("ck_request_activities_type", "type IN ('Submitted', 'TaskAssigned', 'Approved', 'Rejected', 'Fulfilled', 'Completed', 'CommentAdded', 'StepSkipped')");
                         });
                 });
 
