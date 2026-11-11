@@ -5,19 +5,19 @@ import type {
   PagedInboxItems,
   DashboardDto,
   RequestDetailsDto,
-  RequestStage,
   RequestStatus,
   RequestSummaryDto,
   Role,
   SubmitLeaveRequest,
   SubmitPurchaseRequest,
+  StepRef,
   TaskAction,
   UserRef,
   WorkTaskDto,
 } from '@/lib/api/types'
 import { calendarDaysInclusive, formatDateOnly } from '@/lib/format/date'
 import { formatMoney } from '@/lib/format/money'
-import { mockStep, mockTaskStep, withMockRoute } from './steps'
+import { DEPRECATED_STAGE, MOCK_STEPS, mockStepKind, withMockRoute } from './steps'
 import { MOCK_USERS } from './users'
 
 /**
@@ -45,16 +45,16 @@ const FINANCE = userRef(MOCK_USERS.finance)
 
 export function mockTask(init: {
   id: string
-  stage: RequestStage
+  step: StepRef
   createdAt: string
   assignee: WorkTaskDto['assignee']
   decided?: { outcome: 'Approved' | 'Fulfilled'; by: UserRef; at: string; comment?: string | null }
 }): WorkTaskDto {
   return {
     id: init.id,
-    kind: init.stage === 'ProcurementFulfillment' ? 'Fulfillment' : 'Approval',
-    stage: init.stage,
-    step: mockTaskStep(init.stage),
+    kind: mockStepKind(init.step),
+    stage: DEPRECATED_STAGE,
+    step: init.step,
     status: init.decided ? 'Done' : 'Open',
     assignee: init.assignee,
     outcome: init.decided?.outcome ?? null,
@@ -69,10 +69,10 @@ export function mockTask(init: {
 const waitsForManager = (index: number, status: RequestStatus) => status === 'InReview' && index % 8 === 4
 
 function seededTasks(id: string, status: RequestStatus, at: string, atManager: boolean): WorkTaskDto[] {
-  const task = (n: number, stage: RequestStage, assignee: WorkTaskDto['assignee'], decided?: { by: UserRef; comment?: string }) =>
+  const task = (n: number, step: StepRef, assignee: WorkTaskDto['assignee'], decided?: { by: UserRef; comment?: string }) =>
     mockTask({
       id: `${id}-t${n}`,
-      stage,
+      step,
       createdAt: at,
       assignee,
       decided: decided ? { outcome: 'Approved', by: decided.by, at, comment: decided.comment } : undefined,
@@ -81,18 +81,18 @@ function seededTasks(id: string, status: RequestStatus, at: string, atManager: b
   const finance = { user: null, role: 'FinanceOfficer' as Role }
   switch (status) {
     case 'InReview':
-      if (atManager) return [task(1, 'ManagerApproval', manager)]
-      return [task(1, 'ManagerApproval', manager, { by: MANAGER, comment: 'Looks reasonable.' }), task(2, 'FinanceApproval', finance)]
+      if (atManager) return [task(1, MOCK_STEPS.manager, manager)]
+      return [task(1, MOCK_STEPS.manager, manager, { by: MANAGER, comment: 'Looks reasonable.' }), task(2, MOCK_STEPS.finance, finance)]
     case 'Approved':
       return [
-        task(1, 'ManagerApproval', manager, { by: MANAGER }),
-        task(2, 'FinanceApproval', finance, { by: FINANCE }),
-        task(3, 'ProcurementFulfillment', { user: null, role: 'ProcurementOfficer' }),
+        task(1, MOCK_STEPS.manager, manager, { by: MANAGER }),
+        task(2, MOCK_STEPS.finance, finance, { by: FINANCE }),
+        task(3, MOCK_STEPS.procurement, { user: null, role: 'ProcurementOfficer' }),
       ]
     case 'Completed':
-      return [task(1, 'ManagerApproval', manager, { by: MANAGER }), task(2, 'FinanceApproval', finance, { by: FINANCE })]
+      return [task(1, MOCK_STEPS.manager, manager, { by: MANAGER }), task(2, MOCK_STEPS.finance, finance, { by: FINANCE })]
     case 'Rejected':
-      return [{ ...task(1, 'ManagerApproval', manager, { by: MANAGER, comment: 'Not in this quarter’s budget.' }), outcome: 'Rejected' }]
+      return [{ ...task(1, MOCK_STEPS.manager, manager, { by: MANAGER, comment: 'Not in this quarter’s budget.' }), outcome: 'Rejected' }]
     default:
       return status satisfies never
   }
@@ -110,7 +110,7 @@ function buildSeeded(): RequestDetailsDto[] {
       requester: EMPLOYEE,
       department: MOCK_USERS.employee.department ?? { id: '', name: '' },
       status,
-      stage: (status === 'InReview' ? (waitsForManager(index, status) ? 'ManagerApproval' : 'FinanceApproval') : status === 'Approved' ? 'ProcurementFulfillment' : 'Closed') as RequestStage,
+      stage: DEPRECATED_STAGE,
       submittedAt,
       closedAt: status === 'Completed' || status === 'Rejected' ? submittedAt : null,
       tasks: seededTasks(id, status, submittedAt, waitsForManager(index, status)),
@@ -223,7 +223,7 @@ export function listMockInbox(user: CurrentUserDto, query: { status: 'Open' | 'D
         actions: mockEligibleActions(user, request, task),
         taskId: task.id,
         kind: task.kind,
-        stage: task.stage,
+        stage: DEPRECATED_STAGE,
         step: task.step,
         createdAt: task.createdAt,
         version: MOCK_VERSION,
@@ -253,21 +253,21 @@ export function updateMockRequest(next: RequestDetailsDto) {
 }
 
 export function mockActivities(request: RequestDetailsDto): ActivityDto[] {
-  const entry = (id: string, type: ActivityDto['type'], actor: UserRef | null, stage: RequestStage | null, body: string | null, at: string): ActivityDto => ({
+  const entry = (id: string, type: ActivityDto['type'], actor: UserRef | null, step: StepRef | null, body: string | null, at: string): ActivityDto => ({
     id,
     type,
     actor,
-    stage,
-    step: mockStep(stage),
+    stage: null,
+    step,
     body,
     occurredAt: at,
   })
   const items: ActivityDto[] = [entry(`${request.id}-a0`, 'Submitted', request.requester, null, null, request.submittedAt)]
   for (const task of request.tasks) {
-    items.push(entry(`${task.id}-assigned`, 'TaskAssigned', null, task.stage, null, task.createdAt))
+    items.push(entry(`${task.id}-assigned`, 'TaskAssigned', null, task.step, null, task.createdAt))
     if (task.decidedAt && task.decidedBy) {
       const type = task.outcome === 'Rejected' ? 'Rejected' : task.outcome === 'Fulfilled' ? 'Fulfilled' : 'Approved'
-      items.push(entry(`${task.id}-decided`, type, task.decidedBy, task.stage, task.comment, task.decidedAt))
+      items.push(entry(`${task.id}-decided`, type, task.decidedBy, task.step, task.comment, task.decidedAt))
     }
   }
   if (request.status === 'Completed' && request.closedAt) items.push(entry(`${request.id}-done`, 'Completed', null, null, null, request.closedAt))
@@ -307,13 +307,13 @@ function header(user: CurrentUserDto): Header {
     // The caller checks the department before getting here.
     department: user.department ?? { id: '', name: '' },
     status: 'InReview',
-    stage: 'ManagerApproval',
+    stage: DEPRECATED_STAGE,
     submittedAt,
     closedAt: null,
-    tasks: [mockTask({ id: `${identity.id}-t1`, stage: 'ManagerApproval', createdAt: submittedAt, assignee: { user: user.manager, role: null } })],
+    tasks: [mockTask({ id: `${identity.id}-t1`, step: MOCK_STEPS.manager, createdAt: submittedAt, assignee: { user: user.manager, role: null } })],
     availableActions: null,
     canComment: true,
-    step: mockStep('ManagerApproval'),
+    step: MOCK_STEPS.manager,
     route: [],
   }
 }

@@ -10,7 +10,7 @@ import type {
   UserDto,
 } from '@/lib/api/types'
 import type { PagedRoleChanges, RoleChangeAction, RoleChangeDto, RoleChangeStatus } from '@/lib/api/types'
-import { mockTaskStep } from './steps'
+import { DEPRECATED_STAGE, MOCK_STEPS } from './steps'
 import { MOCK_USERS, type MockUserKey } from './users'
 
 /**
@@ -279,8 +279,8 @@ const STALLED: StalledTaskDto[] = [
     requestId: '9b2f0000-0000-4000-8000-0000000000f1',
     requestNumber: 'FO-2026-000201',
     requestType: 'EquipmentPurchase',
-    stage: 'FinanceApproval',
-    step: mockTaskStep('FinanceApproval'),
+    stage: DEPRECATED_STAGE,
+    step: MOCK_STEPS.finance,
     assignee: { user: null, role: 'FinanceOfficer' },
     reason: 'NoEligibleRoleMember',
     openSince: '2026-10-28T09:00:00Z',
@@ -290,8 +290,8 @@ const STALLED: StalledTaskDto[] = [
     requestId: '9b2f0000-0000-4000-8000-0000000000f2',
     requestNumber: 'FO-2026-000202',
     requestType: 'Leave',
-    stage: 'ManagerApproval',
-    step: mockTaskStep('ManagerApproval'),
+    stage: DEPRECATED_STAGE,
+    step: MOCK_STEPS.manager,
     assignee: { user: { id: MOCK_USERS.manager.id, displayName: MOCK_USERS.manager.displayName }, role: null },
     reason: 'AssigneeInactive',
     openSince: '2026-11-01T09:00:00Z',

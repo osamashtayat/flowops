@@ -142,7 +142,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 
 ## Frontend
 
-### P2-FE-01 — Adopt the `step` contract · `Todo`
+### P2-FE-01 — Adopt the `step` contract · `Done` (2026-11-11)
 - **Objective:** replace stage labels and mappings (`lib/format/status.ts`, `features/tasks/decisions.ts`, the mocks) with the server-provided `step.name`, per UI_SPEC §7.1. The types are already generated (P2-DOC-01).
 - **Deps:** P2-DOC-01.
 - **AC:** no hardcoded step names remain in the frontend.

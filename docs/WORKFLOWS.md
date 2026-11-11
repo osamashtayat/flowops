@@ -92,7 +92,7 @@ Vendor integration, payment, accounting, inventory, budget checks, cost threshol
 | 2 | Manager M | approve T1 | InReview / HrConfirmation | T2 Open, role=HrOfficer |
 | 3 | HR H | approve T2 ("confirm") | **Completed** / Closed | — |
 
-"Confirm" is the UI label for approving an `HrConfirmation` task; the API verb is `approve` for all approval tasks (one endpoint, one authorization path — DRY).
+The API verb is `approve` for all approval tasks (one endpoint, one authorization path — DRY), and the UI labels it "Approve" for every approval step. Step names are server-provided and, from Phase 2 on, admin-defined, so the UI has no per-step wording (P2-FE-01).
 
 ### 3.2 Rejection
 Manager or HR rejects with a reason → `Rejected` / `Closed`. Same mechanics as §2.2.
