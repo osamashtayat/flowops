@@ -29,10 +29,10 @@ internal static class TestOrg
         LeaveDetails.Create(new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 12), LeaveType.Annual, "Family visit", T0, Amman);
 
     public static Request SubmitPurchase(Guid? requester = null) =>
-        Request.SubmitPurchase(RequestNumber.Create(2026, 1), requester ?? Requester, DepartmentId, Laptop(), Manager, T0);
+        Request.SubmitPurchase(RequestNumber.Create(2026, 1), requester ?? Requester, DepartmentId, Laptop(), Resolve, T0);
 
     public static Request SubmitLeave() =>
-        Request.SubmitLeave(RequestNumber.Create(2026, 2), Requester, DepartmentId, AnnualLeave(), Manager, T0);
+        Request.SubmitLeave(RequestNumber.Create(2026, 2), Requester, DepartmentId, AnnualLeave(), Resolve, T0);
 
     public static DecisionResult ApproveCurrent(this Request request, Guid actor, DateTimeOffset? at = null) =>
         request.DecideTask(request.OpenTask!.Id, actor, TaskDecision.Approve(null), Resolve, at ?? T0);

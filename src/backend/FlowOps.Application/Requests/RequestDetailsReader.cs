@@ -49,7 +49,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
             row.Id,
             row.Number.Value,
             row.Type,
-            row.Purchase is { } p ? RequestTitle.ForPurchase(p.ItemName) : RequestTitle.ForLeave(row.Leave!.LeaveType, row.Leave.StartDate, row.Leave.EndDate),
+            RequestTitle.For(row.Purchase, row.Leave),
             row.Requester,
             row.Department,
             row.Status,
@@ -61,7 +61,8 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
             [.. row.Tasks.Select(ToDto)],
             TaskEligibility.AvailableActions(row.RequesterId, row.Tasks.Select(t => t.Task.DecidedById), openTask, me),
             // Commenting is open to every participant who can see the request (AUTHORIZATION.md §3), closed or not.
-            CanComment: true);
+            CanComment: true,
+            RequestRoute.For(row.Type, row.Tasks.Select(t => t.Task), row.Status));
     }
 
     private static PurchaseDetailsDto ToDto(PurchaseDetails p) => new(

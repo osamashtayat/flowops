@@ -18,8 +18,8 @@ public sealed class CapabilityTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         { [Roles.Employee, Roles.FinanceOfficer], ["requests.submit", "tasks.view"] },
         { [Roles.Employee, Roles.HrOfficer], ["requests.submit", "tasks.view"] },
         { [Roles.Employee, Roles.ProcurementOfficer], ["requests.submit", "tasks.view"] },
-        { [Roles.Administrator], ["admin.manage"] },
-        { [Roles.Administrator, Roles.Employee], ["requests.submit", "admin.manage"] },
+        { [Roles.Administrator], ["admin.manage", "workflows.manage"] },
+        { [Roles.Administrator, Roles.Employee], ["requests.submit", "admin.manage", "workflows.manage"] },
         { [Roles.FinanceOfficer], ["tasks.view"] },
         { [], [] },
     };

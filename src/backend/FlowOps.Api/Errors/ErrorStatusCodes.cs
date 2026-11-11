@@ -34,6 +34,8 @@ public static class ErrorStatusCodes
         [ErrorCodes.RoleChangeAlreadyPending] = StatusCodes.Status409Conflict,
         [ErrorCodes.RoleChangeNotPending] = StatusCodes.Status409Conflict,
         [ErrorCodes.RoleChangeStale] = StatusCodes.Status409Conflict,
+        [ErrorCodes.WorkflowDraftExists] = StatusCodes.Status409Conflict,
+        [ErrorCodes.WorkflowVersionNotDraft] = StatusCodes.Status409Conflict,
 
         [ErrorCodes.RequestManagerNotAssigned] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RequestDepartmentNotAssigned] = StatusCodes.Status422UnprocessableEntity,
@@ -45,6 +47,7 @@ public static class ErrorStatusCodes
         [ErrorCodes.RoleChangeNoReviewer] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RoleChangeApproverTooNew] = StatusCodes.Status422UnprocessableEntity,
         [ErrorCodes.RoleChangeSelfApproval] = StatusCodes.Status422UnprocessableEntity,
+        [ErrorCodes.WorkflowInvalid] = StatusCodes.Status422UnprocessableEntity,
 
         [ErrorCodes.AuthRateLimited] = StatusCodes.Status429TooManyRequests,
         [ErrorCodes.RequestCommentRateLimited] = StatusCodes.Status429TooManyRequests,

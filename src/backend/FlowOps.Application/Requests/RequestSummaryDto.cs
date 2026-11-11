@@ -14,4 +14,8 @@ public sealed record RequestSummaryDto(
     RequestStatus Status,
     RequestStage Stage,
     DateTimeOffset SubmittedAt,
-    DateTimeOffset? ClosedAt);
+    DateTimeOffset? ClosedAt)
+{
+    /// <summary>The step the request waits at; <c>null</c> once it is closed. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
+    public StepRef? Step { get; init; } = StepRef.For(Stage);
+}

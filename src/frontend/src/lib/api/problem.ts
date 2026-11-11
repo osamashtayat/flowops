@@ -48,6 +48,9 @@ export const PROBLEM_MESSAGES = {
   'role_change.stale':
     "This administrator's roles changed after the request was made. Reject it and ask for a new one.",
   'role_change.not_proposer': 'Only the administrator who asked for this role change can cancel it.',
+  'workflow.draft_exists': 'This workflow already has a draft. Open it to continue editing.',
+  'workflow.version_not_draft': 'Only a draft can be changed. Published and retired versions are read-only.',
+  'workflow.invalid': 'This draft has errors. Fix them before publishing.',
 } as const satisfies Record<string, string>
 
 export type ProblemCode = keyof typeof PROBLEM_MESSAGES

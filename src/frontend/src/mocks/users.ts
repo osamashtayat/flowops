@@ -52,7 +52,7 @@ export const MOCK_USERS: Record<MockUserKey, CurrentUserDto> = {
     department: null,
     manager: null,
     roles: ['Administrator'],
-    capabilities: ['admin.manage'],
+    capabilities: ['admin.manage', 'workflows.manage'],
     mustChangePassword: false,
   },
   newHire: {

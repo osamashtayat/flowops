@@ -47,6 +47,7 @@ public static class AuthorizationSetup
             // Authenticated by default; [AllowAnonymous] only on login and health (security rules).
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
             .AddPolicy(Policies.Admin, p => p.RequireAssertion(c => c.User.HasCapability(Capability.AdminManage)))
+            .AddPolicy(Policies.ManageWorkflows, p => p.RequireAssertion(c => c.User.HasCapability(Capability.WorkflowsManage)))
             .AddPolicy(Policies.CanSubmit, p => p.RequireAssertion(c => c.User.HasCapability(Capability.RequestsSubmit)))
             .AddPolicy(Policies.TasksView, p => p.RequireAssertion(c => c.User.HasCapability(Capability.TasksView)));
 

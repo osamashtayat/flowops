@@ -18,7 +18,7 @@ public static class CapabilityRules
     public static IReadOnlyList<Capability> For(IReadOnlyCollection<string> roles, bool isManager)
     {
         ArgumentNullException.ThrowIfNull(roles);
-        var capabilities = new List<Capability>(3);
+        var capabilities = new List<Capability>(4);
         if (roles.Contains(Roles.Employee))
         {
             capabilities.Add(Capability.RequestsSubmit);
@@ -32,6 +32,8 @@ public static class CapabilityRules
         if (roles.Contains(Roles.Administrator))
         {
             capabilities.Add(Capability.AdminManage);
+            // ADR-0014 Q1: one administrator edits and publishes; no process authority comes with it (AUTHORIZATION.md §2).
+            capabilities.Add(Capability.WorkflowsManage);
         }
 
         return capabilities;

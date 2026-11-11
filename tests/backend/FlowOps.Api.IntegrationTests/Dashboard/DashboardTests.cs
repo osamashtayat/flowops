@@ -267,7 +267,7 @@ public sealed class DashboardTests(FlowOpsApiFactory factory) : DatabaseTest(fac
         items[1].GetProperty("requestNumber").GetString().ShouldStartWith("FO-");
         items[1].GetProperty("openSince").GetDateTimeOffset().ShouldBe(TestClock.Start.AddMinutes(1));
         items[1].EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal).ShouldBe(
-            ["assignee", "openSince", "reason", "requestId", "requestNumber", "requestType", "stage", "taskId"]);
+            ["assignee", "openSince", "reason", "requestId", "requestNumber", "requestType", "stage", "step", "taskId"]);
     }
 
     [Fact]
