@@ -89,6 +89,33 @@ Frontend: `src/test/setup.ts` (jest-dom, MSW server), `renderWithProviders()` (Q
 - StatusBadge renders label + tone for every status value (exhaustive).
 - Token lint (`npm run lint:tokens`) passes — no raw colours.
 
+### 3.7 Phase 2a: configurable workflows (ADR-0014)
+Required for the P2 tasks named. They are part of each task's Definition of Done.
+
+**Domain (unit)**
+- `Condition.IsMetBy`: every operator on both sides of its boundary: `amount` 1000.000 vs 1000.001 for `GreaterThan`/`GreaterThanOrEqual`/`LessThan`/`LessThanOrEqual`/`Equal`; `Is`/`IsOneOf` hit and miss; `days` boundaries. (P2-BE-05)
+- Next step = first later step whose condition holds. Every skipped step appends exactly one `StepSkipped` (actor null, step, condition text), and no task. All later steps skipped → `Completed`. A rejection evaluates no later step. (P2-BE-05)
+- A version whose first step has a condition can't be published; Published/Retired versions can't be edited; Draft → Published → Retired is the only lifecycle. (P2-BE-03, P2-BE-07)
+- `RequestRoute`: Done/Current/Planned for open requests, only Done/Skipped for closed ones; Planned leaves out steps whose condition doesn't hold. (P2-DOC-01 for the Phase 1 form, P2-BE-05 for skips)
+
+**Integration**
+- Seed equivalence: Published v1 for purchase and leave has the same steps, kinds and assignees as `FixedProcesses`. All Phase 1 integration and E2E tests pass unchanged. The backfill migration on a database with requests in every state. Exactly one Published version per type (index). (P2-BE-03)
+- `stage` → `step` migration keeps history readable; the OpenAPI drift check is green. (P2-BE-04)
+- Owner's rule end to end: purchases of 400.000, 1000.000 and 1500.000 JOD under "Finance only if amount > 1000"; I5, I11 and T3 unchanged. (P2-BE-05)
+- **Version pinning:** a request submitted under v1 finishes on v1's steps after v2 is published. (P2-BE-05, P2-BE-07)
+- Assignee rules: each resolves; inactive or missing targets show as stalled with the right reason; Administrator is never assignable. (P2-BE-06)
+- Leave-reason matrix (§3.3) re-run with the `CanReadRestrictedDetails` flag gives the Phase 1 results for v1. With the flag removed in a new version, HR no longer reads reasons on requests pinned to it. (P2-BE-06)
+- Workflow API permission matrix: anonymous 401; Employee, every officer and a manager 403; Administrator allowed. Every write re-checks that the caller is an active admin (a just-demoted admin gets 403). (P2-BE-07; until then the contract tests assert 501 behind the right policy)
+- Every validation error code, and the warning. Publish with errors → 422 `workflow.invalid` and no change. Publish retires the previous version, sets `publishedBy`/`publishedAt` and writes the `WorkflowPublished` log entry (asserted with a test logger). Two concurrent publishes: one 200, one 409. Stale draft `version` → 409. (P2-BE-07)
+- `POST /api/requests/route-preview`: needs `requests.submit`, reads only the facts of `type`, saves nothing. (P2-BE-05)
+
+**Frontend**
+- Steps render from `step.name` only; no stage literal remains (`grep` check in the task). (P2-FE-01)
+- Route card for both branches; Skipped and Current states announced in words; timeline `StepSkipped` sentence. (P2-FE-02)
+- Editor: add, edit, reorder (keyboard), remove; restricted-details warning; server issues shown on the right step; publish confirmation and success; 409 on a stale draft; no Administrator option in "Who approves". (P2-FE-03)
+
+**E2E** (P2-QA-02): an admin adds "Finance only if amount > 1000" and publishes it. A 400 JOD purchase skips Finance and a 1,500 JOD one goes through it. A request already in progress keeps its old route.
+
 ## 4. Commands
 
 ```bash

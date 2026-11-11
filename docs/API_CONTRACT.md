@@ -1,7 +1,9 @@
-# API Contract — FlowOps Phase 1
+# API Contract — FlowOps Phase 1 and Phase 2a
 
 **Purpose:** the authoritative HTTP + SignalR contract between backend and frontend.
-**Status:** v1 design. Once task BE-03 lands, `contracts/openapi.json` (generated from code) becomes the *executable* contract; this document stays the *design* contract. They must agree — see §8 for the change process.
+**Status:** v1 design. Once task BE-03 lands, `contracts/openapi.json` (generated from code) becomes the *executable* contract; this document stays the *design* contract. They must agree — see §11 for the change process.
+
+**Phase 2a (ADR-0014), published by P2-DOC-01.** Additive so far: `step` next to `stage` everywhere, `route` on request details, `StepSkipped`, the `workflows.manage` capability and the §10 endpoints (501 until implemented; the task is named in the 501 `detail`). `stage` and `RequestStage` are **deprecated**: clients move to `step` (P2-FE-01), then P2-BE-04 removes them (§11 rule 2, additive first).
 
 Conventions: JSON camelCase; enums as strings; ids are UUID strings; timestamps ISO-8601 UTC (`2026-11-05T07:43:00Z`); dates `yyyy-MM-dd`; money `{ "amount": "1250.500", "currency": "JOD" }` with amount as a **string** (avoids JS float rounding).
 
@@ -27,7 +29,13 @@ type WorkTaskStatus  = "Open" | "Done";
 type WorkTaskOutcome = "Approved" | "Rejected" | "Fulfilled";
 type LeaveType     = "Annual" | "Sick" | "Unpaid" | "Other";
 type Role          = "Administrator" | "Employee" | "FinanceOfficer" | "HrOfficer" | "ProcurementOfficer";
-type Capability    = "requests.submit" | "tasks.view" | "admin.manage";
+type Capability    = "requests.submit" | "tasks.view" | "admin.manage" | "workflows.manage";
+
+// Phase 2a (ADR-0014 Q2). Replaces RequestStage. `key` is stable within a workflow version
+// (v1 keys: manager-approval, finance-approval, hr-confirmation, procurement-fulfillment);
+// `name` is what users see. Clients never branch on keys or names: they display `name`.
+type StepRef = { key: string; name: string };
+// Deprecated with `stage` (removed in P2-BE-04). "Closed" is a status concern; its `step` is null.
 ```
 
 `version` fields are **opaque strings** (the server serialises PostgreSQL `xmin`). Clients echo them back unchanged; they never parse or compare them.
@@ -52,8 +60,8 @@ Validation (400) adds `errors: { "fieldName": ["message"] }` with camelCase fiel
 | 401 | No/expired session | `auth.unauthenticated` |
 | 403 | Authenticated but not permitted | `auth.forbidden`, `auth.password_change_required`, `task.not_eligible`, `task.self_decision`, `task.already_participated`, `role_change.not_proposer` |
 | 404 | Not found **or not visible** to caller | `not_found` |
-| 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email`, `role_change.already_pending`, `role_change.not_pending`, `role_change.stale` |
-| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `user.admin_role_on_create_only`, `department.inactive`, `role_change.no_reviewer`, `role_change.approver_too_new`, `role_change.self_approval` |
+| 409 | State conflict | `task.already_decided`, `task.not_current`, `task.invalid_action`, `request.closed`, `concurrency.conflict`, `department.duplicate`, `user.duplicate_email`, `role_change.already_pending`, `role_change.not_pending`, `role_change.stale`, `workflow.draft_exists`, `workflow.version_not_draft` |
+| 422 | Valid input, violates business precondition | `request.manager_not_assigned`, `request.department_not_assigned`, `user.manager_cycle`, `user.last_admin`, `user.self_administration`, `user.admin_role_on_create_only`, `department.inactive`, `role_change.no_reviewer`, `role_change.approver_too_new`, `role_change.self_approval`, `workflow.invalid` |
 | 429 | Too many attempts; sends `Retry-After` (seconds). Login: per address or email. Comments: per user (#37) | `auth.rate_limited`, `request.comment_rate_limited` |
 | 500 | Unhandled | `server.error` (no internals in `detail`) |
 
@@ -131,8 +139,9 @@ type RequestSummaryDto = {
   id: string; number: string; type: RequestType;
   title: string;                 // purchase: itemName; leave: "Annual leave · 12–14 Nov"
   requester: UserRef; department: { id: string; name: string };
-  status: RequestStatus; stage: RequestStage;
+  status: RequestStatus; stage: RequestStage;   // stage: deprecated, use step
   submittedAt: string; closedAt: string | null;
+  step: StepRef | null;          // the step the request waits at; null once closed
 };
 ```
 
@@ -146,9 +155,12 @@ type RequestDetailsDto = RequestSummaryDto & {
   tasks: WorkTaskDto[];           // chronological
   availableActions: { taskId: string; actions: ("approve"|"reject"|"fulfill")[]; version: string } | null;
   canComment: boolean;
+  route: RouteStepDto[];          // Phase 2a: see "Route" below
 };
+type RouteStepState = "Done" | "Skipped" | "Current" | "Planned";
+type RouteStepDto = { step: StepRef; kind: WorkTaskKind; state: RouteStepState };
 type WorkTaskDto = {
-  id: string; kind: WorkTaskKind; stage: RequestStage; status: WorkTaskStatus;
+  id: string; kind: WorkTaskKind; stage: RequestStage /* deprecated */; step: StepRef; status: WorkTaskStatus;
   assignee: { user: UserRef | null; role: Role | null };   // exactly one is non-null
   outcome: WorkTaskOutcome | null; decidedBy: UserRef | null; decidedAt: string | null;
   comment: string | null; createdAt: string;
@@ -156,12 +168,29 @@ type WorkTaskDto = {
 ```
 `availableActions` is computed by the server with the same `TaskEligibility` used for decisions; the UI renders buttons from it and does not re-derive permissions.
 
+**Route (Phase 2a, ADR-0014 Q5).** `route` lists, in order:
+- the steps the request went through, each `Done` (its task was decided, with the outcome on the task) or `Skipped` (its condition was false; from P2-BE-05);
+- the current step, `Current`;
+- the remaining steps that will run for this request's facts, `Planned`.
+
+A closed request has only `Done`/`Skipped` entries. Until P2-BE-05, `route` comes from `FixedProcesses` and never contains `Skipped`.
+
 ### `GET /api/requests/{id}/activity` — auth + visibility
 → 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments). Over 500 entries, the **most recent 500** are returned, still oldest first, so the latest decisions always show (#37).
 ```ts
-type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded";
-  actor: UserRef | null; stage: RequestStage | null; body: string | null; occurredAt: string };
+type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded"|"StepSkipped";
+  actor: UserRef | null; stage: RequestStage | null /* deprecated */; step: StepRef | null; body: string | null; occurredAt: string };
 ```
+`StepSkipped` (Phase 2a, appended from P2-BE-05): `actor` is null, `step` is the skipped step, and `body` is its condition in words (e.g. "Only if amount is greater than 1,000.000 JOD").
+
+### `POST /api/requests/route-preview` — policy `CanSubmit` (Phase 2a; 501 until P2-BE-05)
+The route a request with these facts would take under the Published workflow of `type` (ADR-0014 Q5). The submit form uses it to show "Manager approval → Procurement fulfilment" before the requester submits.
+```ts
+type RouteFactsInput = { amount?: Money | null; leaveType?: LeaveType | null; days?: number | null };  // days 1–90
+type RoutePreviewRequest = { type: RequestType; facts: RouteFactsInput };   // only the facts of `type` are read
+type RoutePreviewDto = { steps: RouteStepDto[] };                           // every step in order; state "Planned" or "Skipped"
+```
+→ 200 `RoutePreviewDto` · 400 (missing `type` or `facts`, or a fact of `type` missing or invalid: `errors.facts.amount`, …) · 403 `auth.forbidden`. Nothing is saved.
 
 ### `POST /api/requests/{id}/comments` — auth + visibility
 Body `{ body: string }` (1–2000). → 201 `ActivityDto` · 400 · 404 · 429 `request.comment_rate_limited` (more than 10 comments per minute by the same user, configurable under `FlowOps:CommentRateLimit`; `Retry-After` sent; nothing saved).
@@ -192,7 +221,7 @@ Query: `status=Open|Done` (default `Open`), `page`, `pageSize`.
 → 200 `Paged<InboxItemDto>`
 ```ts
 type InboxItemDto = {
-  taskId: string; kind: WorkTaskKind; stage: RequestStage; createdAt: string; version: string;
+  taskId: string; kind: WorkTaskKind; stage: RequestStage /* deprecated */; step: StepRef; createdAt: string; version: string;
   status: WorkTaskStatus; outcome: WorkTaskOutcome | null; decidedAt: string | null;
   actions: ("approve"|"reject"|"fulfill")[];       // what the caller may do now; same source as `availableActions.actions`; [] for Done items
   request: RequestSummaryDto & { keyDetail: string };   // "1,250.500 JOD" or "3 days · Annual"
@@ -338,7 +367,7 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
-`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
+`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage /* deprecated */; step: StepRef; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
 No request details (privacy): admins see metadata only. The fields and the inference they allow are accepted in AUTHORIZATION.md §3 (#58).
 
 As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.
@@ -374,7 +403,74 @@ As built (BE-14):
 
 ---
 
-## 10. Changing this contract
+## 10. Workflows (Phase 2a) — policy `ManageWorkflows`
+
+ADR-0014. Designed in P2-DOC-01; **every endpoint answers 501 until P2-BE-07** (the 501 `detail` names the task). Rules are in DOMAIN_MODEL §7, WORKFLOWS §6 and AUTHORIZATION §8. Every write re-checks in the database that the caller is an active Administrator (403 `auth.forbidden` otherwise, as §8).
+
+| Method & path | Body | Success | Errors |
+|---|---|---|---|
+| `GET /api/admin/workflows` | — | 200 `WorkflowSummaryDto[]` (one per request type) | |
+| `GET /api/admin/workflows/catalogue` | — | 200 `WorkflowCatalogueDto` | |
+| `GET /api/admin/workflows/{workflowId}/versions` | — | 200 `WorkflowVersionSummaryDto[]`, newest first | 404 |
+| `GET /api/admin/workflows/{workflowId}/versions/{versionId}` | — | 200 `WorkflowVersionDto` | 404 |
+| `POST /api/admin/workflows/{workflowId}/draft` | — | 201 `WorkflowVersionDto` (a Draft copied from the Published version) + `Location` | 404, 409 `workflow.draft_exists` |
+| `PUT /api/admin/workflows/{workflowId}/versions/{versionId}` | `UpdateWorkflowDraftRequest` | 200 `WorkflowVersionDto` | 400, 404, 409 `concurrency.conflict` / `workflow.version_not_draft` |
+| `DELETE /api/admin/workflows/{workflowId}/versions/{versionId}?version=` | — | 204 (Draft discarded) | 400, 404, 409 `concurrency.conflict` / `workflow.version_not_draft` |
+| `POST /api/admin/workflows/{workflowId}/versions/{versionId}/validate` | — | 200 `WorkflowValidationDto` | 404 |
+| `POST /api/admin/workflows/{workflowId}/versions/{versionId}/preview` | `{ facts: RouteFactsInput }` | 200 `RoutePreviewDto` | 400, 404 |
+| `POST /api/admin/workflows/{workflowId}/versions/{versionId}/publish` | `{ version: string }` | 200 `WorkflowVersionDto` (now Published; the previous one Retired) | 400, 404, 409 `concurrency.conflict` / `workflow.version_not_draft`, 422 `workflow.invalid` |
+
+Any version can be read and previewed. Only a Draft can be changed.
+
+```ts
+type WorkflowVersionStatus = "Draft" | "Published" | "Retired";
+type WorkflowSummaryDto = { id: string; requestType: RequestType; name: string;
+  published: WorkflowVersionSummaryDto | null; draft: WorkflowVersionSummaryDto | null };
+type WorkflowVersionSummaryDto = { id: string; number: number; status: WorkflowVersionStatus;
+  createdAt: string; createdBy: UserRef; publishedAt: string | null; publishedBy: UserRef | null; retiredAt: string | null };
+type WorkflowVersionDto = { id: string; workflowId: string; requestType: RequestType; number: number;
+  status: WorkflowVersionStatus; steps: WorkflowStepDto[];
+  createdAt: string; createdBy: UserRef; publishedAt: string | null; publishedBy: UserRef | null; retiredAt: string | null;
+  version: string };                                     // opaque, echo it on PUT / DELETE / publish
+
+type WorkflowStepDto = { key: string; name: string; kind: WorkTaskKind; assignee: AssigneeRuleDto;
+  condition: ConditionDto | null; canReadRestrictedDetails: boolean };
+type AssigneeRuleKind = "RequesterManager" | "Role" | "DepartmentRole" | "SpecificUser" | "ManagerOfManager";
+type AssigneeRuleDto = { kind: AssigneeRuleKind;
+  role: Role | null;           // Role, DepartmentRole; never "Administrator"
+  departmentId: string | null; // DepartmentRole
+  userId: string | null };     // SpecificUser
+type FactKey = "amount" | "leaveType" | "days";
+type ConditionOperator = "GreaterThan" | "GreaterThanOrEqual" | "LessThan" | "LessThanOrEqual" | "Equal"
+  | "Is" | "IsOneOf" | "Before" | "After";
+type ConditionDto = { fact: FactKey; operator: ConditionOperator;
+  values: string[] };          // one value, or ≥ 1 for IsOneOf. Money "1000.000" (JOD), number "5", enum name, date yyyy-MM-dd
+
+type UpdateWorkflowDraftRequest = { version: string; steps: WorkflowStepInput[] };   // 1–20 steps; replaces them all
+type WorkflowStepInput = { key: string;   // 1–40, ^[a-z0-9]+(-[a-z0-9]+)*$
+  name: string;                           // 1–80
+  kind: WorkTaskKind; assignee: AssigneeRuleDto; condition?: ConditionDto | null; canReadRestrictedDetails?: boolean };
+
+type WorkflowCatalogueDto = { requestTypes: { requestType: RequestType; facts: FactDto[] }[]; assigneeRules: AssigneeRuleKind[] };
+type FactValueType = "Money" | "Number" | "Enum" | "Date";
+type FactDto = { key: FactKey; label: string; valueType: FactValueType; operators: ConditionOperator[];
+  options: string[] };          // allowed values of an Enum fact (e.g. leave types), otherwise []
+
+type WorkflowValidationDto = { errors: WorkflowIssueDto[]; warnings: WorkflowIssueDto[] };
+type WorkflowIssueCode = "workflow.no_steps" | "workflow.first_step_conditional" | "workflow.duplicate_key"
+  | "workflow.unknown_fact" | "workflow.operator_not_allowed" | "workflow.invalid_value"
+  | "workflow.administrator_assignee" | "workflow.invalid_assignee" | "workflow.fulfillment_not_last"
+  | "workflow.assignee_unavailable";   // the only warning code
+type WorkflowIssueDto = { code: WorkflowIssueCode; message: string; stepKey: string | null; field: string | null };
+```
+
+- **Edit vs validate.** `PUT` rejects only shape errors with 400 (missing fields, a bad key format, too many steps). Rule problems (the issue codes above) are saved, so an admin can keep a half-finished draft. `validate` and `publish` report them.
+- **Publish** re-runs validation. With any error it answers 422 `workflow.invalid` and changes nothing; the client calls `validate` to show the issues. Warnings never block. On success, the previous Published version becomes Retired in the same transaction, and `publishedBy`/`publishedAt` are set and audit-logged (AUTHORIZATION §8).
+- **Concurrency.** `version` works like decisions' `version`. Two admins editing or publishing the same draft: one wins, the other gets 409 `concurrency.conflict`.
+- **No effect on requests in flight.** A request keeps the version it was submitted under (WORKFLOWS §6.2).
+- **Notifications and realtime.** None in Phase 2a. Other admins see the change on refetch.
+
+## 11. Changing this contract
 
 1. The agent who needs the change edits this file **and** the DTO/controller in the same PR, regenerates `contracts/openapi.json` (`./scripts/export-openapi.sh`, created in BE-03), and regenerates frontend types (`npm run api:types` in `src/frontend`).
 2. Breaking changes (rename/remove field, change type, new required input) require noting it in the PR description under **Contract change** and updating every frontend usage in the same PR, or splitting into additive-then-remove PRs.

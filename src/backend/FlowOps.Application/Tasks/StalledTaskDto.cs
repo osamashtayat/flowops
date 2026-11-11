@@ -12,7 +12,11 @@ public sealed record StalledTaskDto(
     RequestStage Stage,
     TaskAssigneeDto Assignee,
     StalledTaskReason Reason,
-    DateTimeOffset OpenSince);
+    DateTimeOffset OpenSince)
+{
+    /// <summary>The step of the stalled task. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
+    public StepRef Step { get; init; } = StepRef.ForTask(Stage);
+}
 
 public enum StalledTaskReason
 {

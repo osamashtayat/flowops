@@ -6,7 +6,7 @@ import { requestStageLabel } from './status'
  * Exhaustive over the contract's ActivityType, so a new type cannot ship without a sentence.
  * The comment text itself (`body`) is shown separately by the timeline, never part of this sentence.
  */
-export function activityAction(entry: Pick<ActivityDto, 'type' | 'stage'>): string {
+export function activityAction(entry: Pick<ActivityDto, 'type' | 'stage' | 'step'>): string {
   const step = entry.stage ? ` the ${requestStageLabel(entry.stage)} step` : ''
   switch (entry.type) {
     case 'Submitted':
@@ -23,6 +23,9 @@ export function activityAction(entry: Pick<ActivityDto, 'type' | 'stage'>): stri
       return 'The request was completed'
     case 'CommentAdded':
       return 'commented'
+    case 'StepSkipped':
+      // Only the server-provided step name: skipped steps are admin-defined (ADR-0014), so there is no stage label.
+      return `The ${entry.step?.name ?? 'next'} step was skipped`
     default:
       return entry.type satisfies never
   }

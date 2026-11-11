@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { Check, CircleCheck, CircleX, Clock, MessageSquare, Send, type LucideIcon } from 'lucide-react'
+import { Check, CircleCheck, CircleX, Clock, MessageSquare, Send, SkipForward, type LucideIcon } from 'lucide-react'
 import type { ActivityDto, ActivityType } from '@/lib/api/types'
 import { activityAction } from '@/lib/format/activity'
 import { formatDateTime, formatRelative } from '@/lib/format/date'
@@ -12,6 +12,7 @@ const ICONS: Record<ActivityType, { icon: LucideIcon; tone: string }> = {
   Fulfilled: { icon: CircleCheck, tone: 'text-success' },
   Completed: { icon: CircleCheck, tone: 'text-success' },
   CommentAdded: { icon: MessageSquare, tone: 'text-ink-muted' },
+  StepSkipped: { icon: SkipForward, tone: 'text-ink-muted' },
 }
 
 /** An activity entry; the dashboard's carry the request they belong to, which then becomes a link. */

@@ -24,7 +24,12 @@ public sealed record RequestDetailsDto(
     LeaveDetailsDto? Leave,
     IReadOnlyList<WorkTaskDto> Tasks,
     AvailableActionsDto? AvailableActions,
-    bool CanComment);
+    bool CanComment,
+    IReadOnlyList<RouteStepDto> Route)
+{
+    /// <summary>The step the request waits at; <c>null</c> once it is closed. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
+    public StepRef? Step { get; init; } = StepRef.For(Stage);
+}
 
 public sealed record PurchaseDetailsDto(string ItemName, string Description, MoneyDto EstimatedCost, string Justification);
 
@@ -41,7 +46,32 @@ public sealed record WorkTaskDto(
     UserRef? DecidedBy,
     DateTimeOffset? DecidedAt,
     string? Comment,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt)
+{
+    /// <summary>The step this task decides. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
+    public StepRef Step { get; init; } = StepRef.ForTask(Stage);
+}
 
 /// <summary>Exactly one of <see cref="User"/> and <see cref="Role"/> is set.</summary>
 public sealed record TaskAssigneeDto(UserRef? User, Role? Role);
+
+/// <summary>
+/// One step of the request's route (ADR-0014 Q5): the steps it went through or skipped, the current one, then the steps
+/// still planned for it. A closed request has no <see cref="RouteStepState.Planned"/> or <see cref="RouteStepState.Current"/> steps.
+/// </summary>
+public sealed record RouteStepDto(StepRef Step, WorkTaskKind Kind, RouteStepState State);
+
+public enum RouteStepState
+{
+    /// <summary>A task of this step was decided (approved, rejected or fulfilled; the outcome is on the task).</summary>
+    Done,
+
+    /// <summary>Its condition was false, so no task was created (a <c>StepSkipped</c> activity says why). From P2-BE-05.</summary>
+    Skipped,
+
+    /// <summary>The open task's step.</summary>
+    Current,
+
+    /// <summary>Will run after the current step, given the request's facts and its pinned workflow version.</summary>
+    Planned,
+}

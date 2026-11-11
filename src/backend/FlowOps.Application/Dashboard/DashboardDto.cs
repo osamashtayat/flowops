@@ -26,7 +26,11 @@ public sealed record DashboardActivityDto(
     string? Body,
     DateTimeOffset OccurredAt,
     Guid RequestId,
-    string RequestNumber);
+    string RequestNumber)
+{
+    /// <summary>As <see cref="ActivityDto.Step"/>.</summary>
+    public StepRef? Step { get; init; } = Stage is { } stage ? StepRef.For(stage) : null;
+}
 
 /// <summary>Present only with the <c>admin.manage</c> capability.</summary>
 public sealed record AdminSummaryDto(int ActiveUsers, int Departments, int StalledTasks);

@@ -17,6 +17,7 @@ import type {
 } from '@/lib/api/types'
 import { calendarDaysInclusive, formatDateOnly } from '@/lib/format/date'
 import { formatMoney } from '@/lib/format/money'
+import { mockStep, mockTaskStep, withMockRoute } from './steps'
 import { MOCK_USERS } from './users'
 
 /**
@@ -53,6 +54,7 @@ export function mockTask(init: {
     id: init.id,
     kind: init.stage === 'ProcurementFulfillment' ? 'Fulfillment' : 'Approval',
     stage: init.stage,
+    step: mockTaskStep(init.stage),
     status: init.decided ? 'Done' : 'Open',
     assignee: init.assignee,
     outcome: init.decided?.outcome ?? null,
@@ -114,6 +116,8 @@ function buildSeeded(): RequestDetailsDto[] {
       tasks: seededTasks(id, status, submittedAt, waitsForManager(index, status)),
       availableActions: null,
       canComment: true,
+      step: null,
+      route: [],
     }
     return index % 3 !== 2
       ? {
@@ -140,7 +144,7 @@ function buildSeeded(): RequestDetailsDto[] {
 
 export function mockRequests(): readonly RequestDetailsDto[] {
   seeded = seeded.length > 0 ? seeded : buildSeeded()
-  return [...created, ...seeded]
+  return [...created, ...seeded].map(withMockRoute)
 }
 
 export interface MockRequestQuery {
@@ -153,7 +157,7 @@ export interface MockRequestQuery {
 }
 
 function toSummary(request: RequestDetailsDto): RequestSummaryDto {
-  const { purchase: _purchase, leave: _leave, tasks: _tasks, availableActions: _actions, canComment: _comment, ...summary } = request
+  const { purchase: _purchase, leave: _leave, tasks: _tasks, availableActions: _actions, canComment: _comment, route: _route, ...summary } = request
   return summary
 }
 
@@ -220,6 +224,7 @@ export function listMockInbox(user: CurrentUserDto, query: { status: 'Open' | 'D
         taskId: task.id,
         kind: task.kind,
         stage: task.stage,
+        step: task.step,
         createdAt: task.createdAt,
         version: MOCK_VERSION,
         status: task.status,
@@ -253,6 +258,7 @@ export function mockActivities(request: RequestDetailsDto): ActivityDto[] {
     type,
     actor,
     stage,
+    step: mockStep(stage),
     body,
     occurredAt: at,
   })
@@ -274,6 +280,7 @@ export function addMockComment(user: CurrentUserDto, request: RequestDetailsDto,
     type: 'CommentAdded',
     actor: userRef(user),
     stage: null,
+    step: null,
     body,
     occurredAt: new Date().toISOString(),
   }
@@ -306,6 +313,8 @@ function header(user: CurrentUserDto): Header {
     tasks: [mockTask({ id: `${identity.id}-t1`, stage: 'ManagerApproval', createdAt: submittedAt, assignee: { user: user.manager, role: null } })],
     availableActions: null,
     canComment: true,
+    step: mockStep('ManagerApproval'),
+    route: [],
   }
 }
 
