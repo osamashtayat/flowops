@@ -192,12 +192,12 @@ Full spec in `UI_SPEC.md`; rules in `.claude/rules/frontend.md`.
 
 ```
 src/frontend/src/
-├── app/              App.tsx, providers.tsx, router.tsx, route guards
+├── app/              App.tsx, providers.tsx, router.tsx, route guards (pages other than the dashboard are lazy route chunks, #101)
 ├── components/ui/    design-system primitives (Button, StatusBadge, Dialog, …)
 ├── components/layout/AppShell, Sidebar, TopBar, PageHeader
 ├── features/<name>/  api.ts (query keys + hooks), components/, pages/, schemas.ts
 ├── lib/api/          client.ts (openapi-fetch + XSRF), schema.d.ts (generated), problem.ts
-├── lib/realtime/     SignalR connection → query invalidation
+├── lib/realtime/     SignalR connection → query invalidation (SignalR loaded on demand)
 ├── lib/connectivity/ connection lost/back (drives TanStack's onlineManager; ConnectionBanner reads it)
 ├── lib/format/       dates, money, status labels
 └── styles/theme.css  Tailwind v4 @theme tokens — the ONLY place colours are defined
