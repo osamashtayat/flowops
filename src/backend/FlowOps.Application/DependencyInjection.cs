@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IProcessDefinitionSource, ProcessDefinitionSource>();
         services.AddScoped<RequestDetailsReader>();
         services.AddScoped<RequestSubmissionService>();
+        services.AddScoped<RoutePreviewService>();
         services.AddScoped<RequestQueryService>();
         services.AddScoped<RequestCommentService>();
         services.AddScoped<NotificationService>();

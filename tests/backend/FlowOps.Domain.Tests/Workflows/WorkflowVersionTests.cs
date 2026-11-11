@@ -137,16 +137,28 @@ public sealed class WorkflowVersionTests
             ErrorCodes.Validation);
 
     [Fact]
-    public void StepAfter_WalksVersionOrder()
+    public void NextAfter_WithoutConditions_WalksVersionOrder()
     {
-        PurchaseWorkflow.StepAfter("manager-approval")!.Key.ShouldBe("finance-approval");
-        PurchaseWorkflow.StepAfter("procurement-fulfillment").ShouldBeNull();
-        LeaveWorkflow.StepAfter("hr-confirmation").ShouldBeNull();
+        var facts = new RequestFacts(null, null, null);
+
+        PurchaseWorkflow.NextAfter("manager-approval", facts).Next!.Key.ShouldBe("finance-approval");
+        PurchaseWorkflow.NextAfter("procurement-fulfillment", facts).Next.ShouldBeNull();
+        LeaveWorkflow.NextAfter("hr-confirmation", facts).Next.ShouldBeNull();
+        PurchaseWorkflow.NextAfter("manager-approval", facts).Skipped.ShouldBeEmpty();
     }
 
     [Fact]
-    public void StepAfter_AKeyNotInTheVersion_Throws() =>
-        Should.Throw<ArgumentException>(() => LeaveWorkflow.StepAfter("finance-approval"));
+    public void NextAfter_AKeyNotInTheVersion_Throws() =>
+        Should.Throw<ArgumentException>(() => LeaveWorkflow.NextAfter("finance-approval", new RequestFacts(null, null, null)));
+
+    [Fact]
+    public void Publish_WithAConditionOnTheFirstStep_ThrowsInvalid()
+    {
+        var conditional = WorkflowStep.Create("manager-approval", "Manager approval", WorkTaskKind.Approval, AssigneeRule.RequesterManager,
+            Condition.Create(FactKey.Amount, ConditionOperator.GreaterThan, ["1000.000"]));
+
+        ShouldFailWith(() => Draft(conditional, Procurement()).Publish(WorkflowAdmin, T1), ErrorCodes.WorkflowInvalid);
+    }
 
     [Fact]
     public void Administrator_IsNeverAnAssignee()

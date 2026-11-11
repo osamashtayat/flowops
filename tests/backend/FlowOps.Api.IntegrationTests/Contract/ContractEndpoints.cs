@@ -65,9 +65,11 @@ internal static class ContractEndpoints
         new("POST", "/api/admin/role-changes/{id}/cancel", $"/api/admin/role-changes/{Id}/cancel", """{"version":"7"}""", Admin),
         new("GET", "/api/admin/stalled-tasks", "/api/admin/stalled-tasks?page=2&pageSize=50", null, Admin),
 
-        // §10 Workflows (ADR-0014): contract skeleton from P2-DOC-01, 501 until implemented.
+        // §4 route preview (P2-BE-05, behaviour: Workflows/OwnersRuleTests).
         new("POST", "/api/requests/route-preview", "/api/requests/route-preview",
-            """{"type":"EquipmentPurchase","facts":{"amount":{"amount":"1500.000","currency":"JOD"}}}""", Employee) { Stub = "P2-BE-05" },
+            """{"type":"EquipmentPurchase","facts":{"amount":{"amount":"1500.000","currency":"JOD"}}}""", Employee),
+
+        // §10 Workflows (ADR-0014): contract skeleton from P2-DOC-01, 501 until implemented.
         new("GET", "/api/admin/workflows", "/api/admin/workflows", null, Admin) { Stub = "P2-BE-07" },
         new("GET", "/api/admin/workflows/catalogue", "/api/admin/workflows/catalogue", null, Admin) { Stub = "P2-BE-07" },
         new("GET", "/api/admin/workflows/{workflowId}/versions", $"/api/admin/workflows/{Id}/versions", null, Admin) { Stub = "P2-BE-07" },

@@ -109,7 +109,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
   - Contract: `stage` removed from `RequestSummaryDto`, `RequestDetailsDto`, `WorkTaskDto`, `ActivityDto`, `InboxItemDto`, `InboxRequestDto`, `DashboardActivityDto` and `StalledTaskDto`; the `RequestStage` schema is removed; `InboxRequestDto.step` is now listed as required (it always was sent). `openapi.json` and `schema.d.ts` are regenerated, and frontend mocks and fixtures no longer send `stage`.
   - Tests: domain snapshot test. The backfill migration test now also checks requests, tasks and activities after `StoreStepKeys`, including `Closed` and comments. Phase 1 assertions on `stage` now assert `step`.
 
-### P2-BE-05 — Conditions, skipping and the planned route · `Todo`
+### P2-BE-05 — Conditions, skipping and the planned route · `Done` (2026-11-11)
 - **Objective:**
   - facts catalogue per request type (purchase: `amount`; leave: `leaveType`, `days`)
   - typed operators
@@ -124,6 +124,13 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
   - domain: all skipped, so the request completes
   - domain: the first step can't have a condition
   - integration: the full route for 400 and 1,500 JOD, with I5, I11 and T3 unchanged
+- **As built:**
+  - Domain: `FactCatalogue`, `RequestFacts` (from the submitted details) and `Condition` (typed parse, exact comparison, `Describe()`). `FactKey`, `ConditionOperator` and `FactValueType` moved from the contract DTOs into Domain with the same wire names.
+  - `WorkflowStep.Condition` and `RunsFor`. `WorkflowVersion.NextAfter` returns the next step and the steps skipped on the way. `Publish` refuses a condition on the first step.
+  - `Request.DecideTask` appends one `StepSkipped` per skipped step: no actor, no task, the step, and the condition in words. It completes the request when nothing is left; a rejection evaluates nothing.
+  - Migration `AddStepConditions`: the three condition columns and check constraints, including the first-step constraint.
+  - `RequestRoute`: Done/Skipped/Current in version order, then Planned only for steps whose conditions hold; `Preview` lists every step as Planned/Skipped. `POST /api/requests/route-preview` is implemented (`RoutePreviewService`), reads only the catalogue's facts of `type`, and saves nothing. No contract change.
+  - Tests: every operator on both sides of the boundary, value parsing, `Describe`, skipping, all skipped → Completed, rejection, first-step rule, route states. Integration: 400/1,000/1,500 JOD end to end over HTTP, version pinning (v1 request keeps v1 after v2), route preview including 400 on a missing fact.
 
 ### P2-BE-06 — New assignee rules and the restricted-details flag · `Todo`
 - **Objective:**

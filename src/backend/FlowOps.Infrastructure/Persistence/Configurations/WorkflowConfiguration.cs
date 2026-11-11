@@ -70,6 +70,12 @@ internal sealed class WorkflowVersionConfiguration : IEntityTypeConfiguration<Wo
             // Role and RequesterManager are the Phase 1 rules; P2-BE-06 widens this with its new kinds.
             t.HasCheckConstraint("ck_workflow_steps_assignee_role",
                 $"(assignee_kind = 'Role') = (assignee_role IS NOT NULL) AND assignee_role <> '{Roles.Administrator}'");
+            t.HasCheckConstraint("ck_workflow_steps_condition_fact", CheckConstraints.InEnum<FactKey>("condition_fact"));
+            t.HasCheckConstraint("ck_workflow_steps_condition_operator", CheckConstraints.InEnum<ConditionOperator>("condition_operator"));
+            // A condition is all three parts or none, and the first step never has one (DOMAIN_MODEL.md §7.1).
+            t.HasCheckConstraint("ck_workflow_steps_condition_complete",
+                "num_nonnulls(condition_fact, condition_operator, condition_values) IN (0, 3)");
+            t.HasCheckConstraint("ck_workflow_steps_first_unconditional", "\"order\" > 0 OR condition_fact IS NULL");
         });
         step.WithOwner().HasForeignKey("WorkflowVersionId");
         step.HasKey("WorkflowVersionId", nameof(WorkflowStep.Order));
@@ -81,6 +87,10 @@ internal sealed class WorkflowVersionConfiguration : IEntityTypeConfiguration<Wo
         step.Property(s => s.AssigneeRole).HasMaxLength(CheckConstraints.EnumMaxLength);
         step.HasIndex("WorkflowVersionId", nameof(WorkflowStep.Key)).IsUnique().HasDatabaseName("ux_workflow_steps_key");
         step.Ignore(s => s.Assignee);
+        step.Ignore(s => s.Condition);
+        step.Property(s => s.ConditionFact).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
+        step.Property(s => s.ConditionOperator).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
+        step.Property(s => s.ConditionValues).HasColumnType("text[]");
         step.Ignore(s => s.Ref);
     }
 }

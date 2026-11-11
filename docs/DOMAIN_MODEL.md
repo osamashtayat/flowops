@@ -256,7 +256,7 @@ Enforced in the domain (D), application layer (A), and/or database (DB). "Where"
 | I4 | At most one Open task per request | D + DB (partial unique index `ux_work_tasks_open_per_request`) | — |
 | I5 | Only the task matching the request's current Stage can be decided | D | `task.not_current` (409) |
 | I6 | Closed requests cannot change | D | `request.closed` (409) |
-| I7 | Steps run in order. **Phase 1:** `FixedProcesses` order, no skipping. **Phase 2a (ADR-0014 §3, from P2-BE-05):** steps run in the pinned workflow version's order; a step is skipped only when its condition is false, and every skip is recorded as a `StepSkipped` activity | D (only `AdvanceTo(next)` exists; the next step is chosen in the aggregate) | — |
+| I7 | Steps run in order. **Phase 1:** `FixedProcesses` order, no skipping. **Phase 2a (ADR-0014 §3, since P2-BE-05):** steps run in the pinned workflow version's order; a step is skipped only when its condition is false, and every skip is recorded as a `StepSkipped` activity | D (only `AdvanceTo(next)` exists; the next step is chosen in the aggregate) | — |
 | I8 | Reject requires a non-blank comment | D + API validation | `validation` (400) |
 | I9 | Every state change appends an Activity with actor and time | D (same method appends) | — |
 | I10 | Request, task and activity changes commit atomically | A (one `SaveChangesAsync` per use case) | — |
@@ -314,7 +314,7 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 
 ## 7. Phase 2a: configurable workflows (ADR-0014)
 
-Status: **designed** (P2-DOC-01). The API already serves `step` and `route` and has the workflow types (API_CONTRACT §10). The entities below are built in P2-BE-03 to P2-BE-07. **Since P2-BE-03** the entities, the seeded v1 and `Request.WorkflowVersionId` exist and are the only source of steps (`IProcessDefinitionSource`); `Condition` (P2-BE-05) and `CanReadRestrictedDetails` (P2-BE-06) are not stored yet.
+Status: **designed** (P2-DOC-01). The API already serves `step` and `route` and has the workflow types (API_CONTRACT §10). The entities below are built in P2-BE-03 to P2-BE-07. **Since P2-BE-03** the entities, the seeded v1 and `Request.WorkflowVersionId` exist and are the only source of steps (`IProcessDefinitionSource`); Since P2-BE-05 steps store their `Condition` (`condition_fact`, `condition_operator`, `condition_values text[]`), the aggregate skips steps and records `StepSkipped`, and the route and route preview read conditions. `CanReadRestrictedDetails` (P2-BE-06) is not stored yet.
 
 ### 7.1 Entities
 

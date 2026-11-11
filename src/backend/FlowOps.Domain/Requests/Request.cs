@@ -91,6 +91,9 @@ public sealed class Request
 
     public bool IsClosed => Status is RequestStatus.Completed or RequestStatus.Rejected;
 
+    /// <summary>What its steps' conditions are evaluated on: the submitted details, which never change (§7.2).</summary>
+    public RequestFacts Facts => RequestFacts.Of(Purchase, Leave);
+
     /// <summary>The single open task (I4), or <c>null</c> once the request is closed.</summary>
     public WorkTask? OpenTask => _tasks.SingleOrDefault(t => t.IsOpen);
 
@@ -121,7 +124,7 @@ public sealed class Request
     /// <summary>
     /// The only way state advances. Guards I6 (closed), I3 (decided once), I5 (current step), I2 (self-decision)
     /// and the valid action for the task kind, all before anything changes; then appends activities (I9) and
-    /// opens the next step's task or closes the request (I7). Eligibility (I1) is the Application layer's job.
+    /// records skipped steps, then opens the next step's task or closes the request (I7). Eligibility (I1) is the Application layer's job.
     /// </summary>
     /// <param name="workflow">The version this request is pinned to (<see cref="WorkflowVersionId"/>).</param>
     /// <param name="resolveAssignee">Resolves the next step's assignee; only called when a next step exists.</param>
@@ -156,12 +159,17 @@ public sealed class Request
         }
 
         var outcome = task.OutcomeFor(decision.Action);
-        var nextStep = outcome == WorkTaskOutcome.Rejected ? null : workflow.StepAfter(task.StepKey);
+        // A rejection ends the request: no later step is evaluated or recorded (§7.5).
+        var (nextStep, skipped) = outcome == WorkTaskOutcome.Rejected ? (null, []) : workflow.NextAfter(task.StepKey, Facts);
         var nextAssignee = nextStep is null ? null : ResolveAssignee(nextStep, resolveAssignee);
 
         // Every check and lookup has passed: from here on the aggregate changes.
         task.Complete(outcome, decision.Comment, actorId, now);
         Append(ActivityFor(outcome), actorId, task.Id, task.Step, decision.Comment, now);
+        foreach (var step in skipped)
+        {
+            Append(ActivityType.StepSkipped, actorId: null, taskId: null, step.Ref, step.Condition!.Describe(), now);
+        }
 
         WorkTask? nextTask = null;
         if (outcome == WorkTaskOutcome.Rejected)

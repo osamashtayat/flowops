@@ -88,7 +88,9 @@ DRY means every piece of business knowledge has **one** authoritative representa
 |---|---|
 | Process steps and order | the pinned `WorkflowVersion` (`Domain/Workflows/`), loaded only through `Application/Workflows/IProcessDefinitionSource` |
 | A step's key and name snapshot (stored and on the wire) | `Domain/Workflows/StepRef.cs` (`WorkflowStep.Ref`) |
-| A request's route (done / current / planned steps) | `Application/Requests/RequestRoute.cs` |
+| Facts per request type, operators per fact type | `Domain/Workflows/FactCatalogue.cs` |
+| Whether a step runs (conditions) | `Domain/Workflows/Condition.cs` (`WorkflowStep.RunsFor`); next step and skips: `WorkflowVersion.NextAfter` |
+| A request's route (done / skipped / current / planned steps) and the route preview | `Application/Requests/RequestRoute.cs` |
 | A request's title and type label | `Application/Requests/RequestTitle.cs` |
 | State transitions & invariants | `Domain/Requests/Request.cs`, `WorkTask.cs` |
 | Error codes | `Domain/Errors/ErrorCodes.cs` (+ `frontend/lib/api/problem.ts` messages) |

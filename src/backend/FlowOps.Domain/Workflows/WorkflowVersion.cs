@@ -105,19 +105,34 @@ public sealed class WorkflowVersion
         RetiredAt = now;
     }
 
-    /// <summary>The step after <paramref name="key"/> in version order, or <c>null</c> when it is the last one.</summary>
-    public WorkflowStep? StepAfter(string key)
+    /// <summary>
+    /// What follows <paramref name="key"/> for a request with <paramref name="facts"/> (DOMAIN_MODEL.md §7.5): the first
+    /// later step whose condition holds or is absent, or <c>null</c> when none is left; and the steps skipped on the way.
+    /// </summary>
+    public (WorkflowStep? Next, IReadOnlyList<WorkflowStep> Skipped) NextAfter(string key, RequestFacts facts)
     {
-        var steps = Steps;
-        for (var i = 0; i < steps.Count; i++)
+        var skipped = new List<WorkflowStep>();
+        foreach (var step in StepsAfter(key))
         {
-            if (steps[i].Key == key)
+            if (step.RunsFor(facts))
             {
-                return i + 1 < steps.Count ? steps[i + 1] : null;
+                return (step, skipped);
             }
+
+            skipped.Add(step);
         }
 
-        throw new ArgumentException($"Version {Id} has no step '{key}'.", nameof(key));
+        return (null, skipped);
+    }
+
+    /// <summary>The later steps of <paramref name="key"/> a request with <paramref name="facts"/> will go through.</summary>
+    public IEnumerable<WorkflowStep> PlannedAfter(string key, RequestFacts facts) => StepsAfter(key).Where(s => s.RunsFor(facts));
+
+    private IEnumerable<WorkflowStep> StepsAfter(string key)
+    {
+        var steps = Steps;
+        var index = steps.ToList().FindIndex(s => s.Key == key);
+        return index >= 0 ? steps.Skip(index + 1) : throw new ArgumentException($"Version {Id} has no step '{key}'.", nameof(key));
     }
 
     private void EnsureDraft()
@@ -147,7 +162,8 @@ public sealed class WorkflowVersion
         var steps = Steps;
         var fulfillments = steps.Count(s => s.Kind == WorkTaskKind.Fulfillment);
         var fulfillmentIsLast = fulfillments == 0 || steps[^1].Kind == WorkTaskKind.Fulfillment;
-        if (steps.Count == 0 || fulfillments > 1 || !fulfillmentIsLast)
+        // The first step never has a condition, so every request gets at least one task (§7.1).
+        if (steps.Count == 0 || steps[0].Condition is not null || fulfillments > 1 || !fulfillmentIsLast)
         {
             throw DomainErrors.WorkflowInvalid();
         }

@@ -172,7 +172,7 @@ type WorkTaskDto = {
 - the current step, `Current`;
 - the remaining steps that will run for this request's facts, `Planned`.
 
-A closed request has only `Done`/`Skipped` entries. Since P2-BE-03, `Planned` steps come from the request's pinned workflow version; until P2-BE-05, `route` never contains `Skipped`.
+A closed request has only `Done`/`Skipped` entries. `Planned` steps come from the request's pinned workflow version and leave out later steps whose condition is false for its facts (P2-BE-05). Entries are in version order.
 
 ### `GET /api/requests/{id}/activity` — auth + visibility
 → 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments). Over 500 entries, the **most recent 500** are returned, still oldest first, so the latest decisions always show (#37).
@@ -180,9 +180,9 @@ A closed request has only `Done`/`Skipped` entries. Since P2-BE-03, `Planned` st
 type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded"|"StepSkipped";
   actor: UserRef | null; step: StepRef | null; body: string | null; occurredAt: string };
 ```
-`StepSkipped` (Phase 2a, appended from P2-BE-05): `actor` is null, `step` is the skipped step, and `body` is its condition in words (e.g. "Only if amount is greater than 1,000.000 JOD").
+`StepSkipped` (Phase 2a, appended since P2-BE-05): `actor` is null, `step` is the skipped step, and `body` is its condition in words (e.g. "Only if amount is greater than 1,000.000 JOD").
 
-### `POST /api/requests/route-preview` — policy `CanSubmit` (Phase 2a; 501 until P2-BE-05)
+### `POST /api/requests/route-preview` — policy `CanSubmit` (Phase 2a, P2-BE-05)
 The route a request with these facts would take under the Published workflow of `type` (ADR-0014 Q5). The submit form uses it to show "Manager approval → Procurement fulfilment" before the requester submits.
 ```ts
 type RouteFactsInput = { amount?: Money | null; leaveType?: LeaveType | null; days?: number | null };  // days 1–90
