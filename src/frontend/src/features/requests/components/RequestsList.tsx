@@ -10,7 +10,7 @@ import { useCapability } from '@/features/session/useCapability'
 import { toUserMessage } from '@/lib/api/problem'
 import type { RequestScope, RequestStatus, RequestSummaryDto, RequestType } from '@/lib/api/types'
 import { formatDate } from '@/lib/format/date'
-import { requestStageLabel, requestStatusPresentation } from '@/lib/format/status'
+import { requestStatusPresentation, stepLabel } from '@/lib/format/status'
 import { useUrlState } from '@/lib/useUrlState'
 import { useRequests } from '../api'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
@@ -38,7 +38,7 @@ const baseColumns: DataTableColumn<RequestSummaryDto>[] = [
   },
   { key: 'type', header: 'Type', cell: (r) => REQUEST_TYPE_LABELS[r.type] },
   { key: 'status', header: 'Status', cell: (r) => <StatusBadge status={requestStatusPresentation(r.status)} /> },
-  { key: 'stage', header: 'Stage', cell: (r) => requestStageLabel(r.stage) },
+  { key: 'stage', header: 'Stage', cell: (r) => stepLabel(r.step) },
   { key: 'submitted', header: 'Submitted', cell: (r) => <span className="tabular-nums">{formatDate(r.submittedAt)}</span> },
 ]
 

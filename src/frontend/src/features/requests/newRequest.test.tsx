@@ -79,7 +79,7 @@ describe('purchase form', () => {
       http.post('/api/requests/purchase', async ({ request }) => {
         body = await request.json()
         return HttpResponse.json(
-          { id: 'req-1', number: 'FO-2026-000901', type: 'EquipmentPurchase', title: 'Dell XPS 15', status: 'InReview', stage: 'ManagerApproval' },
+          { id: 'req-1', number: 'FO-2026-000901', type: 'EquipmentPurchase', title: 'Dell XPS 15', status: 'InReview', stage: 'Closed' },
           { status: 201 },
         )
       }),

@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { toUserMessage } from '@/lib/api/problem'
 import type { InboxItemDto } from '@/lib/api/types'
 import { formatDate, formatRelative } from '@/lib/format/date'
-import { requestStageLabel, taskStatusPresentation } from '@/lib/format/status'
+import { stepLabel, taskStatusPresentation } from '@/lib/format/status'
 import { useInbox } from '../api'
 import { DecisionActions } from './DecisionActions'
 import type { InboxView } from './InboxTabs'
@@ -39,7 +39,7 @@ const sharedColumns: DataTableColumn<InboxItemDto>[] = [
     ),
   },
   { key: 'detail', header: 'Detail', cell: (item) => <span className="tabular-nums">{item.request.keyDetail}</span> },
-  { key: 'stage', header: 'Stage', cell: (item) => requestStageLabel(item.stage) },
+  { key: 'stage', header: 'Stage', cell: (item) => stepLabel(item.step) },
 ]
 
 const openColumns: DataTableColumn<InboxItemDto>[] = [
@@ -52,7 +52,6 @@ const openColumns: DataTableColumn<InboxItemDto>[] = [
       <DecisionActions
         taskId={item.taskId}
         version={item.version}
-        stage={item.stage}
         requestType={item.request.type}
         requestNumber={item.request.number}
         actions={item.actions}

@@ -3,7 +3,7 @@ import { DecisionActions } from '@/features/tasks/components/DecisionActions'
 import type { RequestDetailsDto } from '@/lib/api/types'
 
 /**
- * The decision buttons, exactly as `availableActions` lists them. The stage comes from the task the
+ * The decision buttons, exactly as `availableActions` lists them. The task is the one the
  * server named; nothing here decides whether the viewer may act.
  */
 export function RequestActionsCard({ request }: { request: RequestDetailsDto }) {
@@ -18,7 +18,6 @@ export function RequestActionsCard({ request }: { request: RequestDetailsDto }) 
         key={available.taskId}
         taskId={available.taskId}
         version={available.version}
-        stage={task.stage}
         requestType={request.type}
         requestNumber={request.number}
         actions={available.actions}

@@ -1,4 +1,4 @@
-import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
+import type { RequestType, TaskAction } from '@/lib/api/types'
 import { withLeaveVisibilityWarning } from '@/lib/format/visibility'
 import { REQUEST_LIMITS } from '@/lib/api/limits'
 
@@ -15,27 +15,26 @@ export interface DecisionPresentation {
   reason: { label: string; required: boolean; helperText?: string; maxLength: number }
 }
 
-export function decisionPresentation(action: TaskAction, stage: RequestStage, requestType: RequestType): DecisionPresentation {
-  const presentation = basePresentation(action, stage)
+export function decisionPresentation(action: TaskAction, requestType: RequestType): DecisionPresentation {
+  const presentation = basePresentation(action)
   const helperText = withLeaveVisibilityWarning(presentation.reason.helperText, requestType)
   return { ...presentation, reason: { ...presentation.reason, helperText } }
 }
 
-function basePresentation(action: TaskAction, stage: RequestStage): DecisionPresentation {
+function basePresentation(action: TaskAction): DecisionPresentation {
   switch (action) {
     case 'approve': {
-      // The API verb is `approve` for every approval; HR "confirms" (docs/WORKFLOWS.md).
-      const verb = stage === 'HrConfirmation' ? 'Confirm' : 'Approve'
+      // One verb for every approval step: step names are admin-defined (ADR-0014), so the UI has no per-step wording.
       return {
-        buttonLabel: verb,
-        confirmLabel: `${verb} request`,
+        buttonLabel: 'Approve',
+        confirmLabel: 'Approve request',
         tone: 'primary',
         describe: (number) => ({
-          title: `${verb} ${number}?`,
-          // Says nothing about what comes next: the step order belongs to the server (FixedProcesses).
+          title: `Approve ${number}?`,
+          // Says nothing about what comes next: the step order belongs to the server.
           description: 'Your decision is recorded in the request history. This cannot be undone.',
         }),
-        done: (number) => `${number} ${verb === 'Confirm' ? 'confirmed' : 'approved'}.`,
+        done: (number) => `${number} approved.`,
         reason: { label: 'Comment', required: false, helperText: 'Optional. Visible in the request history.', maxLength: REQUEST_LIMITS.approveCommentMax },
       }
     }

@@ -2,7 +2,7 @@ import { Card } from '@/components/ui/Card'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { WorkTaskDto } from '@/lib/api/types'
 import { formatDateTime } from '@/lib/format/date'
-import { requestStageLabel, taskStatusPresentation } from '@/lib/format/status'
+import { stepLabel, taskStatusPresentation } from '@/lib/format/status'
 import { ROLE_LABELS } from '@/lib/format/labels'
 
 function assigneeText(assignee: WorkTaskDto['assignee']): string {
@@ -21,7 +21,7 @@ export function ApprovalSteps({ tasks }: { tasks: readonly WorkTaskDto[] }) {
           {tasks.map((task) => (
             <li key={task.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b border-border pb-4 last:border-b-0 last:pb-0">
               <div className="min-w-0">
-                <p className="text-base font-medium text-ink">{requestStageLabel(task.stage)}</p>
+                <p className="text-base font-medium text-ink">{stepLabel(task.step)}</p>
                 <p className="text-sm text-ink-muted">
                   {task.decidedBy && task.decidedAt ? (
                     <>

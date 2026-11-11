@@ -124,24 +124,25 @@ describe('request details', () => {
       expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
     })
 
-    it('labels HR\'s approval "Confirm"', async () => {
+    it('shows the server\'s step name and uses one approve verb whatever the step is called', async () => {
       setMockUser('finance')
+      const legal = { key: 'legal-review', name: 'Legal review' }
       server.use(
         http.get('/api/requests/:id', () =>
           HttpResponse.json(
             detailsFor('finance', PURCHASE, (r) => ({
-              stage: 'HrConfirmation',
-              tasks: [{ ...r.tasks[1], stage: 'HrConfirmation' }],
+              step: legal,
+              tasks: [{ ...r.tasks[1], step: legal }],
               availableActions: { taskId: r.tasks[1]?.id, actions: ['approve'], version: 'v1' },
             })),
           ),
         ),
       )
       renderRoutes(routes, PURCHASE_PATH)
-      expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
-      // The dialog doesn't claim what comes next; the step order is the server's (FixedProcesses).
-      await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+      expect(await screen.findByText('Waiting for: Legal review')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+      // The dialog doesn't claim what comes next; the step order is the server's.
+      await userEvent.click(await screen.findByRole('button', { name: 'Approve' }))
       expect(await within(await screen.findByRole('dialog')).findByText(/Your decision is recorded in the request history/)).toBeInTheDocument()
     })
   })
