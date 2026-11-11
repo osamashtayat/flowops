@@ -20,7 +20,9 @@ internal sealed class RequestConfiguration : IEntityTypeConfiguration<Request>
         {
             t.HasCheckConstraint("ck_requests_type", CheckConstraints.InEnum<RequestType>("type"));
             t.HasCheckConstraint("ck_requests_status", CheckConstraints.InEnum<RequestStatus>("status"));
-            t.HasCheckConstraint("ck_requests_stage", CheckConstraints.InEnum<RequestStage>("stage"));
+            // A closed request has no current step (DOMAIN_MODEL.md §7.4): closed is a status, not a step.
+            t.HasCheckConstraint("ck_requests_step_iff_open",
+                "(status IN ('Completed', 'Rejected')) = (step_key IS NULL) AND (step_key IS NULL) = (step_name IS NULL)");
         });
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Id).ValueGeneratedNever();
@@ -30,7 +32,9 @@ internal sealed class RequestConfiguration : IEntityTypeConfiguration<Request>
         builder.HasIndex(r => r.Number).IsUnique().HasDatabaseName("ux_requests_number");
         builder.Property(r => r.Type).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
         builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
-        builder.Property(r => r.Stage).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
+        builder.Property(r => r.StepKey).HasMaxLength(WorkflowStep.KeyMaxLength);
+        builder.Property(r => r.StepName).HasMaxLength(WorkflowStep.NameMaxLength);
+        builder.Ignore(r => r.Step);
         builder.Property(r => r.Version).IsRowVersion();
 
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(r => r.RequesterId).OnDelete(DeleteBehavior.Restrict);

@@ -22,7 +22,8 @@ public sealed class WorkTask
         Id = SequentialGuid.NewV7(now);
         RequestId = requestId;
         Kind = step.Kind;
-        Stage = step.Stage;
+        StepKey = step.Key;
+        StepName = step.Name;
         AssigneeUserId = assignee.UserId;
         AssigneeRole = assignee.Role;
         Status = WorkTaskStatus.Open;
@@ -35,7 +36,14 @@ public sealed class WorkTask
 
     public WorkTaskKind Kind { get; private set; }
 
-    public RequestStage Stage { get; private set; }
+    /// <summary>Stored half of <see cref="Step"/>.</summary>
+    public string StepKey { get; private set; } = null!;
+
+    /// <summary>Stored half of <see cref="Step"/>: the step's name when the task was opened.</summary>
+    public string StepName { get; private set; } = null!;
+
+    /// <summary>The workflow step this task belongs to.</summary>
+    public StepRef Step => new(StepKey, StepName);
 
     public Guid? AssigneeUserId { get; private set; }
 
@@ -62,7 +70,7 @@ public sealed class WorkTask
     {
         if (!step.Assignee.Accepts(assignee))
         {
-            throw new ArgumentException($"The assignee does not satisfy the {step.Stage} step's rule.", nameof(assignee));
+            throw new ArgumentException($"The assignee does not satisfy the '{step.Key}' step's rule.", nameof(assignee));
         }
 
         return new WorkTask(requestId, step, assignee, now);

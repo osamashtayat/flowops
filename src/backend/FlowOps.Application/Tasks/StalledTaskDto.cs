@@ -1,5 +1,6 @@
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Tasks;
 
@@ -9,14 +10,10 @@ public sealed record StalledTaskDto(
     Guid RequestId,
     string RequestNumber,
     RequestType RequestType,
-    RequestStage Stage,
+    StepRef Step,
     TaskAssigneeDto Assignee,
     StalledTaskReason Reason,
-    DateTimeOffset OpenSince)
-{
-    /// <summary>The step of the stalled task. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef Step { get; init; } = StepRef.ForTask(Stage);
-}
+    DateTimeOffset OpenSince);
 
 public enum StalledTaskReason
 {

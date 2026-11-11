@@ -18,10 +18,10 @@ public sealed class CommentTests
         activity.Type.ShouldBe(ActivityType.CommentAdded);
         activity.ActorId.ShouldBe(Manager);
         activity.TaskId.ShouldBeNull();
-        activity.Stage.ShouldBeNull();
+        activity.StepKey.ShouldBeNull();
         activity.Body.ShouldBe("Which model?");
         activity.OccurredAt.ShouldBe(at);
-        request.Stage.ShouldBe(RequestStage.ManagerApproval);
+        request.StepKey.ShouldBe(Steps.ManagerApproval);
         request.Status.ShouldBe(RequestStatus.InReview);
     }
 

@@ -94,7 +94,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
   - Migration `AddWorkflowDefinitions`: tables, indexes `ux_workflow_versions_published` / `_draft` / `_number`, `ux_workflow_steps_key`, `ux_workflow_definitions_request_type`, check constraints; seeds v1 with fixed ids and no author (#111), backfills every request by type, then makes the column NOT NULL.
   - Tests: domain lifecycle/immutability/step-key tests; integration seed equivalence, exactly one Published per type, both partial unique indexes, submission pins the version, backfill on a database with requests in every state. The test harness restores the seeded workflow rows after each Respawn reset (Respawn truncates `users` with CASCADE). Phase 1 test helpers that build aggregates directly now pass the version; no assertion changed.
 
-### P2-BE-04 — Persist step keys; remove `stage` · `Todo`
+### P2-BE-04 — Persist step keys; remove `stage` · `Done` (2026-11-11)
 - **Objective:**
   - store the step key plus a name snapshot on requests, tasks and activities in place of the `RequestStage` enum (DOMAIN_MODEL §7.4); `step` is then read from storage, not from `StepRef.For`
   - `Closed` becomes request-status logic only
@@ -103,6 +103,11 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 - **Deps:** P2-BE-03, P2-FE-01 (the frontend no longer reads `stage`).
 - **AC:** one coordinated contract change (AGENT_HANDOFF §3). The OpenAPI drift check is green. The PR lists every renamed field for the frontend lane.
 - **Tests:** contract tests; the migration keeps the history readable.
+- **As built:**
+  - `Request`, `WorkTask` and `RequestActivity` store `StepKey` + `StepName`, exposed as `Step` (`StepRef`, moved to Domain). A closed request has no step (`ck_requests_step_iff_open`). `RequestStage`, `StageKeys` and `WorkflowStep.Stage` are deleted.
+  - Migration `StoreStepKeys` maps every stored stage to its v1 key and name. `Closed` becomes null, as does the `Completed` activity's step. The migration has a working `Down`.
+  - Contract: `stage` removed from `RequestSummaryDto`, `RequestDetailsDto`, `WorkTaskDto`, `ActivityDto`, `InboxItemDto`, `InboxRequestDto`, `DashboardActivityDto` and `StalledTaskDto`; the `RequestStage` schema is removed; `InboxRequestDto.step` is now listed as required (it always was sent). `openapi.json` and `schema.d.ts` are regenerated, and frontend mocks and fixtures no longer send `stage`.
+  - Tests: domain snapshot test. The backfill migration test now also checks requests, tasks and activities after `StoreStepKeys`, including `Closed` and comments. Phase 1 assertions on `stage` now assert `step`.
 
 ### P2-BE-05 — Conditions, skipping and the planned route · `Todo`
 - **Objective:**

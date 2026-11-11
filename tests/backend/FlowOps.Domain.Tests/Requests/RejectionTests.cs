@@ -8,17 +8,17 @@ public sealed class RejectionTests
 {
     private static readonly DateTimeOffset RejectedAt = T0.AddHours(5);
 
-    public static TheoryData<RequestType, RequestStage> ApprovalSteps => new()
+    public static TheoryData<RequestType, string> ApprovalSteps => new()
     {
-        { RequestType.EquipmentPurchase, RequestStage.ManagerApproval },
-        { RequestType.EquipmentPurchase, RequestStage.FinanceApproval },
-        { RequestType.Leave, RequestStage.ManagerApproval },
-        { RequestType.Leave, RequestStage.HrConfirmation },
+        { RequestType.EquipmentPurchase, Steps.ManagerApproval },
+        { RequestType.EquipmentPurchase, Steps.FinanceApproval },
+        { RequestType.Leave, Steps.ManagerApproval },
+        { RequestType.Leave, Steps.HrConfirmation },
     };
 
     [Theory]
     [MemberData(nameof(ApprovalSteps))]
-    public void Reject_AtAnyApprovalStep_ClosesAsRejectedWithoutNextTask(RequestType type, RequestStage stage)
+    public void Reject_AtAnyApprovalStep_ClosesAsRejectedWithoutNextTask(RequestType type, string stage)
     {
         var request = AdvanceTo(type, stage);
         var task = request.OpenTask!;
@@ -28,7 +28,7 @@ public sealed class RejectionTests
         var result = request.RejectCurrent(ApproverFor(stage), "  Over budget  ", RejectedAt);
 
         request.Status.ShouldBe(RequestStatus.Rejected);
-        request.Stage.ShouldBe(RequestStage.Closed);
+        request.StepKey.ShouldBe(Steps.Closed);
         request.ClosedAt.ShouldBe(RejectedAt);
         request.OpenTask.ShouldBeNull();
         request.Tasks.Count.ShouldBe(tasksBefore);
@@ -54,23 +54,23 @@ public sealed class RejectionTests
     public void Reject_WithReasonAtLimit_IsAccepted() =>
         TaskDecision.Reject(new string('x', RequestLimits.CommentMaxLength)).Comment!.Length.ShouldBe(RequestLimits.CommentMaxLength);
 
-    private static Request AdvanceTo(RequestType type, RequestStage stage)
+    private static Request AdvanceTo(RequestType type, string stage)
     {
         var request = type == RequestType.Leave ? SubmitLeave() : SubmitPurchase();
-        if (stage != RequestStage.ManagerApproval)
+        if (stage != Steps.ManagerApproval)
         {
             request.ApproveCurrent(Manager);
         }
 
-        request.Stage.ShouldBe(stage);
+        request.StepKey.ShouldBe(stage);
         return request;
     }
 
-    private static Guid ApproverFor(RequestStage stage) => stage switch
+    private static Guid ApproverFor(string stage) => stage switch
     {
-        RequestStage.ManagerApproval => Manager,
-        RequestStage.FinanceApproval => FinanceOfficer,
-        RequestStage.HrConfirmation => HrOfficer,
+        Steps.ManagerApproval => Manager,
+        Steps.FinanceApproval => FinanceOfficer,
+        Steps.HrConfirmation => HrOfficer,
         _ => throw new ArgumentOutOfRangeException(nameof(stage)),
     };
 }

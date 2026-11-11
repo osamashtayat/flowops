@@ -27,7 +27,7 @@ public sealed class RequestCommentService(IAppDbContext db, AccessRules access, 
         await db.SaveChangesAsync(ct);
         await realtime.NotificationsAsync(notifications);
         await realtime.RequestChangedAsync(request.Id);
-        return new ActivityDto(comment.Id, comment.Type, author, comment.Stage, comment.Body, comment.OccurredAt);
+        return new ActivityDto(comment.Id, comment.Type, author, comment.Step, comment.Body, comment.OccurredAt);
     }
 
     /// <summary>WORKFLOWS.md §1.4: the requester, everyone who decided a step, and whoever may decide the open task; active users only.</summary>

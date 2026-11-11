@@ -17,7 +17,7 @@ import type {
 } from '@/lib/api/types'
 import { calendarDaysInclusive, formatDateOnly } from '@/lib/format/date'
 import { formatMoney } from '@/lib/format/money'
-import { DEPRECATED_STAGE, MOCK_STEPS, mockStepKind, withMockRoute } from './steps'
+import { MOCK_STEPS, mockStepKind, withMockRoute } from './steps'
 import { MOCK_USERS } from './users'
 
 /**
@@ -53,7 +53,6 @@ export function mockTask(init: {
   return {
     id: init.id,
     kind: mockStepKind(init.step),
-    stage: DEPRECATED_STAGE,
     step: init.step,
     status: init.decided ? 'Done' : 'Open',
     assignee: init.assignee,
@@ -110,7 +109,6 @@ function buildSeeded(): RequestDetailsDto[] {
       requester: EMPLOYEE,
       department: MOCK_USERS.employee.department ?? { id: '', name: '' },
       status,
-      stage: DEPRECATED_STAGE,
       submittedAt,
       closedAt: status === 'Completed' || status === 'Rejected' ? submittedAt : null,
       tasks: seededTasks(id, status, submittedAt, waitsForManager(index, status)),
@@ -223,7 +221,6 @@ export function listMockInbox(user: CurrentUserDto, query: { status: 'Open' | 'D
         actions: mockEligibleActions(user, request, task),
         taskId: task.id,
         kind: task.kind,
-        stage: DEPRECATED_STAGE,
         step: task.step,
         createdAt: task.createdAt,
         version: MOCK_VERSION,
@@ -257,7 +254,6 @@ export function mockActivities(request: RequestDetailsDto): ActivityDto[] {
     id,
     type,
     actor,
-    stage: null,
     step,
     body,
     occurredAt: at,
@@ -279,7 +275,6 @@ export function addMockComment(user: CurrentUserDto, request: RequestDetailsDto,
     id: `${request.id}-c${(comments.get(request.id)?.length ?? 0) + 1}`,
     type: 'CommentAdded',
     actor: userRef(user),
-    stage: null,
     step: null,
     body,
     occurredAt: new Date().toISOString(),
@@ -307,7 +302,6 @@ function header(user: CurrentUserDto): Header {
     // The caller checks the department before getting here.
     department: user.department ?? { id: '', name: '' },
     status: 'InReview',
-    stage: DEPRECATED_STAGE,
     submittedAt,
     closedAt: null,
     tasks: [mockTask({ id: `${identity.id}-t1`, step: MOCK_STEPS.manager, createdAt: submittedAt, assignee: { user: user.manager, role: null } })],

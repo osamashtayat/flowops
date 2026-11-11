@@ -46,9 +46,9 @@ public sealed class TaskQueryService(IAppDbContext db, AccessRules access)
         var actions = TaskEligibility.AvailableActions(row.RequesterId, row.DeciderIds, task, me)?.Actions ?? [];
         var request = new InboxRequestDto(
             summary.Id, summary.Number.Value, summary.Type, summary.Title, summary.Requester, summary.Department,
-            summary.Status, summary.Stage, summary.SubmittedAt, summary.ClosedAt, summary.KeyDetail);
+            summary.Status, summary.Step, summary.SubmittedAt, summary.ClosedAt, summary.KeyDetail);
         return new InboxItemDto(
-            task.Id, task.Kind, task.Stage, task.CreatedAt, VersionToken.Format(task.Version), task.Status, task.Outcome,
+            task.Id, task.Kind, task.Step, task.CreatedAt, VersionToken.Format(task.Version), task.Status, task.Outcome,
             task.DecidedAt, actions, request);
     }
 

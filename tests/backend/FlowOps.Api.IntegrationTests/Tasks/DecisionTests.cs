@@ -37,7 +37,7 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         var requestId = await SubmitPurchaseAsync("lina");
 
         var managerItem = await OpenItemAsync("karim", requestId);
-        managerItem.GetProperty("stage").GetString().ShouldBe("ManagerApproval");
+        managerItem.GetProperty("step").GetProperty("key").GetString().ShouldBe("manager-approval");
         Strings(managerItem, "actions").ShouldBe(["approve", "reject"]);
         managerItem.GetProperty("request").GetProperty("keyDetail").GetString().ShouldBe("1,250.500 JOD");
         (await DecideAsync("karim", managerItem, "approve")).StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -490,7 +490,7 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
             loser.GetProperty("status").GetInt32().ShouldBe(409);
             loser.GetProperty("code").GetString().ShouldBeOneOf(ErrorCodes.ConcurrencyConflict, ErrorCodes.TaskAlreadyDecided);
             var tasks = await TasksAsync(requestId);
-            tasks.Count(t => t.Stage == RequestStage.ProcurementFulfillment).ShouldBe(1);
+            tasks.Count(t => t.StepKey == "procurement-fulfillment").ShouldBe(1);
             (await ActivityTypesAsync(requestId)).Count(t => t == "Approved").ShouldBe(2);
             foreach (var r in responses)
             {
@@ -623,8 +623,8 @@ public sealed class DecisionTests(FlowOpsApiFactory factory) : DatabaseTest(fact
         using var lina = await Factory.ClientFor(await RequesterOfAsync(requestId));
         var details = await JsonBody.ReadAsync(await lina.GetAsync(new Uri($"/api/requests/{requestId}", UriKind.Relative), Ct));
         details.GetProperty("status").GetString().ShouldBe(status);
-        details.GetProperty("stage").GetString().ShouldBe(stage);
-        // ADR-0014 Q2/Q5 (P2-DOC-01): `step` mirrors `stage` and the route's current entry is that step.
+        details.TryGetProperty("stage", out _).ShouldBeFalse("P2-BE-04 removed stage");
+        // ADR-0014 Q2/Q5: `step` is the current step (null once closed) and the route's current entry is that step.
         var step = details.GetProperty("step");
         var current = details.GetProperty("route").EnumerateArray().Where(r => r.GetProperty("state").GetString() == "Current").ToList();
         if (stage == "Closed")

@@ -375,7 +375,7 @@ public sealed class AccessRulesTests(FlowOpsApiFactory factory) : DatabaseTest(f
         await using var scope = Factory.Services.CreateAsyncScope();
         var (db, rules) = Services(scope);
         var p3 = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["P3"], Ct);
-        var financeTask = p3.Tasks.Single(t => t.Stage == FlowOps.Domain.Requests.RequestStage.FinanceApproval);
+        var financeTask = p3.Tasks.Single(t => t.StepKey == "finance-approval");
         var fiona = await rules.ContextForAsync(org.Users["fiona"], Ct);
 
         TaskEligibility.FailureCode(p3.RequesterId, p3.Tasks.Select(t => t.DecidedById), financeTask, fiona).ShouldBeNull();

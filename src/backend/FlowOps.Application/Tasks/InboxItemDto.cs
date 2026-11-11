@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Tasks;
 
@@ -12,18 +13,14 @@ namespace FlowOps.Application.Tasks;
 public sealed record InboxItemDto(
     Guid TaskId,
     WorkTaskKind Kind,
-    RequestStage Stage,
+    StepRef Step,
     DateTimeOffset CreatedAt,
     string Version,
     WorkTaskStatus Status,
     WorkTaskOutcome? Outcome,
     DateTimeOffset? DecidedAt,
     IReadOnlyList<TaskAction> Actions,
-    InboxRequestDto Request)
-{
-    /// <summary>The step this task decides. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef Step { get; init; } = StepRef.ForTask(Stage);
-}
+    InboxRequestDto Request);
 
 /// <summary>The request summary plus <see cref="KeyDetail"/>, e.g. "1,250.500 JOD" or "3 days · Annual".</summary>
 public sealed record InboxRequestDto(
@@ -34,11 +31,7 @@ public sealed record InboxRequestDto(
     UserRef Requester,
     DepartmentRef Department,
     RequestStatus Status,
-    RequestStage Stage,
+    StepRef? Step,
     DateTimeOffset SubmittedAt,
     DateTimeOffset? ClosedAt,
-    string KeyDetail)
-{
-    /// <summary>The step the request waits at; <c>null</c> once it is closed. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef? Step { get; init; } = StepRef.For(Stage);
-}
+    string KeyDetail);

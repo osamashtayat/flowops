@@ -87,8 +87,7 @@ DRY means every piece of business knowledge has **one** authoritative representa
 | Knowledge | Single home |
 |---|---|
 | Process steps and order | the pinned `WorkflowVersion` (`Domain/Workflows/`), loaded only through `Application/Workflows/IProcessDefinitionSource` |
-| Phase 1 stage ↔ v1 step key (until P2-BE-04) | `Domain/Workflows/StageKeys.cs` |
-| A step's key and name on the wire (until P2-BE-04 stores them) | `Application/Requests/StepRef.cs` |
+| A step's key and name snapshot (stored and on the wire) | `Domain/Workflows/StepRef.cs` (`WorkflowStep.Ref`) |
 | A request's route (done / current / planned steps) | `Application/Requests/RequestRoute.cs` |
 | A request's title and type label | `Application/Requests/RequestTitle.cs` |
 | State transitions & invariants | `Domain/Requests/Request.cs`, `WorkTask.cs` |

@@ -53,7 +53,7 @@ public sealed class DecisionGuardTests
         // simulates an inconsistent row loaded from storage, exactly as persistence hydrates private setters.
         var request = SubmitPurchase();
         var managerTask = request.OpenTask!;
-        typeof(Request).GetProperty(nameof(Request.Stage))!.SetValue(request, RequestStage.FinanceApproval);
+        typeof(Request).GetProperty(nameof(Request.StepKey))!.SetValue(request, Steps.FinanceApproval);
 
         AssertRejectedWithoutChange(
             request,
@@ -197,6 +197,6 @@ public sealed class DecisionGuardTests
     }
 
     private static string Snapshot(Request request) =>
-        $"{request.Status}|{request.Stage}|{request.ClosedAt}|activities={request.Activities.Count}|" +
+        $"{request.Status}|{request.StepKey}|{request.ClosedAt}|activities={request.Activities.Count}|" +
         string.Join(",", request.Tasks.Select(t => $"{t.Id}:{t.Status}:{t.Outcome}:{t.DecidedById}"));
 }

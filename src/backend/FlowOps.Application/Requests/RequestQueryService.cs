@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -54,7 +55,7 @@ public sealed class RequestQueryService(IAppDbContext db, AccessRules access, Re
                 a.Id,
                 a.Type,
                 db.Users.Where(u => u.Id == a.ActorId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefault(),
-                a.Stage,
+                StepRef.From(a.StepKey, a.StepName),
                 a.Body,
                 a.OccurredAt))
             .ToListAsync(ct);

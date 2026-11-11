@@ -26,7 +26,7 @@ public sealed class DemoDataSeederTests(FlowOpsApiFactory factory) : DatabaseTes
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         (await db.Departments.CountAsync(Ct)).ShouldBe(3);
         (await db.Users.CountAsync(Ct)).ShouldBeInRange(10, 12);
-        var states = await db.Requests.Select(r => new { r.Type, r.Status, r.Stage }).ToListAsync(Ct);
+        var states = await db.Requests.Select(r => new { r.Type, r.Status, r.StepKey }).ToListAsync(Ct);
         foreach (var type in Enum.GetValues<RequestType>())
         {
             states.Where(s => s.Type == type).Select(s => s.Status).Distinct()

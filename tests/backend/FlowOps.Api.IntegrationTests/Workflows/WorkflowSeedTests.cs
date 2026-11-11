@@ -35,6 +35,14 @@ public sealed class WorkflowSeedTests(FlowOpsApiFactory factory) : DatabaseTest(
         },
     };
 
+    private static readonly Dictionary<string, string> PhaseOneNames = new(StringComparer.Ordinal)
+    {
+        ["manager-approval"] = "Manager approval",
+        ["finance-approval"] = "Finance approval",
+        ["hr-confirmation"] = "HR confirmation",
+        ["procurement-fulfillment"] = "Procurement fulfilment",
+    };
+
     [Theory]
     [MemberData(nameof(PhaseOneSteps))]
     public async Task PublishedV1_HasThePhaseOneSteps(RequestType type, (string Key, WorkTaskKind Kind, AssigneeRuleKind Rule, string? Role)[] expected)
@@ -45,8 +53,8 @@ public sealed class WorkflowSeedTests(FlowOpsApiFactory factory) : DatabaseTest(
         v1.PublishedAt.ShouldNotBeNull();
         v1.Steps.Select(s => (s.Key, s.Kind, s.Assignee.Kind, s.Assignee.Role)).ShouldBe(expected);
         v1.Steps.Select(s => s.Order).ShouldBe(Enumerable.Range(0, expected.Length));
-        // Names equal what the API has shown for each stage since P2-DOC-01.
-        v1.Steps.ShouldAllBe(s => s.Name == StepRef.ForTask(s.Stage).Name);
+        // Names equal what the API showed for each Phase 1 stage (and what StoreStepKeys wrote onto history).
+        v1.Steps.Select(s => s.Name).ShouldBe(expected.Select(e => PhaseOneNames[e.Key]));
     }
 
     [Fact]

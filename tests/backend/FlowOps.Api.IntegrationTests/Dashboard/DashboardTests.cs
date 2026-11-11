@@ -258,7 +258,7 @@ public sealed class DashboardTests(FlowOpsApiFactory factory) : DatabaseTest(fac
         var items = page.GetProperty("items").EnumerateArray().ToList();
         items.Select(i => i.GetProperty("requestId").GetGuid()).ShouldBe([finnysOwn, linas]);
         items[0].GetProperty("reason").GetString().ShouldBe("NoEligibleRoleMember");
-        items[0].GetProperty("stage").GetString().ShouldBe("FinanceApproval");
+        items[0].GetProperty("step").GetProperty("key").GetString().ShouldBe("finance-approval");
         items[0].GetProperty("assignee").GetProperty("role").GetString().ShouldBe("FinanceOfficer");
         items[0].GetProperty("assignee").GetProperty("user").ValueKind.ShouldBe(JsonValueKind.Null);
         items[1].GetProperty("reason").GetString().ShouldBe("AssigneeInactive");
@@ -267,7 +267,7 @@ public sealed class DashboardTests(FlowOpsApiFactory factory) : DatabaseTest(fac
         items[1].GetProperty("requestNumber").GetString().ShouldStartWith("FO-");
         items[1].GetProperty("openSince").GetDateTimeOffset().ShouldBe(TestClock.Start.AddMinutes(1));
         items[1].EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal).ShouldBe(
-            ["assignee", "openSince", "reason", "requestId", "requestNumber", "requestType", "stage", "step", "taskId"]);
+            ["assignee", "openSince", "reason", "requestId", "requestNumber", "requestType", "step", "taskId"]);
     }
 
     [Fact]

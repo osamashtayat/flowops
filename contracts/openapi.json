@@ -5349,10 +5349,9 @@
           "id",
           "type",
           "actor",
-          "stage",
+          "step",
           "body",
-          "occurredAt",
-          "step"
+          "occurredAt"
         ],
         "type": "object",
         "properties": {
@@ -5373,13 +5372,13 @@
               }
             ]
           },
-          "stage": {
+          "step": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/RequestStage"
+                "$ref": "#/components/schemas/StepRef"
               }
             ]
           },
@@ -5392,16 +5391,6 @@
           "occurredAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StepRef"
-              }
-            ]
           }
         }
       },
@@ -5736,12 +5725,11 @@
           "id",
           "type",
           "actor",
-          "stage",
+          "step",
           "body",
           "occurredAt",
           "requestId",
-          "requestNumber",
-          "step"
+          "requestNumber"
         ],
         "type": "object",
         "properties": {
@@ -5762,13 +5750,13 @@
               }
             ]
           },
-          "stage": {
+          "step": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/RequestStage"
+                "$ref": "#/components/schemas/StepRef"
               }
             ]
           },
@@ -5788,16 +5776,6 @@
           },
           "requestNumber": {
             "type": "string"
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StepRef"
-              }
-            ]
           }
         }
       },
@@ -5970,15 +5948,14 @@
         "required": [
           "taskId",
           "kind",
-          "stage",
+          "step",
           "createdAt",
           "version",
           "status",
           "outcome",
           "decidedAt",
           "actions",
-          "request",
-          "step"
+          "request"
         ],
         "type": "object",
         "properties": {
@@ -5989,8 +5966,8 @@
           "kind": {
             "$ref": "#/components/schemas/WorkTaskKind"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "$ref": "#/components/schemas/StepRef"
           },
           "createdAt": {
             "type": "string",
@@ -6027,9 +6004,6 @@
           },
           "request": {
             "$ref": "#/components/schemas/InboxRequestDto"
-          },
-          "step": {
-            "$ref": "#/components/schemas/StepRef"
           }
         }
       },
@@ -6042,7 +6016,7 @@
           "requester",
           "department",
           "status",
-          "stage",
+          "step",
           "submittedAt",
           "closedAt",
           "keyDetail"
@@ -6071,8 +6045,15 @@
           "status": {
             "$ref": "#/components/schemas/RequestStatus"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StepRef"
+              }
+            ]
           },
           "submittedAt": {
             "type": "string",
@@ -6087,16 +6068,6 @@
           },
           "keyDetail": {
             "type": "string"
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StepRef"
-              }
-            ]
           }
         }
       },
@@ -6612,7 +6583,7 @@
           "requester",
           "department",
           "status",
-          "stage",
+          "step",
           "submittedAt",
           "closedAt",
           "purchase",
@@ -6620,8 +6591,7 @@
           "tasks",
           "availableActions",
           "canComment",
-          "route",
-          "step"
+          "route"
         ],
         "type": "object",
         "properties": {
@@ -6647,8 +6617,15 @@
           "status": {
             "$ref": "#/components/schemas/RequestStatus"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StepRef"
+              }
+            ]
           },
           "submittedAt": {
             "type": "string",
@@ -6705,16 +6682,6 @@
             "items": {
               "$ref": "#/components/schemas/RouteStepDto"
             }
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StepRef"
-              }
-            ]
           }
         }
       },
@@ -6722,15 +6689,6 @@
         "enum": [
           "mine",
           "visible"
-        ]
-      },
-      "RequestStage": {
-        "enum": [
-          "ManagerApproval",
-          "FinanceApproval",
-          "HrConfirmation",
-          "ProcurementFulfillment",
-          "Closed"
         ]
       },
       "RequestStatus": {
@@ -6750,10 +6708,9 @@
           "requester",
           "department",
           "status",
-          "stage",
+          "step",
           "submittedAt",
-          "closedAt",
-          "step"
+          "closedAt"
         ],
         "type": "object",
         "properties": {
@@ -6779,8 +6736,15 @@
           "status": {
             "$ref": "#/components/schemas/RequestStatus"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StepRef"
+              }
+            ]
           },
           "submittedAt": {
             "type": "string",
@@ -6792,16 +6756,6 @@
               "string"
             ],
             "format": "date-time"
-          },
-          "step": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/StepRef"
-              }
-            ]
           }
         }
       },
@@ -7057,11 +7011,10 @@
           "requestId",
           "requestNumber",
           "requestType",
-          "stage",
+          "step",
           "assignee",
           "reason",
-          "openSince",
-          "step"
+          "openSince"
         ],
         "type": "object",
         "properties": {
@@ -7079,8 +7032,8 @@
           "requestType": {
             "$ref": "#/components/schemas/RequestType"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "$ref": "#/components/schemas/StepRef"
           },
           "assignee": {
             "$ref": "#/components/schemas/TaskAssigneeDto"
@@ -7091,9 +7044,6 @@
           "openSince": {
             "type": "string",
             "format": "date-time"
-          },
-          "step": {
-            "$ref": "#/components/schemas/StepRef"
           }
         }
       },
@@ -7832,15 +7782,14 @@
         "required": [
           "id",
           "kind",
-          "stage",
+          "step",
           "status",
           "assignee",
           "outcome",
           "decidedBy",
           "decidedAt",
           "comment",
-          "createdAt",
-          "step"
+          "createdAt"
         ],
         "type": "object",
         "properties": {
@@ -7851,8 +7800,8 @@
           "kind": {
             "$ref": "#/components/schemas/WorkTaskKind"
           },
-          "stage": {
-            "$ref": "#/components/schemas/RequestStage"
+          "step": {
+            "$ref": "#/components/schemas/StepRef"
           },
           "status": {
             "$ref": "#/components/schemas/WorkTaskStatus"
@@ -7896,9 +7845,6 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "step": {
-            "$ref": "#/components/schemas/StepRef"
           }
         }
       },

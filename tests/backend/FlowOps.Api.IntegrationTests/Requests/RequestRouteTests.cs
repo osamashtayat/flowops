@@ -27,16 +27,6 @@ public sealed class RequestRouteTests
         WorkflowStep.Create("hr-confirmation", "HR confirmation", WorkTaskKind.Approval, AssigneeRule.ForRole(Roles.HrOfficer)));
 
     [Fact]
-    public void StepRef_CoversEveryStage_AndClosedIsNotAStep()
-    {
-        var steps = Enum.GetValues<RequestStage>().Where(s => s != RequestStage.Closed).Select(StepRef.ForTask).ToList();
-
-        steps.Select(s => s.Key).ShouldBe(["manager-approval", "finance-approval", "hr-confirmation", "procurement-fulfillment"], ignoreOrder: true);
-        steps.ShouldAllBe(s => !string.IsNullOrWhiteSpace(s.Name));
-        StepRef.For(RequestStage.Closed).ShouldBeNull();
-    }
-
-    [Fact]
     public void Purchase_AtManager_ShowsCurrentThenPlanned()
     {
         var request = Purchase();

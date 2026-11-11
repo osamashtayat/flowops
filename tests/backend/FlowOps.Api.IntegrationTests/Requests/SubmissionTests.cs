@@ -38,7 +38,8 @@ public sealed class SubmissionTests(FlowOpsApiFactory factory) : DatabaseTest(fa
         body.GetProperty("type").GetString().ShouldBe("EquipmentPurchase");
         body.GetProperty("title").GetString().ShouldBe("Laptop");
         body.GetProperty("status").GetString().ShouldBe("InReview");
-        body.GetProperty("stage").GetString().ShouldBe("ManagerApproval");
+        body.GetProperty("step").GetProperty("key").GetString().ShouldBe("manager-approval");
+        body.TryGetProperty("stage", out _).ShouldBeFalse();
         body.GetProperty("requester").GetProperty("id").GetGuid().ShouldBe(org.Lina.Id);
         body.GetProperty("department").GetProperty("id").GetGuid().ShouldBe(org.SalesId);
         body.GetProperty("submittedAt").GetDateTimeOffset().ShouldBe(Factory.Clock.GetUtcNow());
