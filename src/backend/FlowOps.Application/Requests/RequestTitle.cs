@@ -10,6 +10,25 @@ namespace FlowOps.Application.Requests;
 /// </summary>
 public static class RequestTitle
 {
+    /// <summary>
+    /// The title from whichever details a request has: the one place that picks the per-type rule (#84). A request
+    /// has exactly one kind of details, so anything else is a programming error, not a fallback to purchase.
+    /// </summary>
+    public static string For(PurchaseDetails? purchase, LeaveDetails? leave) => (purchase, leave) switch
+    {
+        ({ } p, null) => ForPurchase(p.ItemName),
+        (null, { } l) => ForLeave(l.LeaveType, l.StartDate, l.EndDate),
+        _ => throw new UnreachableException("A request has exactly one kind of details."),
+    };
+
+    /// <summary>"purchase request" / "leave request", as notification text names a request's type.</summary>
+    public static string TypeLabel(RequestType type) => type switch
+    {
+        RequestType.EquipmentPurchase => "purchase request",
+        RequestType.Leave => "leave request",
+        _ => throw new UnreachableException($"Unknown request type {type}."),
+    };
+
     public static string ForPurchase(string itemName) => itemName;
 
     public static string ForLeave(LeaveType leaveType, DateOnly start, DateOnly end) =>

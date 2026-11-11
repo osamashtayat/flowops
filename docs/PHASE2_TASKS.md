@@ -63,7 +63,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 - **Deps:** none (Phase 1 debt).
 - **Tests:** a first step that is a role queue works with no change outside its process entry. The I12 pre-check is kept.
 
-### P2-BE-02 — Request-type dispatch in one home (#84) · `Todo`
+### P2-BE-02 — Request-type dispatch in one home (#84) · `Done` (2026-11-11)
 - **Objective:** route all four places that branch on request type through one place each:
   - `RequestTitle.For(…)` with an exhaustive `throw`
   - `TypeLabel` as a `switch` on `RequestType` with a throwing default
