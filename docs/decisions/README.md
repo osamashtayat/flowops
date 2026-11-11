@@ -19,3 +19,4 @@ To change a decision, add a new ADR that supersedes the old one; never rewrite a
 | [0011](0011-design-system.md) | Token-first Tailwind v4 design system with disabled default palette |
 | [0012](0012-two-person-admin-control.md) | Administrator role only on new accounts; own role change needs a second admin (#32) |
 | [0013](0013-role-change-approver-account-age.md) | Role-change approver account must be a day older than the proposal (#48) |
+| [0014](0014-configurable-workflows.md) | **Proposed:** Phase 2 configurable workflows as versioned step lists with typed conditions; no engine (would supersede 0004) |
