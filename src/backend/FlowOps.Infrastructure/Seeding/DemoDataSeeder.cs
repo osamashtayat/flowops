@@ -121,10 +121,12 @@ public sealed partial class DemoDataSeeder(
             ? DemoCompany.Users.Single(u => u.Key == spec.Requester).PreviousManagerKey ?? ManagerKeyOf(spec.Requester)
             : ManagerKeyOf(spec.Requester);
         var managerId = people[managerKey].Id;
+        // The manager at submission time, not today's (demo history includes a manager change).
+        Assignee Resolve(ProcessStep step) => TaskAssigneeResolver.Resolve(step, managerId);
         var number = RequestNumber.Create(calendar.YearOf(submittedAt), await numbers.NextAsync(ct));
         var request = spec.Purchase is { } purchase
-            ? Request.SubmitPurchase(number, requester.Id, requester.DepartmentId!.Value, ToDetails(purchase), managerId, submittedAt)
-            : Request.SubmitLeave(number, requester.Id, requester.DepartmentId!.Value, ToDetails(spec.Leave!, now, submittedAt), managerId, submittedAt);
+            ? Request.SubmitPurchase(number, requester.Id, requester.DepartmentId!.Value, ToDetails(purchase), Resolve, submittedAt)
+            : Request.SubmitLeave(number, requester.Id, requester.DepartmentId!.Value, ToDetails(spec.Leave!, now, submittedAt), Resolve, submittedAt);
         db.Requests.Add(request);
         db.Notifications.AddRange(NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], submittedAt));
 
