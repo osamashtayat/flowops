@@ -40,6 +40,8 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
                     AssigneeUser = db.Users.Where(u => u.Id == t.AssigneeUserId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefault(),
                     DecidedBy = db.Users.Where(u => u.Id == t.DecidedById).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefault(),
                 }).ToList(),
+                Skipped = r.Activities.Where(a => a.Type == ActivityType.StepSkipped)
+                    .Select(a => new StepRef(a.StepKey!, a.StepName!)).ToList(),
             })
             .SingleOrDefaultAsync(ct);
         if (row is null)
@@ -49,8 +51,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
 
         var reasonVisible = row.Leave is not null && await access.CanReadLeaveReasonAsync(requestId, me, ct);
         var openTask = row.Tasks.Select(t => t.Task).SingleOrDefault(t => t.IsOpen);
-        // Only an open request has steps still to come; a closed one shows only the steps it went through.
-        var pinnedSteps = openTask is null ? [] : (await workflows.VersionAsync(row.WorkflowVersionId, ct)).Steps;
+        var pinned = await workflows.VersionAsync(row.WorkflowVersionId, ct);
         return new RequestDetailsDto(
             row.Id,
             row.Number.Value,
@@ -68,7 +69,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
             TaskEligibility.AvailableActions(row.RequesterId, row.Tasks.Select(t => t.Task.DecidedById), openTask, me),
             // Commenting is open to every participant who can see the request (AUTHORIZATION.md §3), closed or not.
             CanComment: true,
-            RequestRoute.For(pinnedSteps, row.Tasks.Select(t => t.Task), row.Status));
+            RequestRoute.For(pinned, row.Tasks.Select(t => t.Task), row.Skipped, RequestFacts.Of(row.Purchase, row.Leave)));
     }
 
     private static PurchaseDetailsDto ToDto(PurchaseDetails p) => new(
@@ -103,6 +104,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
         public PurchaseDetails? Purchase { get; init; }
         public LeaveDetails? Leave { get; init; }
         public required List<TaskRow> Tasks { get; init; }
+        public required List<StepRef> Skipped { get; init; }
     }
 
     private sealed class TaskRow

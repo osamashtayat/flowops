@@ -54,6 +54,7 @@ internal sealed class RequestConfiguration : IEntityTypeConfiguration<Request>
         builder.Navigation(r => r.Activities).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.Ignore(r => r.IsClosed);
+        builder.Ignore(r => r.Facts);
         builder.Ignore(r => r.OpenTask);
     }
 

@@ -42,5 +42,5 @@ public static class DomainErrors
         new(ErrorCodes.WorkflowVersionNotDraft, "Only a draft can change. Published and retired versions are kept as they are.");
 
     public static DomainException WorkflowInvalid() =>
-        new(ErrorCodes.WorkflowInvalid, "The workflow needs at least one step, and only its last step can be a fulfilment step.");
+        new(ErrorCodes.WorkflowInvalid, "The workflow needs at least one step, its first step can't have a condition, and only its last step can be a fulfilment step.");
 }
