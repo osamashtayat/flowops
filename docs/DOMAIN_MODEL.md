@@ -274,7 +274,7 @@ Enforced in the domain (D), application layer (A), and/or database (DB). "Where"
 public sealed class Request
 {
     public static Request SubmitPurchase(RequestNumber number, UserRef requester, Guid departmentId,
-        PurchaseDetails details, Guid managerId, DateTimeOffset now);
+        PurchaseDetails details, Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now);
     public static Request SubmitLeave(/* … */);
 
     // The only way state advances. Validates I2, I3, I5, I6, I8; appends activities (I9);
@@ -287,7 +287,7 @@ public sealed class Request
 }
 ```
 
-The domain does **not** decide *who* is eligible for a role queue (that needs the user store); it receives the resolved assignee for the next step and checks only rules it can know (self-decision, current step, closed, already decided).
+The domain does **not** decide *who* is eligible for a role queue (that needs the user store); it receives a resolver (`TaskAssigneeResolver.ResolverFor(requester)`, the same one for submission and decisions, #83), checks that each resolved assignee satisfies its step's `AssigneeRule`, and checks only rules it can know (self-decision, current step, closed, already decided). The first step goes through the same path as every later one, so a process whose first step is a role queue needs only its process entry.
 
 ---
 
