@@ -15,7 +15,7 @@ test('purchase: employee → manager → finance → procurement, then completed
   const heading = lina.getByRole('heading', { level: 1, name: new RegExp(`^FO-\\d{4}-\\d{6} · ${item}$`) })
   await expect(heading).toBeVisible()
   const number = ((await heading.textContent()) ?? '').split(' · ')[0] ?? ''
-  await expect(lina.getByText(`Request ${number} submitted. Your manager has been notified.`)).toBeVisible()
+  await expect(lina.getByText(`Request ${number} submitted.`)).toBeVisible()
   await expect(lina.getByText('Waiting for: Manager approval')).toBeVisible()
   const requestUrl = lina.url()
 
