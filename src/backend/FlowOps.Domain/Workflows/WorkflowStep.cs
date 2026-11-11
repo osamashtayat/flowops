@@ -47,8 +47,8 @@ public sealed partial class WorkflowStep
 
     public AssigneeRule Assignee => AssigneeRule.From(AssigneeKind, AssigneeRole);
 
-    /// <summary>The Phase 1 stage requests and tasks still store for this step, until P2-BE-04 (<see cref="StageKeys"/>).</summary>
-    public RequestStage Stage => StageKeys.StageOf(Key);
+    /// <summary>The key and name snapshot requests, tasks and activities store for this step.</summary>
+    public StepRef Ref => new(Key, Name);
 
     public static WorkflowStep Create(string key, string name, WorkTaskKind kind, AssigneeRule assignee)
     {

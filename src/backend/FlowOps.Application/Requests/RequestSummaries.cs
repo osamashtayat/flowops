@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -30,7 +31,8 @@ public static class RequestSummaries
             Requester = db.Users.Where(u => u.Id == r.RequesterId).Select(u => new UserRef(u.Id, u.DisplayName)).Single(),
             Department = db.Departments.Where(d => d.Id == r.DepartmentId).Select(d => new DepartmentRef(d.Id, d.Name)).Single(),
             Status = r.Status,
-            Stage = r.Stage,
+            StepKey = r.StepKey,
+            StepName = r.StepName,
             SubmittedAt = r.SubmittedAt,
             ClosedAt = r.ClosedAt,
         });
@@ -63,7 +65,11 @@ public static class RequestSummaries
 
         public RequestStatus Status { get; init; }
 
-        public RequestStage Stage { get; init; }
+        public string? StepKey { get; init; }
+
+        public string? StepName { get; init; }
+
+        public StepRef? Step => StepRef.From(StepKey, StepName);
 
         public DateTimeOffset SubmittedAt { get; init; }
 
@@ -89,6 +95,6 @@ public static class RequestSummaries
         private int LeaveDays => LeaveDetails.DaysBetween(LeaveStart!.Value, LeaveEnd!.Value);
 
         public RequestSummaryDto ToDto() =>
-            new(Id, Number.Value, Type, Title, Requester, Department, Status, Stage, SubmittedAt, ClosedAt);
+            new(Id, Number.Value, Type, Title, Requester, Department, Status, Step, SubmittedAt, ClosedAt);
     }
 }

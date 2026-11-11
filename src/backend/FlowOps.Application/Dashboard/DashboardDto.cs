@@ -1,6 +1,7 @@
 using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Dashboard;
 
@@ -22,15 +23,11 @@ public sealed record DashboardActivityDto(
     Guid Id,
     ActivityType Type,
     UserRef? Actor,
-    RequestStage? Stage,
+    StepRef? Step,
     string? Body,
     DateTimeOffset OccurredAt,
     Guid RequestId,
-    string RequestNumber)
-{
-    /// <summary>As <see cref="ActivityDto.Step"/>.</summary>
-    public StepRef? Step { get; init; } = Stage is { } stage ? StepRef.For(stage) : null;
-}
+    string RequestNumber);
 
 /// <summary>Present only with the <c>admin.manage</c> capability.</summary>
 public sealed record AdminSummaryDto(int ActiveUsers, int Departments, int StalledTasks);

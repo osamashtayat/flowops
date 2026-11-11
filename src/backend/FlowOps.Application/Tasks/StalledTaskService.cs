@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using Microsoft.EntityFrameworkCore;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Tasks;
 
@@ -22,7 +23,8 @@ public sealed class StalledTaskService(IAppDbContext db)
                 RequestId = x.Request.Id,
                 x.Request.Number,
                 x.Request.Type,
-                x.Task.Stage,
+                x.Task.StepKey,
+                x.Task.StepName,
                 AssigneeUser = db.Users.Where(u => u.Id == x.Task.AssigneeUserId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefault(),
                 x.Task.AssigneeRole,
                 OpenSince = x.Task.CreatedAt,
@@ -33,7 +35,7 @@ public sealed class StalledTaskService(IAppDbContext db)
             row.RequestId,
             row.Number.Value,
             row.Type,
-            row.Stage,
+            new StepRef(row.StepKey, row.StepName),
             new TaskAssigneeDto(row.AssigneeUser, row.AssigneeRole is null ? null : Enum.Parse<Role>(row.AssigneeRole)),
             row.AssigneeRole is null ? StalledTaskReason.AssigneeInactive : StalledTaskReason.NoEligibleRoleMember,
             row.OpenSince));

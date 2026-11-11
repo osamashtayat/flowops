@@ -3550,11 +3550,10 @@ export interface components {
             id: string;
             type: components["schemas"]["ActivityType"];
             actor: null | components["schemas"]["UserRef"];
-            stage: null | components["schemas"]["RequestStage"];
+            step: null | components["schemas"]["StepRef"];
             body: null | string;
             /** Format: date-time */
             occurredAt: string;
-            step: null | components["schemas"]["StepRef"];
         };
         /** @enum {unknown} */
         ActivityType: "Submitted" | "TaskAssigned" | "Approved" | "Rejected" | "Fulfilled" | "Completed" | "CommentAdded" | "StepSkipped";
@@ -3632,14 +3631,13 @@ export interface components {
             id: string;
             type: components["schemas"]["ActivityType"];
             actor: null | components["schemas"]["UserRef"];
-            stage: null | components["schemas"]["RequestStage"];
+            step: null | components["schemas"]["StepRef"];
             body: null | string;
             /** Format: date-time */
             occurredAt: string;
             /** Format: uuid */
             requestId: string;
             requestNumber: string;
-            step: null | components["schemas"]["StepRef"];
         };
         DashboardDto: {
             myRequests: components["schemas"]["MyRequestsSummaryDto"];
@@ -3683,7 +3681,7 @@ export interface components {
             /** Format: uuid */
             taskId: string;
             kind: components["schemas"]["WorkTaskKind"];
-            stage: components["schemas"]["RequestStage"];
+            step: components["schemas"]["StepRef"];
             /** Format: date-time */
             createdAt: string;
             version: string;
@@ -3693,7 +3691,6 @@ export interface components {
             decidedAt: null | string;
             actions: components["schemas"]["TaskAction"][];
             request: components["schemas"]["InboxRequestDto"];
-            step: components["schemas"]["StepRef"];
         };
         InboxRequestDto: {
             /** Format: uuid */
@@ -3704,13 +3701,12 @@ export interface components {
             requester: components["schemas"]["UserRef"];
             department: components["schemas"]["DepartmentRef"];
             status: components["schemas"]["RequestStatus"];
-            stage: components["schemas"]["RequestStage"];
+            step: null | components["schemas"]["StepRef"];
             /** Format: date-time */
             submittedAt: string;
             /** Format: date-time */
             closedAt: null | string;
             keyDetail: string;
-            step?: null | components["schemas"]["StepRef"];
         };
         LeaveDetailsDto: {
             /** Format: date */
@@ -3861,7 +3857,7 @@ export interface components {
             requester: components["schemas"]["UserRef"];
             department: components["schemas"]["DepartmentRef"];
             status: components["schemas"]["RequestStatus"];
-            stage: components["schemas"]["RequestStage"];
+            step: null | components["schemas"]["StepRef"];
             /** Format: date-time */
             submittedAt: string;
             /** Format: date-time */
@@ -3872,12 +3868,9 @@ export interface components {
             availableActions: null | components["schemas"]["AvailableActionsDto"];
             canComment: boolean;
             route: components["schemas"]["RouteStepDto"][];
-            step: null | components["schemas"]["StepRef"];
         };
         /** @enum {unknown} */
         RequestScope: "mine" | "visible";
-        /** @enum {unknown} */
-        RequestStage: "ManagerApproval" | "FinanceApproval" | "HrConfirmation" | "ProcurementFulfillment" | "Closed";
         /** @enum {unknown} */
         RequestStatus: "InReview" | "Approved" | "Completed" | "Rejected";
         RequestSummaryDto: {
@@ -3889,12 +3882,11 @@ export interface components {
             requester: components["schemas"]["UserRef"];
             department: components["schemas"]["DepartmentRef"];
             status: components["schemas"]["RequestStatus"];
-            stage: components["schemas"]["RequestStage"];
+            step: null | components["schemas"]["StepRef"];
             /** Format: date-time */
             submittedAt: string;
             /** Format: date-time */
             closedAt: null | string;
-            step: null | components["schemas"]["StepRef"];
         };
         /** @enum {unknown} */
         RequestType: "EquipmentPurchase" | "Leave";
@@ -3959,12 +3951,11 @@ export interface components {
             requestId: string;
             requestNumber: string;
             requestType: components["schemas"]["RequestType"];
-            stage: components["schemas"]["RequestStage"];
+            step: components["schemas"]["StepRef"];
             assignee: components["schemas"]["TaskAssigneeDto"];
             reason: components["schemas"]["StalledTaskReason"];
             /** Format: date-time */
             openSince: string;
-            step: components["schemas"]["StepRef"];
         };
         /** @enum {unknown} */
         StalledTaskReason: "NoEligibleRoleMember" | "AssigneeInactive";
@@ -4134,7 +4125,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             kind: components["schemas"]["WorkTaskKind"];
-            stage: components["schemas"]["RequestStage"];
+            step: components["schemas"]["StepRef"];
             status: components["schemas"]["WorkTaskStatus"];
             assignee: components["schemas"]["TaskAssigneeDto"];
             outcome: null | components["schemas"]["WorkTaskOutcome"];
@@ -4144,7 +4135,6 @@ export interface components {
             comment: null | string;
             /** Format: date-time */
             createdAt: string;
-            step: components["schemas"]["StepRef"];
         };
         /** @enum {unknown} */
         WorkTaskKind: "Approval" | "Fulfillment";

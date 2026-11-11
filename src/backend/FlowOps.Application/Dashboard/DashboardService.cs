@@ -4,6 +4,7 @@ using FlowOps.Application.Organization;
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Dashboard;
 
@@ -86,7 +87,7 @@ public sealed class DashboardService(IAppDbContext db, AccessRules access, TimeP
                 x.Activity.Id,
                 x.Activity.Type,
                 db.Users.Where(u => u.Id == x.Activity.ActorId).Select(u => new UserRef(u.Id, u.DisplayName)).FirstOrDefault(),
-                x.Activity.Stage,
+                StepRef.From(x.Activity.StepKey, x.Activity.StepName),
                 x.Activity.Body,
                 x.Activity.OccurredAt,
                 x.Request.Id,

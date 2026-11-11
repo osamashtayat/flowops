@@ -14,7 +14,6 @@ export type MoneyDto = Schemas['MoneyDto']
 export type UserRef = Schemas['UserRef']
 
 export type RequestStatus = Schemas['RequestStatus']
-export type RequestStage = Schemas['RequestStage']
 export type RequestType = Schemas['RequestType']
 export type LeaveType = Schemas['LeaveType']
 export type SubmitPurchaseRequest = Schemas['SubmitPurchaseRequest']

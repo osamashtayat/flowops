@@ -157,13 +157,20 @@ public sealed class WorkflowVersionTests
     }
 
     [Fact]
-    public void StageKeys_MapEveryPhase1StageBothWays()
+    public void RequestsTasksAndActivities_StoreTheStepKeyAndANameSnapshot()
     {
-        foreach (var stage in Enum.GetValues<RequestStage>().Where(s => s != RequestStage.Closed))
-        {
-            StageKeys.StageOf(StageKeys.KeyOf(stage)!).ShouldBe(stage);
-        }
+        var request = SubmitLeave();
 
-        StageKeys.KeyOf(RequestStage.Closed).ShouldBeNull();
+        request.Step.ShouldBe(new StepRef("manager-approval", "Manager approval"));
+        request.OpenTask!.Step.ShouldBe(request.Step);
+        request.Activities.Select(a => a.Step).ShouldAllBe(s => s == request.Step);
+
+        request.ApproveCurrent(TestOrg.Manager);
+        request.ApproveCurrent(HrOfficer);
+
+        request.Step.ShouldBeNull();
+        request.Tasks.Select(t => t.Step.Name).ShouldBe(["Manager approval", "HR confirmation"]);
+        request.Activities[^1].Type.ShouldBe(ActivityType.Completed);
+        request.Activities[^1].Step.ShouldBeNull();
     }
 }

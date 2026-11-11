@@ -3,6 +3,7 @@ using FlowOps.Application.Common;
 using FlowOps.Application.Workflows;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -27,7 +28,8 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
                 Department = db.Departments.Where(d => d.Id == r.DepartmentId).Select(d => new DepartmentRef(d.Id, d.Name)).Single(),
                 WorkflowVersionId = r.WorkflowVersionId,
                 Status = r.Status,
-                Stage = r.Stage,
+                StepKey = r.StepKey,
+                StepName = r.StepName,
                 SubmittedAt = r.SubmittedAt,
                 ClosedAt = r.ClosedAt,
                 Purchase = r.Purchase,
@@ -57,7 +59,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
             row.Requester,
             row.Department,
             row.Status,
-            row.Stage,
+            StepRef.From(row.StepKey, row.StepName),
             row.SubmittedAt,
             row.ClosedAt,
             row.Purchase is { } purchase ? ToDto(purchase) : null,
@@ -79,7 +81,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
     {
         var t = row.Task;
         return new WorkTaskDto(
-            t.Id, t.Kind, t.Stage, t.Status,
+            t.Id, t.Kind, t.Step, t.Status,
             new TaskAssigneeDto(row.AssigneeUser, t.AssigneeRole is { } role ? Enum.Parse<Role>(role) : null),
             t.Outcome, row.DecidedBy, t.DecidedAt, t.Comment, t.CreatedAt);
     }
@@ -94,7 +96,8 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, I
         public required DepartmentRef Department { get; init; }
         public Guid WorkflowVersionId { get; init; }
         public RequestStatus Status { get; init; }
-        public RequestStage Stage { get; init; }
+        public string? StepKey { get; init; }
+        public string? StepName { get; init; }
         public DateTimeOffset SubmittedAt { get; init; }
         public DateTimeOffset? ClosedAt { get; init; }
         public PurchaseDetails? Purchase { get; init; }

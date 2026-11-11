@@ -296,7 +296,8 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
         asProcurement.GetProperty("availableActions").GetProperty("actions").EnumerateArray().Select(a => a.GetString()).ShouldBe(["fulfill"]);
 
         var tasks = asRequester.GetProperty("tasks").EnumerateArray().ToList();
-        tasks.Select(t => t.GetProperty("stage").GetString()).ShouldBe(["ManagerApproval", "FinanceApproval", "ProcurementFulfillment"]);
+        tasks.Select(t => t.GetProperty("step").GetProperty("key").GetString()).ShouldBe(["manager-approval", "finance-approval", "procurement-fulfillment"]);
+        tasks.Select(t => t.GetProperty("step").GetProperty("name").GetString()).ShouldBe(["Manager approval", "Finance approval", "Procurement fulfilment"]);
         tasks[1].GetProperty("assignee").GetProperty("role").GetString().ShouldBe("FinanceOfficer");
         tasks[1].GetProperty("decidedBy").GetProperty("displayName").GetString().ShouldBe("Fiona");
         tasks[1].GetProperty("outcome").GetString().ShouldBe("Approved");
@@ -346,7 +347,7 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
         comment.GetProperty("type").GetString().ShouldBe("CommentAdded");
         comment.GetProperty("body").GetString().ShouldBe("Which model?");
         comment.GetProperty("actor").GetProperty("id").GetGuid().ShouldBe(org.Users["lina"]);
-        comment.GetProperty("stage").ValueKind.ShouldBe(JsonValueKind.Null);
+        comment.GetProperty("step").ValueKind.ShouldBe(JsonValueKind.Null);
         var activity = await JsonBody.ReadAsync(await lina.GetAsync(RequestUri(org, "P1", "/activity"), Ct));
         activity.EnumerateArray().Last().GetProperty("id").GetGuid().ShouldBe(comment.GetProperty("id").GetGuid());
     }

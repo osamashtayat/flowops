@@ -16,7 +16,7 @@ public sealed class PurchaseProcessTests
         var request = SubmitPurchase();
 
         request.Status.ShouldBe(RequestStatus.InReview);
-        request.Stage.ShouldBe(RequestStage.ManagerApproval);
+        request.StepKey.ShouldBe(Steps.ManagerApproval);
         request.Type.ShouldBe(RequestType.EquipmentPurchase);
         request.Number.Value.ShouldBe("FO-2026-000001");
         request.RequesterId.ShouldBe(Requester);
@@ -29,7 +29,7 @@ public sealed class PurchaseProcessTests
         var task = request.Tasks.ShouldHaveSingleItem();
         task.ShouldBeSameAs(request.OpenTask);
         task.Kind.ShouldBe(WorkTaskKind.Approval);
-        task.Stage.ShouldBe(RequestStage.ManagerApproval);
+        task.StepKey.ShouldBe(Steps.ManagerApproval);
         task.AssigneeUserId.ShouldBe(Manager);
         task.AssigneeRole.ShouldBeNull();
         task.Status.ShouldBe(WorkTaskStatus.Open);
@@ -39,8 +39,8 @@ public sealed class PurchaseProcessTests
         task.CreatedAt.ShouldBe(T0);
 
         request.Activities.Count.ShouldBe(2);
-        ActivityShouldBe(request.Activities[0], ActivityType.Submitted, Requester, null, RequestStage.ManagerApproval, T0);
-        ActivityShouldBe(request.Activities[1], ActivityType.TaskAssigned, null, task.Id, RequestStage.ManagerApproval, T0);
+        ActivityShouldBe(request.Activities[0], ActivityType.Submitted, Requester, null, Steps.ManagerApproval, T0);
+        ActivityShouldBe(request.Activities[1], ActivityType.TaskAssigned, null, task.Id, Steps.ManagerApproval, T0);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public sealed class PurchaseProcessTests
         var r1 = request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve("Looks fine"), WorkflowFor(request.Type), Resolve, T1);
 
         request.Status.ShouldBe(RequestStatus.InReview);
-        request.Stage.ShouldBe(RequestStage.FinanceApproval);
+        request.StepKey.ShouldBe(Steps.FinanceApproval);
         TaskShouldBeDone(managerTask, WorkTaskOutcome.Approved, Manager, T1, "Looks fine");
         var financeTask = r1.NextTask.ShouldNotBeNull();
         financeTask.ShouldBeSameAs(request.OpenTask);
@@ -65,15 +65,15 @@ public sealed class PurchaseProcessTests
         r1.Status.ShouldBe(RequestStatus.InReview);
         var step1 = request.AppendedSince(count);
         step1.Length.ShouldBe(2);
-        ActivityShouldBe(step1[0], ActivityType.Approved, Manager, managerTask.Id, RequestStage.ManagerApproval, T1, "Looks fine");
-        ActivityShouldBe(step1[1], ActivityType.TaskAssigned, null, financeTask.Id, RequestStage.FinanceApproval, T1);
+        ActivityShouldBe(step1[0], ActivityType.Approved, Manager, managerTask.Id, Steps.ManagerApproval, T1, "Looks fine");
+        ActivityShouldBe(step1[1], ActivityType.TaskAssigned, null, financeTask.Id, Steps.FinanceApproval, T1);
 
         // Finance approves → Approved, awaiting procurement.
         count = request.Activities.Count;
         var r2 = request.ApproveCurrent(FinanceOfficer, T2);
 
         request.Status.ShouldBe(RequestStatus.Approved);
-        request.Stage.ShouldBe(RequestStage.ProcurementFulfillment);
+        request.StepKey.ShouldBe(Steps.ProcurementFulfillment);
         TaskShouldBeDone(financeTask, WorkTaskOutcome.Approved, FinanceOfficer, T2, null);
         var procurementTask = r2.NextTask.ShouldNotBeNull();
         procurementTask.Kind.ShouldBe(WorkTaskKind.Fulfillment);
@@ -81,26 +81,26 @@ public sealed class PurchaseProcessTests
         r2.Status.ShouldBe(RequestStatus.Approved);
         var step2 = request.AppendedSince(count);
         step2.Length.ShouldBe(2);
-        ActivityShouldBe(step2[0], ActivityType.Approved, FinanceOfficer, financeTask.Id, RequestStage.FinanceApproval, T2);
-        ActivityShouldBe(step2[1], ActivityType.TaskAssigned, null, procurementTask.Id, RequestStage.ProcurementFulfillment, T2);
+        ActivityShouldBe(step2[0], ActivityType.Approved, FinanceOfficer, financeTask.Id, Steps.FinanceApproval, T2);
+        ActivityShouldBe(step2[1], ActivityType.TaskAssigned, null, procurementTask.Id, Steps.ProcurementFulfillment, T2);
 
         // Procurement fulfils → Completed.
         count = request.Activities.Count;
         var r3 = request.DecideTask(procurementTask.Id, ProcurementOfficer, TaskDecision.Fulfill("Ordered PO-77"), WorkflowFor(request.Type), Resolve, T3);
 
         request.Status.ShouldBe(RequestStatus.Completed);
-        request.Stage.ShouldBe(RequestStage.Closed);
+        request.StepKey.ShouldBe(Steps.Closed);
         request.ClosedAt.ShouldBe(T3);
         request.IsClosed.ShouldBeTrue();
         request.OpenTask.ShouldBeNull();
         TaskShouldBeDone(procurementTask, WorkTaskOutcome.Fulfilled, ProcurementOfficer, T3, "Ordered PO-77");
         r3.NextTask.ShouldBeNull();
         r3.Status.ShouldBe(RequestStatus.Completed);
-        r3.Stage.ShouldBe(RequestStage.Closed);
+        r3.Step.ShouldBeNull();
         var step3 = request.AppendedSince(count);
         step3.Length.ShouldBe(2);
-        ActivityShouldBe(step3[0], ActivityType.Fulfilled, ProcurementOfficer, procurementTask.Id, RequestStage.ProcurementFulfillment, T3, "Ordered PO-77");
-        ActivityShouldBe(step3[1], ActivityType.Completed, null, null, RequestStage.Closed, T3);
+        ActivityShouldBe(step3[0], ActivityType.Fulfilled, ProcurementOfficer, procurementTask.Id, Steps.ProcurementFulfillment, T3, "Ordered PO-77");
+        ActivityShouldBe(step3[1], ActivityType.Completed, null, null, Steps.Closed, T3);
 
         request.Tasks.Count.ShouldBe(3);
         request.Activities.Count.ShouldBe(8);
@@ -116,12 +116,12 @@ public sealed class PurchaseProcessTests
     }
 
     internal static void ActivityShouldBe(
-        RequestActivity activity, ActivityType type, Guid? actor, Guid? taskId, RequestStage? stage, DateTimeOffset at, string? body = null)
+        RequestActivity activity, ActivityType type, Guid? actor, Guid? taskId, string? stage, DateTimeOffset at, string? body = null)
     {
         activity.Type.ShouldBe(type);
         activity.ActorId.ShouldBe(actor);
         activity.TaskId.ShouldBe(taskId);
-        activity.Stage.ShouldBe(stage);
+        activity.StepKey.ShouldBe(stage);
         activity.OccurredAt.ShouldBe(at);
         activity.Body.ShouldBe(body);
     }

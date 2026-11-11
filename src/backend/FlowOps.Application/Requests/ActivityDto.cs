@@ -1,5 +1,6 @@
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -8,10 +9,6 @@ public sealed record ActivityDto(
     Guid Id,
     ActivityType Type,
     UserRef? Actor,
-    RequestStage? Stage,
+    StepRef? Step,
     string? Body,
-    DateTimeOffset OccurredAt)
-{
-    /// <summary>The step the entry is about, or <c>null</c> (comments, completion). Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef? Step { get; init; } = Stage is { } stage ? StepRef.For(stage) : null;
-}
+    DateTimeOffset OccurredAt);

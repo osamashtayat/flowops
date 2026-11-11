@@ -29,14 +29,14 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
         loaded.RequesterId.ShouldBe(org.Requester);
         loaded.DepartmentId.ShouldBe(org.Department);
         loaded.Status.ShouldBe(RequestStatus.InReview);
-        loaded.Stage.ShouldBe(RequestStage.ManagerApproval);
+        loaded.Step.ShouldBe(new StepRef("manager-approval", "Manager approval"));
         loaded.SubmittedAt.ShouldBe(TestClock.Start);
         loaded.Version.ShouldNotBe(0u);
         loaded.Leave.ShouldBeNull();
         loaded.Purchase!.ItemName.ShouldBe("Laptop");
         loaded.Purchase.EstimatedCost.ShouldBe(Money.Create(1250.500m, SupportedCurrencies.Jod));
         var task = loaded.Tasks.ShouldHaveSingleItem();
-        (task.Kind, task.Stage, task.AssigneeUserId, task.Status).ShouldBe((WorkTaskKind.Approval, RequestStage.ManagerApproval, org.Manager, WorkTaskStatus.Open));
+        (task.Kind, task.StepKey, task.AssigneeUserId, task.Status).ShouldBe((WorkTaskKind.Approval, "manager-approval", org.Manager, WorkTaskStatus.Open));
         loaded.Activities.Select(a => a.Type).ShouldBe([ActivityType.Submitted, ActivityType.TaskAssigned], ignoreOrder: true);
     }
 
@@ -73,7 +73,7 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
 
         var loaded = await LoadAsync(submitted.Id);
         loaded.Version.ShouldNotBe(versionBefore);
-        loaded.Stage.ShouldBe(RequestStage.FinanceApproval);
+        loaded.Step.ShouldBe(new StepRef("finance-approval", "Finance approval"));
         loaded.Tasks.Count.ShouldBe(2);
         loaded.OpenTask!.AssigneeRole.ShouldBe(Roles.FinanceOfficer);
         var decided = loaded.Tasks.Single(t => !t.IsOpen);
@@ -128,8 +128,8 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
 
         var error = await Should.ThrowAsync<PostgresException>(() => ExecuteAsync(
             $"""
-            INSERT INTO work_tasks (id, request_id, kind, stage, assignee_role, status, created_at)
-            VALUES ('{Guid.CreateVersion7()}', '{submitted.Id}', 'Approval', 'FinanceApproval', 'FinanceOfficer', 'Open', now())
+            INSERT INTO work_tasks (id, request_id, kind, step_key, step_name, assignee_role, status, created_at)
+            VALUES ('{Guid.CreateVersion7()}', '{submitted.Id}', 'Approval', 'finance-approval', 'Finance approval', 'FinanceOfficer', 'Open', now())
             """));
 
         (error.SqlState, error.ConstraintName).ShouldBe((PostgresErrorCodes.UniqueViolation, "ux_work_tasks_open_per_request"));

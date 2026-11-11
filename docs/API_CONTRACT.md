@@ -3,7 +3,7 @@
 **Purpose:** the authoritative HTTP + SignalR contract between backend and frontend.
 **Status:** v1 design. Once task BE-03 lands, `contracts/openapi.json` (generated from code) becomes the *executable* contract; this document stays the *design* contract. They must agree — see §11 for the change process.
 
-**Phase 2a (ADR-0014), published by P2-DOC-01.** Additive so far: `step` next to `stage` everywhere, `route` on request details, `StepSkipped`, the `workflows.manage` capability and the §10 endpoints (501 until implemented; the task is named in the 501 `detail`). `stage` and `RequestStage` are **deprecated**: clients move to `step` (P2-FE-01), then P2-BE-04 removes them (§11 rule 2, additive first).
+**Phase 2a (ADR-0014), published by P2-DOC-01.** It added `step`, `route` on request details, `StepSkipped`, the `workflows.manage` capability and the §10 endpoints (501 until implemented; the task is named in the 501 `detail`). `step` was served next to `stage` first (§11 rule 2, additive first); clients moved to `step` (P2-FE-01), and **P2-BE-04 removed `stage` and `RequestStage`** from every DTO.
 
 Conventions: JSON camelCase; enums as strings; ids are UUID strings; timestamps ISO-8601 UTC (`2026-11-05T07:43:00Z`); dates `yyyy-MM-dd`; money `{ "amount": "1250.500", "currency": "JOD" }` with amount as a **string** (avoids JS float rounding).
 
@@ -23,7 +23,6 @@ type UserRef = { id: string; displayName: string };
 
 type RequestType   = "EquipmentPurchase" | "Leave";
 type RequestStatus = "InReview" | "Approved" | "Completed" | "Rejected";
-type RequestStage  = "ManagerApproval" | "FinanceApproval" | "HrConfirmation" | "ProcurementFulfillment" | "Closed";
 type WorkTaskKind  = "Approval" | "Fulfillment";
 type WorkTaskStatus  = "Open" | "Done";
 type WorkTaskOutcome = "Approved" | "Rejected" | "Fulfilled";
@@ -31,11 +30,11 @@ type LeaveType     = "Annual" | "Sick" | "Unpaid" | "Other";
 type Role          = "Administrator" | "Employee" | "FinanceOfficer" | "HrOfficer" | "ProcurementOfficer";
 type Capability    = "requests.submit" | "tasks.view" | "admin.manage" | "workflows.manage";
 
-// Phase 2a (ADR-0014 Q2). Replaces RequestStage. `key` is stable within a workflow version
+// Phase 2a (ADR-0014 Q2). Replaced the RequestStage enum (removed in P2-BE-04). `key` is stable within a workflow version
 // (v1 keys: manager-approval, finance-approval, hr-confirmation, procurement-fulfillment);
-// `name` is what users see. Clients never branch on keys or names: they display `name`.
+// `name` is what users see, as stored when the request reached the step (a snapshot). Clients never branch on keys or
+// names: they display `name`. "Closed" is a status concern: a closed request's `step` is null.
 type StepRef = { key: string; name: string };
-// Deprecated with `stage` (removed in P2-BE-04). "Closed" is a status concern; its `step` is null.
 ```
 
 `version` fields are **opaque strings** (the server serialises PostgreSQL `xmin`). Clients echo them back unchanged; they never parse or compare them.
@@ -139,7 +138,7 @@ type RequestSummaryDto = {
   id: string; number: string; type: RequestType;
   title: string;                 // purchase: itemName; leave: "Annual leave · 12–14 Nov"
   requester: UserRef; department: { id: string; name: string };
-  status: RequestStatus; stage: RequestStage;   // stage: deprecated, use step
+  status: RequestStatus;
   submittedAt: string; closedAt: string | null;
   step: StepRef | null;          // the step the request waits at; null once closed
 };
@@ -160,7 +159,7 @@ type RequestDetailsDto = RequestSummaryDto & {
 type RouteStepState = "Done" | "Skipped" | "Current" | "Planned";
 type RouteStepDto = { step: StepRef; kind: WorkTaskKind; state: RouteStepState };
 type WorkTaskDto = {
-  id: string; kind: WorkTaskKind; stage: RequestStage /* deprecated */; step: StepRef; status: WorkTaskStatus;
+  id: string; kind: WorkTaskKind; step: StepRef; status: WorkTaskStatus;
   assignee: { user: UserRef | null; role: Role | null };   // exactly one is non-null
   outcome: WorkTaskOutcome | null; decidedBy: UserRef | null; decidedAt: string | null;
   comment: string | null; createdAt: string;
@@ -179,7 +178,7 @@ A closed request has only `Done`/`Skipped` entries. Since P2-BE-03, `Planned` st
 → 200 `ActivityDto[]` (chronological, not paged; bounded by process length + comments). Over 500 entries, the **most recent 500** are returned, still oldest first, so the latest decisions always show (#37).
 ```ts
 type ActivityDto = { id: string; type: "Submitted"|"TaskAssigned"|"Approved"|"Rejected"|"Fulfilled"|"Completed"|"CommentAdded"|"StepSkipped";
-  actor: UserRef | null; stage: RequestStage | null /* deprecated */; step: StepRef | null; body: string | null; occurredAt: string };
+  actor: UserRef | null; step: StepRef | null; body: string | null; occurredAt: string };
 ```
 `StepSkipped` (Phase 2a, appended from P2-BE-05): `actor` is null, `step` is the skipped step, and `body` is its condition in words (e.g. "Only if amount is greater than 1,000.000 JOD").
 
@@ -221,7 +220,7 @@ Query: `status=Open|Done` (default `Open`), `page`, `pageSize`.
 → 200 `Paged<InboxItemDto>`
 ```ts
 type InboxItemDto = {
-  taskId: string; kind: WorkTaskKind; stage: RequestStage /* deprecated */; step: StepRef; createdAt: string; version: string;
+  taskId: string; kind: WorkTaskKind; step: StepRef; createdAt: string; version: string;
   status: WorkTaskStatus; outcome: WorkTaskOutcome | null; decidedAt: string | null;
   actions: ("approve"|"reject"|"fulfill")[];       // what the caller may do now; same source as `availableActions.actions`; [] for Done items
   request: RequestSummaryDto & { keyDetail: string };   // "1,250.500 JOD" or "3 days · Annual"
@@ -367,7 +366,7 @@ type RoleChangeDto = { id: string; user: UserRef; proposedRoles: Role[]; previou
 
 ### Stalled tasks
 `GET /api/admin/stalled-tasks?page&pageSize` → 200 `Paged<StalledTaskDto>`
-`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; stage /* deprecated */; step: StepRef; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
+`type StalledTaskDto = { taskId; requestId; requestNumber; requestType; step: StepRef; assignee: { user: UserRef | null; role: Role | null } /* exactly one non-null */; reason: "NoEligibleRoleMember" | "AssigneeInactive"; openSince: string }`
 No request details (privacy): admins see metadata only. The fields and the inference they allow are accepted in AUTHORIZATION.md §3 (#58).
 
 As built (BE-15): a task is stalled when it is open and **nobody may decide it** under `TaskEligibility` (active, assigned user or holder of the queue's role, not the requester). `AssigneeInactive` means the assigned user (the requester's manager) is inactive. `NoEligibleRoleMember` means the role queue has no active member other than the requester. Oldest first. A task stops being stalled as soon as an eligible user exists (e.g. a new finance officer); nothing is migrated.

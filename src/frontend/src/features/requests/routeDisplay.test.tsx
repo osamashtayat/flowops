@@ -55,7 +55,6 @@ describe('route card', () => {
           id: 'a1',
           type: 'StepSkipped',
           actor: null,
-          stage: null,
           step: MOCK_STEPS.finance,
           body: 'Only if amount is greater than 1,000.000 JOD',
           occurredAt: '2026-11-01T09:00:00Z',
@@ -81,7 +80,7 @@ describe('route card', () => {
 
   it('writes a skipped step into the timeline with its condition', async () => {
     serveRoute([{ step: MOCK_STEPS.manager, kind: 'Approval', state: 'Done' }], [
-      { id: 'a1', type: 'StepSkipped', actor: null, stage: null, step: MOCK_STEPS.finance, body: 'Only if amount is greater than 1,000.000 JOD', occurredAt: '2026-11-01T09:00:00Z' },
+      { id: 'a1', type: 'StepSkipped', actor: null, step: MOCK_STEPS.finance, body: 'Only if amount is greater than 1,000.000 JOD', occurredAt: '2026-11-01T09:00:00Z' },
     ])
     renderRoutes(routes, PATH)
     expect(await screen.findByText('The Finance approval step was skipped')).toBeInTheDocument()

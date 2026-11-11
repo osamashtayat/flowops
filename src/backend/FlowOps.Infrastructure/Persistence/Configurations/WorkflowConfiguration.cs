@@ -81,6 +81,6 @@ internal sealed class WorkflowVersionConfiguration : IEntityTypeConfiguration<Wo
         step.Property(s => s.AssigneeRole).HasMaxLength(CheckConstraints.EnumMaxLength);
         step.HasIndex("WorkflowVersionId", nameof(WorkflowStep.Key)).IsUnique().HasDatabaseName("ux_workflow_steps_key");
         step.Ignore(s => s.Assignee);
-        step.Ignore(s => s.Stage);
+        step.Ignore(s => s.Ref);
     }
 }

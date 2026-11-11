@@ -16,7 +16,7 @@ public static class RequestRoute
         ArgumentNullException.ThrowIfNull(pinnedSteps);
         ArgumentNullException.ThrowIfNull(tasks);
         var route = tasks
-            .Select(t => new RouteStepDto(StepRef.ForTask(t.Stage), t.Kind, t.IsOpen ? RouteStepState.Current : RouteStepState.Done))
+            .Select(t => new RouteStepDto(t.Step, t.Kind, t.IsOpen ? RouteStepState.Current : RouteStepState.Done))
             .ToList();
         if (status is RequestStatus.Completed or RequestStatus.Rejected || route.Count == 0)
         {
@@ -25,7 +25,7 @@ public static class RequestRoute
 
         var current = route[^1].Step.Key;
         var remaining = pinnedSteps.SkipWhile(s => s.Key != current).Skip(1);
-        route.AddRange(remaining.Select(s => new RouteStepDto(StepRef.For(s), s.Kind, RouteStepState.Planned)));
+        route.AddRange(remaining.Select(s => new RouteStepDto(s.Ref, s.Kind, RouteStepState.Planned)));
         return route;
     }
 }

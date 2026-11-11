@@ -21,7 +21,7 @@ Related: `WORKFLOWS.md` (process behaviour), `AUTHORIZATION.md` (who may see/do 
 | **Activity** | An append-only audit record on a request (submitted, task created, decided, commented, …). |
 | **Notification** | A persisted message to one user, optionally linked to a request/task. |
 | **Workflow** *(Phase 2a)* | The configurable process of one request type (`WorkflowDefinition`). It has numbered **versions**; exactly one is Published. See §7. |
-| **Step key** *(Phase 2a)* | A step's stable slug inside a workflow version (`finance-approval`). It replaces the `RequestStage` enum. The step's **name** is what users see. |
+| **Step key** *(Phase 2a)* | A step's stable slug inside a workflow version (`finance-approval`). It replaced the `RequestStage` enum (P2-BE-04). The step's **name** is what users see; requests, tasks and activities store a snapshot of it. |
 | **Condition** *(Phase 2a)* | One typed comparison on a **fact** of the request (`amount > 1000.000`). A step whose condition is false is **skipped**. |
 | **Fact** *(Phase 2a)* | A value read from a request's submitted details that a condition may test (`amount`, `leaveType`, `days`). |
 
@@ -72,7 +72,7 @@ All ids are `Guid` (UUIDv7 via `Guid.CreateVersion7()` for index locality). All 
 | RequesterId | Guid | from authenticated context only |
 | DepartmentId | Guid | **snapshot** of the requester's department at submission (server-side) |
 | Status | `RequestStatus` | see §3.1 |
-| Stage | `RequestStage` | see §3.2 |
+| StepKey / StepName | string(40)? / string(80)? | the current step and its name snapshot (§7.4); both null iff the request is closed (DB check) |
 | SubmittedAt | DateTimeOffset | |
 | ClosedAt | DateTimeOffset? | set when Status becomes `Completed` or `Rejected` |
 | Version | uint (`xmin`) | optimistic concurrency token |
@@ -115,7 +115,7 @@ One entity for both approval and fulfillment work. See ADR-0005 for why `Approva
 | Id | Guid | |
 | RequestId | Guid | |
 | Kind | `WorkTaskKind` | `Approval` \| `Fulfillment` |
-| Stage | `RequestStage` | the step this task belongs to |
+| StepKey / StepName | string(40) / string(80) | the step this task belongs to, with its name when the task opened |
 | AssigneeUserId | Guid? | exactly one of AssigneeUserId / AssigneeRole is set (DB check constraint) |
 | AssigneeRole | string(32)? | a role name from `Roles` |
 | Status | `WorkTaskStatus` | `Open` \| `Done` |
@@ -137,7 +137,7 @@ Valid (Kind, Outcome) pairs: Approval → {Approved, Rejected}; Fulfillment → 
 | Type | `ActivityType` | `Submitted`, `TaskAssigned`, `Approved`, `Rejected`, `Fulfilled`, `Completed`, `CommentAdded`, `StepSkipped` (Phase 2a, §7.5) |
 | ActorId | Guid? | null for system-generated entries (e.g. `TaskAssigned`, `Completed`) |
 | TaskId | Guid? | |
-| Stage | `RequestStage?` | the step the activity relates to (null for `CommentAdded`) |
+| StepKey / StepName | string(40)? / string(80)? | the step the activity relates to; null for `CommentAdded` and `Completed` |
 | Body | string(2000)? | comment text / rejection reason |
 | OccurredAt | DateTimeOffset | |
 
@@ -198,9 +198,9 @@ Three separate state dimensions, as required:
 
 `Completed` and `Rejected` are **terminal**.
 
-### 3.2 RequestStage
+### 3.2 Current step
 
-`ManagerApproval`, `FinanceApproval`, `HrConfirmation`, `ProcurementFulfillment`, `Closed`.
+Phase 1 stored a `RequestStage` enum (`ManagerApproval`, `FinanceApproval`, `HrConfirmation`, `ProcurementFulfillment`, `Closed`). Since P2-BE-04 a request stores its current step's key and name (§7.4) and has none once closed; `Closed` is a status, not a step. Where §3.4 and §4 name a stage, read the v1 step with that key.
 
 ### 3.3 Fixed processes
 
@@ -416,8 +416,8 @@ Adding a fact or an operator is a code change with tests. Admins combine them; t
 | `ProcurementFulfillment` | `procurement-fulfillment` | Procurement fulfilment |
 | `Closed` | — | not a step: a closed request has `Status` `Completed` or `Rejected` and no current step |
 
-  Until P2-BE-04 stores keys, this mapping lives in `Domain/Workflows/StageKeys` (key ↔ stage) and `Application/Requests/StepRef.For` (names) and nowhere else.
-- From P2-BE-04, `Request`, `WorkTask` and `RequestActivity` store a **step key plus a name snapshot** in place of `RequestStage`. Renaming a step in a later version doesn't rewrite history.
+  Migration `StoreStepKeys` (P2-BE-04) applied this mapping once to every stored request, task and activity; the mapping now exists only in that migration.
+- Since P2-BE-04, `Request`, `WorkTask` and `RequestActivity` store a **step key plus a name snapshot** (`StepRef`, Domain) in place of `RequestStage`. Renaming a step in a later version doesn't rewrite history.
 
 ### 7.5 Runtime semantics and `StepSkipped`
 

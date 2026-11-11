@@ -232,17 +232,21 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("requester_id");
 
-                    b.Property<string>("Stage")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("stage");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("status");
+
+                    b.Property<string>("StepKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("step_key");
+
+                    b.Property<string>("StepName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("step_name");
 
                     b.Property<DateTimeOffset>("SubmittedAt")
                         .HasColumnType("timestamp with time zone")
@@ -286,9 +290,9 @@ namespace FlowOps.Infrastructure.Migrations
 
                     b.ToTable("requests", null, t =>
                         {
-                            t.HasCheckConstraint("ck_requests_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
-
                             t.HasCheckConstraint("ck_requests_status", "status IN ('InReview', 'Approved', 'Completed', 'Rejected')");
+
+                            t.HasCheckConstraint("ck_requests_step_iff_open", "(status IN ('Completed', 'Rejected')) = (step_key IS NULL) AND (step_key IS NULL) = (step_name IS NULL)");
 
                             t.HasCheckConstraint("ck_requests_type", "type IN ('EquipmentPurchase', 'Leave')");
                         });
@@ -317,10 +321,15 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("request_id");
 
-                    b.Property<string>("Stage")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("stage");
+                    b.Property<string>("StepKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("step_key");
+
+                    b.Property<string>("StepName")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("step_name");
 
                     b.Property<Guid?>("TaskId")
                         .HasColumnType("uuid")
@@ -346,7 +355,7 @@ namespace FlowOps.Infrastructure.Migrations
 
                     b.ToTable("request_activities", null, t =>
                         {
-                            t.HasCheckConstraint("ck_request_activities_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
+                            t.HasCheckConstraint("ck_request_activities_step", "(step_key IS NULL) = (step_name IS NULL)");
 
                             t.HasCheckConstraint("ck_request_activities_type", "type IN ('Submitted', 'TaskAssigned', 'Approved', 'Rejected', 'Fulfilled', 'Completed', 'CommentAdded', 'StepSkipped')");
                         });
@@ -399,17 +408,23 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("request_id");
 
-                    b.Property<string>("Stage")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("stage");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("status");
+
+                    b.Property<string>("StepKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("step_key");
+
+                    b.Property<string>("StepName")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("step_name");
 
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
@@ -450,8 +465,6 @@ namespace FlowOps.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_work_tasks_one_assignee", "num_nonnulls(assignee_user_id, assignee_role) = 1");
 
                             t.HasCheckConstraint("ck_work_tasks_outcome", "outcome IN ('Approved', 'Rejected', 'Fulfilled')");
-
-                            t.HasCheckConstraint("ck_work_tasks_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
 
                             t.HasCheckConstraint("ck_work_tasks_status", "status IN ('Open', 'Done')");
                         });

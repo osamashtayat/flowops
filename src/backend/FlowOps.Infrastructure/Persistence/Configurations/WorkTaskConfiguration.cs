@@ -3,6 +3,7 @@ using FlowOps.Domain.Requests;
 using FlowOps.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Infrastructure.Persistence.Configurations;
 
@@ -17,7 +18,6 @@ internal sealed class WorkTaskConfiguration : IEntityTypeConfiguration<WorkTask>
         builder.ToTable("work_tasks", t =>
         {
             t.HasCheckConstraint("ck_work_tasks_kind", CheckConstraints.InEnum<WorkTaskKind>("kind"));
-            t.HasCheckConstraint("ck_work_tasks_stage", CheckConstraints.InEnum<RequestStage>("stage"));
             t.HasCheckConstraint("ck_work_tasks_status", CheckConstraints.InEnum<WorkTaskStatus>("status"));
             t.HasCheckConstraint("ck_work_tasks_outcome", CheckConstraints.InEnum<WorkTaskOutcome>("outcome"));
             t.HasCheckConstraint("ck_work_tasks_assignee_role", CheckConstraints.In("assignee_role", Roles.All));
@@ -30,7 +30,9 @@ internal sealed class WorkTaskConfiguration : IEntityTypeConfiguration<WorkTask>
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id).ValueGeneratedNever();
         builder.Property(t => t.Kind).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
-        builder.Property(t => t.Stage).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
+        builder.Property(t => t.StepKey).HasMaxLength(WorkflowStep.KeyMaxLength);
+        builder.Property(t => t.StepName).HasMaxLength(WorkflowStep.NameMaxLength);
+        builder.Ignore(t => t.Step);
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
         builder.Property(t => t.Outcome).HasConversion<string>().HasMaxLength(CheckConstraints.EnumMaxLength);
         builder.Property(t => t.AssigneeRole).HasMaxLength(AssigneeRoleMaxLength);

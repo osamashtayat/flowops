@@ -1,5 +1,6 @@
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -12,10 +13,6 @@ public sealed record RequestSummaryDto(
     UserRef Requester,
     DepartmentRef Department,
     RequestStatus Status,
-    RequestStage Stage,
+    StepRef? Step,
     DateTimeOffset SubmittedAt,
-    DateTimeOffset? ClosedAt)
-{
-    /// <summary>The step the request waits at; <c>null</c> once it is closed. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef? Step { get; init; } = StepRef.For(Stage);
-}
+    DateTimeOffset? ClosedAt);

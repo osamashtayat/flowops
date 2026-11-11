@@ -6,6 +6,16 @@ using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Domain.Tests;
 
+/// <summary>The step keys of the seeded v1 workflows (DOMAIN_MODEL.md §7.4); <see cref="Closed"/> means no current step.</summary>
+internal static class Steps
+{
+    public const string ManagerApproval = "manager-approval";
+    public const string FinanceApproval = "finance-approval";
+    public const string HrConfirmation = "hr-confirmation";
+    public const string ProcurementFulfillment = "procurement-fulfillment";
+    public const string? Closed = null;
+}
+
 /// <summary>A small fixed organisation and helpers for driving the aggregate.</summary>
 internal static class TestOrg
 {

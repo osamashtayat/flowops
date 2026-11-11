@@ -1,4 +1,4 @@
-import type { RequestDetailsDto, RequestStage, RequestType, RouteStepDto, StepRef } from '@/lib/api/types'
+import type { RequestDetailsDto, RequestType, RouteStepDto, StepRef } from '@/lib/api/types'
 
 /**
  * The mock's stand-in for the server's steps and route (docs/API_CONTRACT.md §4, ADR-0014 Q2/Q5).
@@ -10,12 +10,6 @@ export const MOCK_STEPS = {
   hr: { key: 'hr-confirmation', name: 'HR confirmation' },
   procurement: { key: 'procurement-fulfillment', name: 'Procurement fulfilment' },
 } as const satisfies Record<string, StepRef>
-
-/**
- * The contract still requires the deprecated `stage` next to `step` until P2-BE-04 removes it. The mock
- * sends one constant value that matches nothing, so any screen that still read it would show the wrong thing.
- */
-export const DEPRECATED_STAGE: RequestStage = 'Closed'
 
 const ORDER: Record<RequestType, StepRef[]> = {
   EquipmentPurchase: [MOCK_STEPS.manager, MOCK_STEPS.finance, MOCK_STEPS.procurement],

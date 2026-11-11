@@ -19,7 +19,6 @@ const bodyRows = (grid: HTMLElement) => within(grid).getAllByRole('row').slice(1
 const ITEM: InboxItemDto = {
   taskId: 'f1',
   kind: 'Fulfillment',
-  stage: 'Closed', // deprecated: the screens must read `step`,
   step: { key: 'procurement-fulfillment', name: 'Procurement fulfilment' },
   createdAt: '2026-11-01T09:00:00Z',
   version: 'v1',
@@ -35,7 +34,6 @@ const ITEM: InboxItemDto = {
     requester: { id: 'u1', displayName: 'Layla Haddad' },
     department: { id: 'd1', name: 'Engineering' },
     status: 'Approved',
-    stage: 'Closed', // deprecated: the screens must read `step`,
     step: { key: 'procurement-fulfillment', name: 'Procurement fulfilment' },
     submittedAt: '2026-10-30T09:00:00Z',
     closedAt: null,

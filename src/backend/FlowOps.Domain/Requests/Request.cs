@@ -5,7 +5,7 @@ using FlowOps.Domain.Workflows;
 namespace FlowOps.Domain.Requests;
 
 /// <summary>
-/// The aggregate root (DOMAIN_MODEL.md §2.3). Status and Stage change only through <see cref="DecideTask"/>,
+/// The aggregate root (DOMAIN_MODEL.md §2.3). Status and the current step change only through <see cref="DecideTask"/>,
 /// which advances generically through the steps of the pinned <see cref="WorkflowVersion"/> (§7.4) and appends
 /// activities in the same call.
 /// </summary>
@@ -65,7 +65,14 @@ public sealed class Request
 
     public RequestStatus Status { get; private set; }
 
-    public RequestStage Stage { get; private set; }
+    /// <summary>Stored half of <see cref="Step"/>; <c>null</c> once the request is closed.</summary>
+    public string? StepKey { get; private set; }
+
+    /// <summary>Stored half of <see cref="Step"/>: the current step's name when it was reached.</summary>
+    public string? StepName { get; private set; }
+
+    /// <summary>The current step, or <c>null</c> once the request is closed: closed is a status, not a step.</summary>
+    public StepRef? Step => StepRef.From(StepKey, StepName);
 
     public DateTimeOffset SubmittedAt { get; private set; }
 
@@ -138,7 +145,7 @@ public sealed class Request
         EnsureNotClosed();
         var task = _tasks.SingleOrDefault(t => t.Id == taskId) ?? throw DomainErrors.TaskNotFound();
         task.EnsureOpen();
-        if (task.Stage != Stage)
+        if (task.StepKey != StepKey)
         {
             throw DomainErrors.TaskNotCurrent();
         }
@@ -149,12 +156,12 @@ public sealed class Request
         }
 
         var outcome = task.OutcomeFor(decision.Action);
-        var nextStep = outcome == WorkTaskOutcome.Rejected ? null : workflow.StepAfter(StageKeys.KeyOf(task.Stage)!);
+        var nextStep = outcome == WorkTaskOutcome.Rejected ? null : workflow.StepAfter(task.StepKey);
         var nextAssignee = nextStep is null ? null : ResolveAssignee(nextStep, resolveAssignee);
 
         // Every check and lookup has passed: from here on the aggregate changes.
         task.Complete(outcome, decision.Comment, actorId, now);
-        Append(ActivityFor(outcome), actorId, task.Id, task.Stage, decision.Comment, now);
+        Append(ActivityFor(outcome), actorId, task.Id, task.Step, decision.Comment, now);
 
         WorkTask? nextTask = null;
         if (outcome == WorkTaskOutcome.Rejected)
@@ -164,21 +171,21 @@ public sealed class Request
         else if (nextStep is null)
         {
             Close(RequestStatus.Completed, now);
-            Append(ActivityType.Completed, actorId: null, taskId: null, RequestStage.Closed, body: null, now);
+            Append(ActivityType.Completed, actorId: null, taskId: null, step: null, body: null, now);
         }
         else
         {
             nextTask = AdvanceTo(nextStep, nextAssignee!, now);
         }
 
-        return new DecisionResult(task, nextTask, Status, Stage);
+        return new DecisionResult(task, nextTask, Status, Step);
     }
 
     /// <summary>Free-form comment. Allowed on closed requests (follow-up notes, API_CONTRACT.md §4).</summary>
     public RequestActivity AddComment(Guid actorId, string body, DateTimeOffset now)
     {
         var text = Text.Required(body, RequestLimits.CommentMaxLength, "body");
-        return Append(ActivityType.CommentAdded, actorId, taskId: null, stage: null, text, now);
+        return Append(ActivityType.CommentAdded, actorId, taskId: null, step: null, text, now);
     }
 
     /// <summary>
@@ -189,11 +196,11 @@ public sealed class Request
     {
         ArgumentNullException.ThrowIfNull(resolveAssignee);
         var assignee = resolveAssignee(step)
-            ?? throw new ArgumentNullException(nameof(resolveAssignee), $"No assignee was resolved for the {step.Stage} step.");
+            ?? throw new ArgumentNullException(nameof(resolveAssignee), $"No assignee was resolved for the '{step.Key}' step.");
 
         return step.Assignee.Accepts(assignee)
             ? assignee
-            : throw new ArgumentException($"The resolved assignee does not satisfy the {step.Stage} step's rule.", nameof(resolveAssignee));
+            : throw new ArgumentException($"The resolved assignee does not satisfy the '{step.Key}' step's rule.", nameof(resolveAssignee));
     }
 
     /// <summary>
@@ -209,7 +216,7 @@ public sealed class Request
             throw DomainErrors.ManagerNotAssigned();
         }
 
-        Append(ActivityType.Submitted, RequesterId, taskId: null, first.Stage, body: null, now);
+        Append(ActivityType.Submitted, RequesterId, taskId: null, first.Ref, body: null, now);
         AdvanceTo(first, assignee, now);
     }
 
@@ -222,17 +229,19 @@ public sealed class Request
 
         var task = WorkTask.Open(Id, step, assignee, now);
         _tasks.Add(task);
-        Stage = step.Stage;
+        StepKey = step.Key;
+        StepName = step.Name;
         // Approved = every approval granted, only fulfillment left.
         Status = step.Kind == WorkTaskKind.Fulfillment ? RequestStatus.Approved : RequestStatus.InReview;
-        Append(ActivityType.TaskAssigned, actorId: null, task.Id, step.Stage, body: null, now);
+        Append(ActivityType.TaskAssigned, actorId: null, task.Id, step.Ref, body: null, now);
         return task;
     }
 
     private void Close(RequestStatus terminalStatus, DateTimeOffset now)
     {
         Status = terminalStatus;
-        Stage = RequestStage.Closed;
+        StepKey = null;
+        StepName = null;
         ClosedAt = now;
     }
 
@@ -245,9 +254,9 @@ public sealed class Request
     }
 
     private RequestActivity Append(
-        ActivityType type, Guid? actorId, Guid? taskId, RequestStage? stage, string? body, DateTimeOffset now)
+        ActivityType type, Guid? actorId, Guid? taskId, StepRef? step, string? body, DateTimeOffset now)
     {
-        var activity = RequestActivity.Create(Id, type, actorId, taskId, stage, body, now);
+        var activity = RequestActivity.Create(Id, type, actorId, taskId, step, body, now);
         _activities.Add(activity);
         return activity;
     }

@@ -32,7 +32,7 @@ public sealed class SubmissionTests
 
         asked.ShouldBe([WorkflowFor(type).FirstStep]);
         request.OpenTask!.AssigneeUserId.ShouldBe(Manager);
-        request.Stage.ShouldBe(WorkflowFor(type).FirstStep.Stage);
+        request.StepKey.ShouldBe(WorkflowFor(type).FirstStep.Key);
         request.WorkflowVersionId.ShouldBe(WorkflowFor(type).Id);
     }
 

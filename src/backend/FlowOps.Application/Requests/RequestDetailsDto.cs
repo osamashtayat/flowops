@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using System.Text.Json.Serialization;
 using FlowOps.Application.Common;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Requests;
 
@@ -17,7 +18,7 @@ public sealed record RequestDetailsDto(
     UserRef Requester,
     DepartmentRef Department,
     RequestStatus Status,
-    RequestStage Stage,
+    StepRef? Step,
     DateTimeOffset SubmittedAt,
     DateTimeOffset? ClosedAt,
     PurchaseDetailsDto? Purchase,
@@ -25,11 +26,7 @@ public sealed record RequestDetailsDto(
     IReadOnlyList<WorkTaskDto> Tasks,
     AvailableActionsDto? AvailableActions,
     bool CanComment,
-    IReadOnlyList<RouteStepDto> Route)
-{
-    /// <summary>The step the request waits at; <c>null</c> once it is closed. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef? Step { get; init; } = StepRef.For(Stage);
-}
+    IReadOnlyList<RouteStepDto> Route);
 
 public sealed record PurchaseDetailsDto(string ItemName, string Description, MoneyDto EstimatedCost, string Justification);
 
@@ -39,18 +36,14 @@ public sealed record LeaveDetailsDto(DateOnly StartDate, DateOnly EndDate, int D
 public sealed record WorkTaskDto(
     Guid Id,
     WorkTaskKind Kind,
-    RequestStage Stage,
+    StepRef Step,
     WorkTaskStatus Status,
     TaskAssigneeDto Assignee,
     WorkTaskOutcome? Outcome,
     UserRef? DecidedBy,
     DateTimeOffset? DecidedAt,
     string? Comment,
-    DateTimeOffset CreatedAt)
-{
-    /// <summary>The step this task decides. Replaces <c>stage</c> (ADR-0014 Q2).</summary>
-    public StepRef Step { get; init; } = StepRef.ForTask(Stage);
-}
+    DateTimeOffset CreatedAt);
 
 /// <summary>Exactly one of <see cref="User"/> and <see cref="Role"/> is set.</summary>
 public sealed record TaskAssigneeDto(UserRef? User, Role? Role);
