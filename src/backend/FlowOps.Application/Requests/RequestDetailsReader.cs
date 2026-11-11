@@ -49,7 +49,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
             row.Id,
             row.Number.Value,
             row.Type,
-            row.Purchase is { } p ? RequestTitle.ForPurchase(p.ItemName) : RequestTitle.ForLeave(row.Leave!.LeaveType, row.Leave.StartDate, row.Leave.EndDate),
+            RequestTitle.For(row.Purchase, row.Leave),
             row.Requester,
             row.Department,
             row.Status,
