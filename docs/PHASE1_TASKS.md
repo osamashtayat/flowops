@@ -239,6 +239,7 @@ Add `api` (multi-stage Dockerfile) and `web` (build → nginx serving SPA, proxy
   - **Forwarded headers.** nginx replaces `X-Forwarded-For`/`-Proto` and the api sets `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, so the per-IP login limit sees clients. Trusting every sender is safe only because nginx is the API's sole caller.
   - **Keys.** Data-protection keys live on the `flowops-keys` volume, so sessions survive restarts.
   - **CSP.** nginx sends the same CSP as the API.
+  - **Compression (#101).** gzip for static files (the image ships it off); `/api` and `/hubs` stay uncompressed (BREACH).
   - No code change.
 
 ### OPS-02 — CI pipeline · `Done`

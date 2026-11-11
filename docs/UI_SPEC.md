@@ -95,7 +95,7 @@ Leave requests only: the comment box and the decision dialog's comment / reason 
 States: skeleton; 404 → NotFound content ("This request doesn't exist or you don't have access."); error with retry.
 
 ### 4.6 Inbox
-Tabs Open / Completed (URL `?status=Open|Done`). List of InboxItem rows: request number + title, requester, department, `keyDetail`, stage, age ("2 d"), actions inline (Approve / Reject / Fulfill / Confirm per kind+stage) and a "View" link. Bulk actions: none in Phase 1.
+Tabs Open / Completed (URL `?status=Open|Done`). List of InboxItem rows: request number + title, requester, department, `keyDetail`, step name (`step.name`, from the server), age ("2 d"), actions inline (Approve / Reject / Fulfill per kind) and a "View" link. Bulk actions: none in Phase 1.
 After any decision: invalidate tasks + request detail + dashboard; the item leaves the Open list.
 Empty Open: "You're all caught up." Completed tab shows outcome badge and decided date.
 

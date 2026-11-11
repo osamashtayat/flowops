@@ -237,7 +237,7 @@ type InboxItemDto = {
 
 Errors: 400, 403 `task.not_eligible` / `task.self_decision` / `task.already_participated` (you decided an earlier step of this request, #50), 404, 409 `task.already_decided` / `task.not_current` / `task.invalid_action` / `request.closed` / `concurrency.conflict`, 422 (next-step assignee unresolvable — not expected in Phase 1 since role queues always resolve).
 
-Approve on an `HrConfirmation` task is the "Confirm" action in the UI.
+Approve is the one approval verb for every step, including HR's; the UI no longer relabels it "Confirm" (P2-FE-01).
 
 As built (BE-12):
 - **Order of checks.** Not visible → 404; visible but not assigned → 403 `task.not_eligible`; your own request → 403 `task.self_decision`; stale `version` on an **open** task → 409 `concurrency.conflict` before any work; then the domain's 409s. A task that is already decided answers `task.already_decided` whatever `version` is sent, so a second click says what happened.

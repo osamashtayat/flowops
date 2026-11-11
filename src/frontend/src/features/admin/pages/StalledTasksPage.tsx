@@ -6,7 +6,7 @@ import { REQUEST_TYPE_LABELS, ROLE_NAMES } from '@/lib/format/labels'
 import { toUserMessage } from '@/lib/api/problem'
 import type { StalledTaskDto } from '@/lib/api/types'
 import { formatRelative } from '@/lib/format/date'
-import { requestStageLabel } from '@/lib/format/status'
+import { stepLabel } from '@/lib/format/status'
 import { useUrlState } from '@/lib/useUrlState'
 import { useStalledTasks } from '../api'
 import { STALLED_REASONS } from '../labels'
@@ -20,7 +20,7 @@ function assigneeName(task: StalledTaskDto): string {
 const columns: DataTableColumn<StalledTaskDto>[] = [
   { key: 'number', header: 'Request', isRowHeader: true, cell: (t) => <span className="tabular-nums">{t.requestNumber}</span> },
   { key: 'type', header: 'Type', cell: (t) => REQUEST_TYPE_LABELS[t.requestType] },
-  { key: 'stage', header: 'Stage', cell: (t) => requestStageLabel(t.stage) },
+  { key: 'stage', header: 'Stage', cell: (t) => stepLabel(t.step) },
   { key: 'assignee', header: 'Assignee', cell: assigneeName },
   {
     key: 'reason',

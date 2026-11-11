@@ -1,16 +1,17 @@
-import type { CurrentUserDto, RequestDetailsDto, RequestStage, Role, TaskAction, WorkTaskDto } from '@/lib/api/types'
+import type { CurrentUserDto, RequestDetailsDto, Role, StepRef, TaskAction, WorkTaskDto } from '@/lib/api/types'
+import { MOCK_STEPS } from './steps'
 import { findMockTask, mockEligibleActions, mockTask, mockTaskVersion, updateMockRequest } from './requestStore'
 
 /**
  * A coarse imitation of the fixed processes (docs/WORKFLOWS.md) so decisions move a mock request
  * along. The real order, assignees and rules are the backend's (`FixedProcesses`).
  */
-const NEXT: Record<'EquipmentPurchase' | 'Leave', Partial<Record<RequestStage, { stage: RequestStage; role: Role }>>> = {
+const NEXT: Record<'EquipmentPurchase' | 'Leave', Record<string, { step: StepRef; role: Role }>> = {
   EquipmentPurchase: {
-    ManagerApproval: { stage: 'FinanceApproval', role: 'FinanceOfficer' },
-    FinanceApproval: { stage: 'ProcurementFulfillment', role: 'ProcurementOfficer' },
+    [MOCK_STEPS.manager.key]: { step: MOCK_STEPS.finance, role: 'FinanceOfficer' },
+    [MOCK_STEPS.finance.key]: { step: MOCK_STEPS.procurement, role: 'ProcurementOfficer' },
   },
-  Leave: { ManagerApproval: { stage: 'HrConfirmation', role: 'HrOfficer' } },
+  Leave: { [MOCK_STEPS.manager.key]: { step: MOCK_STEPS.hr, role: 'HrOfficer' } },
 }
 
 export type DecisionFailure = { status: 400 | 403 | 404 | 409; code: string }
@@ -45,15 +46,15 @@ export function decideMockTask(
 }
 
 function advance(request: RequestDetailsDto, tasks: WorkTaskDto[], done: WorkTaskDto, now: string): RequestDetailsDto {
-  if (done.outcome === 'Rejected') return { ...request, tasks, status: 'Rejected', stage: 'Closed', closedAt: now, availableActions: null }
-  const next = NEXT[request.type][done.stage]
-  if (!next) return { ...request, tasks, status: 'Completed', stage: 'Closed', closedAt: now, availableActions: null }
-  const nextTask = mockTask({ id: `${request.id}-t${tasks.length + 1}`, stage: next.stage, createdAt: now, assignee: { user: null, role: next.role } })
+  if (done.outcome === 'Rejected') return { ...request, tasks, status: 'Rejected', step: null, closedAt: now, availableActions: null }
+  const next = NEXT[request.type][done.step.key]
+  if (!next) return { ...request, tasks, status: 'Completed', step: null, closedAt: now, availableActions: null }
+  const nextTask = mockTask({ id: `${request.id}-t${tasks.length + 1}`, step: next.step, createdAt: now, assignee: { user: null, role: next.role } })
   return {
     ...request,
     tasks: [...tasks, nextTask],
-    stage: next.stage,
-    status: next.stage === 'ProcurementFulfillment' ? 'Approved' : 'InReview',
+    step: next.step,
+    status: next.step.key === MOCK_STEPS.procurement.key ? 'Approved' : 'InReview',
     availableActions: null,
   }
 }

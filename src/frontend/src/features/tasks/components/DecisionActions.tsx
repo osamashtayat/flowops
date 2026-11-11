@@ -1,13 +1,12 @@
 import { useId, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
+import type { RequestType, TaskAction } from '@/lib/api/types'
 import { decisionPresentation } from '../decisions'
 import { DecisionDialog } from './DecisionDialog'
 
 export interface DecisionActionsProps {
   taskId: string
   version: string
-  stage: RequestStage
   requestType: RequestType
   requestNumber: string
   /** Exactly what the server put in `availableActions.actions`; the UI never adds to it. */
@@ -15,7 +14,7 @@ export interface DecisionActionsProps {
 }
 
 /** The decision buttons for one task and the dialog they open. Used by the request page and the inbox. */
-export function DecisionActions({ taskId, version, stage, requestType, requestNumber, actions }: DecisionActionsProps) {
+export function DecisionActions({ taskId, version, requestType, requestNumber, actions }: DecisionActionsProps) {
   const [chosen, setChosen] = useState<TaskAction | null>(null)
   // In the inbox every row has its own "Approve"; the request number tells them apart for screen readers.
   const describedBy = useId()
@@ -27,7 +26,7 @@ export function DecisionActions({ taskId, version, stage, requestType, requestNu
         </span>
         {actions.map((action) => (
           <Button key={action} variant={action === 'reject' ? 'secondary' : 'primary'} aria-describedby={describedBy} onClick={() => setChosen(action)}>
-            {decisionPresentation(action, stage, requestType).buttonLabel}
+            {decisionPresentation(action, requestType).buttonLabel}
           </Button>
         ))}
       </div>
@@ -35,7 +34,6 @@ export function DecisionActions({ taskId, version, stage, requestType, requestNu
         action={chosen}
         taskId={taskId}
         version={version}
-        stage={stage}
         requestType={requestType}
         requestNumber={requestNumber}
         onClose={() => setChosen(null)}

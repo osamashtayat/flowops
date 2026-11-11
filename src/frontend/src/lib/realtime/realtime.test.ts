@@ -116,6 +116,33 @@ describe('startRealtime', () => {
     expect(keys()).toContainEqual(queryKeys.tasks.all)
   })
 
+  it('waits for a connection created asynchronously, and retries when creating it fails', async () => {
+    const { client, keys } = spyClient()
+    const hub = new FakeHub()
+    let creations = 0
+    const createConnection = () => {
+      creations += 1
+      return creations === 1 ? Promise.reject(new Error('chunk failed to load')) : Promise.resolve(hub)
+    }
+    startRealtime(client, { createConnection, retryDelaysMs: [1000] })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(hub.starts).toBe(0)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(creations).toBe(2)
+    expect(hub.starts).toBe(1)
+    hub.handlers.get('tasksChanged')?.({})
+    expect(keys()).toContainEqual(queryKeys.tasks.all)
+  })
+
+  it('never starts a connection that finished creating after it was stopped', async () => {
+    const { client } = spyClient()
+    const hub = new FakeHub()
+    const stop = startRealtime(client, { createConnection: () => Promise.resolve(hub) })
+    stop()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(hub.starts).toBe(0)
+  })
+
   it('starts over when SignalR gives up, and does nothing once stopped', async () => {
     const { client } = spyClient()
     const hub = new FakeHub()

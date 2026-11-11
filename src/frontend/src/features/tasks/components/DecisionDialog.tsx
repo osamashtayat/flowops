@@ -4,7 +4,7 @@ import { useToast } from '@/components/ui/toastContext'
 import { useClosedByRefreshNotice } from '@/components/ui/useClosedByRefreshNotice'
 import { ApiError } from '@/lib/api/apiError'
 import { toUserMessage } from '@/lib/api/problem'
-import type { RequestStage, RequestType, TaskAction } from '@/lib/api/types'
+import type { RequestType, TaskAction } from '@/lib/api/types'
 import { useDecideTask } from '../api'
 import { decisionPresentation } from '../decisions'
 
@@ -13,7 +13,6 @@ export interface DecisionDialogProps {
   action: TaskAction | null
   taskId: string
   version: string
-  stage: RequestStage
   /** Leave requests get the "visible to everyone" note on the text field. */
   requestType: RequestType
   requestNumber: string
@@ -27,12 +26,12 @@ export interface DecisionDialogProps {
  * reason. A 409 means the screen was stale: say so in a toast, close, and let the refetch show the
  * current state. Any other failure stays in the dialog so the typed text is not lost.
  */
-export function DecisionDialog({ action, taskId, version, stage, requestType, requestNumber, onClose, onDecided }: DecisionDialogProps) {
+export function DecisionDialog({ action, taskId, version, requestType, requestNumber, onClose, onDecided }: DecisionDialogProps) {
   const toast = useToast()
   const [errorMessage, setErrorMessage] = useState<string | undefined>()
   const decide = useDecideTask({
     onSuccess: (input) => {
-      toast.success(decisionPresentation(input.action, stage, requestType).done(requestNumber))
+      toast.success(decisionPresentation(input.action, requestType).done(requestNumber))
       close()
       onDecided?.()
     },
@@ -51,7 +50,7 @@ export function DecisionDialog({ action, taskId, version, stage, requestType, re
     message: `${requestNumber} is no longer waiting for your decision, so the dialog was closed.`,
   })
   if (!action) return null
-  const text = decisionPresentation(action, stage, requestType)
+  const text = decisionPresentation(action, requestType)
   const { title, description } = text.describe(requestNumber)
 
   function close() {

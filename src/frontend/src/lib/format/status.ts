@@ -1,5 +1,5 @@
 import type { RoleChangeStatus } from '@/lib/api/types'
-import type { RequestStage, RequestStatus, WorkTaskOutcome } from '@/lib/api/types'
+import type { RequestStatus, StepRef, WorkTaskOutcome } from '@/lib/api/types'
 
 /**
  * Single source for how request/task statuses are presented (label + tone + icon).
@@ -47,22 +47,9 @@ export function taskStatusPresentation(outcome: WorkTaskOutcome | null): StatusP
   }
 }
 
-/** Where a request currently waits, as people say it ("Waiting for: Finance approval"). */
-export function requestStageLabel(stage: RequestStage): string {
-  switch (stage) {
-    case 'ManagerApproval':
-      return 'Manager approval'
-    case 'FinanceApproval':
-      return 'Finance approval'
-    case 'HrConfirmation':
-      return 'HR confirmation'
-    case 'ProcurementFulfillment':
-      return 'Procurement fulfilment'
-    case 'Closed':
-      return 'Closed'
-    default:
-      return stage satisfies never
-  }
+/** The step a request or task waits at, as the server names it. `null` once the request is closed. */
+export function stepLabel(step: StepRef | null): string {
+  return step?.name ?? '—'
 }
 
 /** Active / Inactive for users and departments. */
