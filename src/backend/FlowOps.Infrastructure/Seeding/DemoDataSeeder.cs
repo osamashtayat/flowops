@@ -1,9 +1,11 @@
 using FlowOps.Application.Common;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Requests;
+using FlowOps.Application.Workflows;
 using FlowOps.Domain.Common;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -16,7 +18,7 @@ namespace FlowOps.Infrastructure.Seeding;
 
 /// <summary>
 /// <c>--seed-demo</c> (BE-16): creates <see cref="DemoCompany"/> in a Development database. Requests are built through the
-/// <see cref="Request"/> aggregate (<see cref="FixedProcesses"/> order, every invariant) and the pending role change through
+/// <see cref="Request"/> aggregate (the Published workflow versions' steps, every invariant) and the pending role change through
 /// <see cref="RoleChange"/>; notifications come from <see cref="NotificationFactory"/>. Everything is saved in one
 /// <c>SaveChangesAsync</c>, so a failed seed leaves nothing behind, and a seeded database is detected and left alone.
 /// </summary>
@@ -24,6 +26,7 @@ public sealed partial class DemoDataSeeder(
     AppDbContext db,
     UserManager<ApplicationUser> userManager,
     IRequestNumberSequence numbers,
+    IProcessDefinitionSource workflows,
     CompanyCalendar calendar,
     TimeProvider time,
     IHostEnvironment environment,
@@ -56,9 +59,15 @@ public sealed partial class DemoDataSeeder(
 
         var now = time.GetUtcNow();
         var people = await AddPeopleAsync(now, ct);
+        var published = new Dictionary<RequestType, WorkflowVersion>();
+        foreach (var type in Enum.GetValues<RequestType>())
+        {
+            published[type] = await workflows.PublishedAsync(type, ct);
+        }
+
         foreach (var spec in DemoCompany.Requests.OrderByDescending(r => r.DaysAgo))
         {
-            await AddRequestAsync(spec, people, now, ct);
+            await AddRequestAsync(spec, people, published, now, ct);
         }
 
         AddPendingRoleChange(people, now);
@@ -113,7 +122,9 @@ public sealed partial class DemoDataSeeder(
         return user;
     }
 
-    private async Task AddRequestAsync(DemoRequest spec, Dictionary<string, ApplicationUser> people, DateTimeOffset now, CancellationToken ct)
+    private async Task AddRequestAsync(
+        DemoRequest spec, Dictionary<string, ApplicationUser> people, Dictionary<RequestType, WorkflowVersion> published,
+        DateTimeOffset now, CancellationToken ct)
     {
         var requester = people[spec.Requester];
         var submittedAt = now.AddDays(-spec.DaysAgo);
@@ -122,17 +133,19 @@ public sealed partial class DemoDataSeeder(
             : ManagerKeyOf(spec.Requester);
         var managerId = people[managerKey].Id;
         // The manager at submission time, not today's (demo history includes a manager change).
-        Assignee Resolve(ProcessStep step) => TaskAssigneeResolver.Resolve(step, managerId);
+        Assignee Resolve(WorkflowStep step) => TaskAssigneeResolver.Resolve(step, managerId);
         var number = RequestNumber.Create(calendar.YearOf(submittedAt), await numbers.NextAsync(ct));
         var request = spec.Purchase is { } purchase
-            ? Request.SubmitPurchase(number, requester.Id, requester.DepartmentId!.Value, ToDetails(purchase), Resolve, submittedAt)
-            : Request.SubmitLeave(number, requester.Id, requester.DepartmentId!.Value, ToDetails(spec.Leave!, now, submittedAt), Resolve, submittedAt);
+            ? Request.SubmitPurchase(number, requester.Id, requester.DepartmentId!.Value, ToDetails(purchase),
+                published[RequestType.EquipmentPurchase], Resolve, submittedAt)
+            : Request.SubmitLeave(number, requester.Id, requester.DepartmentId!.Value, ToDetails(spec.Leave!, now, submittedAt),
+                published[RequestType.Leave], Resolve, submittedAt);
         db.Requests.Add(request);
         db.Notifications.AddRange(NotificationFactory.TaskAssigned(request, request.OpenTask!, requester.DisplayName, [managerId], submittedAt));
 
         foreach (var decision in spec.Decisions)
         {
-            Decide(request, decision, people, managerId, now.AddDays(-decision.DaysAgo));
+            Decide(request, decision, people, published[request.Type], managerId, now.AddDays(-decision.DaysAgo));
         }
 
         if (spec.Comment is var (by, body))
@@ -145,7 +158,8 @@ public sealed partial class DemoDataSeeder(
     /// The seed notifies requesters of outcomes and managers of their tasks. Role-queue tasks are not announced: who is eligible
     /// is <c>TaskEligibility</c>'s rule, which needs the saved database; the tasks still show in the officers' inboxes.
     /// </summary>
-    private void Decide(Request request, DemoDecision spec, Dictionary<string, ApplicationUser> people, Guid managerId, DateTimeOffset at)
+    private void Decide(
+        Request request, DemoDecision spec, Dictionary<string, ApplicationUser> people, WorkflowVersion workflow, Guid managerId, DateTimeOffset at)
     {
         var decider = people[spec.By];
         var decision = spec.Action switch
@@ -155,7 +169,8 @@ public sealed partial class DemoDataSeeder(
             TaskDecisionAction.Fulfill => TaskDecision.Fulfill(spec.Comment),
             _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Action, null),
         };
-        var result = request.DecideTask(request.OpenTask!.Id, decider.Id, decision, step => TaskAssigneeResolver.Resolve(step, managerId), at);
+        var result = request.DecideTask(
+            request.OpenTask!.Id, decider.Id, decision, workflow, step => TaskAssigneeResolver.Resolve(step, managerId), at);
         db.Notifications.Add(NotificationFactory.DecisionOutcome(request, result, decider.DisplayName, at));
     }
 

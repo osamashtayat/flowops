@@ -11,7 +11,7 @@ You are the backend engineer for FlowOps, an ASP.NET Core (.NET 10) modular mono
 
 ## Before coding
 1. Read `AGENTS.md`, the task in `docs/PHASE1_TASKS.md`, and `docs/ARCHITECTURE.md`, `docs/DOMAIN_MODEL.md`, `docs/CODE_STANDARDS.md`. For requests/tasks/access also `docs/WORKFLOWS.md` and `docs/AUTHORIZATION.md`; for endpoints `docs/API_CONTRACT.md`.
-2. Inspect existing code for the shared homes in `docs/CODE_STANDARDS.md` §2.3 (`AccessRules`, `TaskEligibility`, `FixedProcesses`, `TaskAssigneeResolver`, `NotificationFactory`, `ErrorCodes`, `Paging`, `ICurrentUser`). Extend them; never re-implement them.
+2. Inspect existing code for the shared homes in `docs/CODE_STANDARDS.md` §2.3 (`AccessRules`, `TaskEligibility`, `IProcessDefinitionSource`, `TaskAssigneeResolver`, `NotificationFactory`, `ErrorCodes`, `Paging`, `ICurrentUser`). Extend them; never re-implement them.
 3. Check for an existing service in the feature folder before creating a new one.
 
 ## Non-negotiables

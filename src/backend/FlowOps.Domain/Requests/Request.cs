@@ -1,11 +1,13 @@
 using FlowOps.Domain.Common;
 using FlowOps.Domain.Errors;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Domain.Requests;
 
 /// <summary>
 /// The aggregate root (DOMAIN_MODEL.md §2.3). Status and Stage change only through <see cref="DecideTask"/>,
-/// which advances generically through <see cref="FixedProcesses"/> and appends activities in the same call.
+/// which advances generically through the steps of the pinned <see cref="WorkflowVersion"/> (§7.4) and appends
+/// activities in the same call.
 /// </summary>
 public sealed class Request
 {
@@ -18,8 +20,15 @@ public sealed class Request
         Number = null!;
     }
 
-    private Request(RequestNumber number, RequestType type, Guid requesterId, Guid departmentId, DateTimeOffset now)
+    private Request(
+        RequestNumber number, RequestType type, Guid requesterId, Guid departmentId, WorkflowVersion workflow, DateTimeOffset now)
     {
+        ArgumentNullException.ThrowIfNull(workflow);
+        if (workflow.Status != WorkflowVersionStatus.Published)
+        {
+            throw new ArgumentException("A request is pinned to its type's Published workflow version.", nameof(workflow));
+        }
+
         if (requesterId == Guid.Empty)
         {
             throw new ArgumentException("A request needs a requester.", nameof(requesterId));
@@ -35,6 +44,7 @@ public sealed class Request
         Type = type;
         RequesterId = requesterId;
         DepartmentId = departmentId;
+        WorkflowVersionId = workflow.Id;
         Status = RequestStatus.InReview;
         SubmittedAt = now;
     }
@@ -49,6 +59,9 @@ public sealed class Request
 
     /// <summary>Snapshot of the requester's department at submission.</summary>
     public Guid DepartmentId { get; private set; }
+
+    /// <summary>The workflow version every step of this request comes from, set at submission (DOMAIN_MODEL.md §7.4).</summary>
+    public Guid WorkflowVersionId { get; private set; }
 
     public RequestStatus Status { get; private set; }
 
@@ -74,25 +87,27 @@ public sealed class Request
     /// <summary>The single open task (I4), or <c>null</c> once the request is closed.</summary>
     public WorkTask? OpenTask => _tasks.SingleOrDefault(t => t.IsOpen);
 
+    /// <param name="workflow">The type's Published version; the request is pinned to it.</param>
     /// <param name="resolveAssignee">Resolves the first step's assignee, as <see cref="DecideTask"/> does for later steps.</param>
     public static Request SubmitPurchase(
         RequestNumber number, Guid requesterId, Guid departmentId, PurchaseDetails details,
-        Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
+        WorkflowVersion workflow, Func<WorkflowStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(details);
-        var request = new Request(number, RequestType.EquipmentPurchase, requesterId, departmentId, now) { Purchase = details };
-        request.Start(resolveAssignee, now);
+        var request = new Request(number, RequestType.EquipmentPurchase, requesterId, departmentId, workflow, now) { Purchase = details };
+        request.Start(workflow.FirstStep, resolveAssignee, now);
         return request;
     }
 
+    /// <param name="workflow">The type's Published version; the request is pinned to it.</param>
     /// <param name="resolveAssignee">Resolves the first step's assignee, as <see cref="DecideTask"/> does for later steps.</param>
     public static Request SubmitLeave(
         RequestNumber number, Guid requesterId, Guid departmentId, LeaveDetails details,
-        Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
+        WorkflowVersion workflow, Func<WorkflowStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(details);
-        var request = new Request(number, RequestType.Leave, requesterId, departmentId, now) { Leave = details };
-        request.Start(resolveAssignee, now);
+        var request = new Request(number, RequestType.Leave, requesterId, departmentId, workflow, now) { Leave = details };
+        request.Start(workflow.FirstStep, resolveAssignee, now);
         return request;
     }
 
@@ -101,12 +116,20 @@ public sealed class Request
     /// and the valid action for the task kind, all before anything changes; then appends activities (I9) and
     /// opens the next step's task or closes the request (I7). Eligibility (I1) is the Application layer's job.
     /// </summary>
+    /// <param name="workflow">The version this request is pinned to (<see cref="WorkflowVersionId"/>).</param>
     /// <param name="resolveAssignee">Resolves the next step's assignee; only called when a next step exists.</param>
     public DecisionResult DecideTask(
-        Guid taskId, Guid actorId, TaskDecision decision, Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
+        Guid taskId, Guid actorId, TaskDecision decision, WorkflowVersion workflow,
+        Func<WorkflowStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(decision);
+        ArgumentNullException.ThrowIfNull(workflow);
         ArgumentNullException.ThrowIfNull(resolveAssignee);
+        if (workflow.Id != WorkflowVersionId)
+        {
+            throw new ArgumentException("A request advances only through the workflow version it is pinned to.", nameof(workflow));
+        }
+
         if (actorId == Guid.Empty)
         {
             throw new ArgumentException("A decision needs an actor.", nameof(actorId));
@@ -126,7 +149,7 @@ public sealed class Request
         }
 
         var outcome = task.OutcomeFor(decision.Action);
-        var nextStep = outcome == WorkTaskOutcome.Rejected ? null : FixedProcesses.Next(Type, task.Stage);
+        var nextStep = outcome == WorkTaskOutcome.Rejected ? null : workflow.StepAfter(StageKeys.KeyOf(task.Stage)!);
         var nextAssignee = nextStep is null ? null : ResolveAssignee(nextStep, resolveAssignee);
 
         // Every check and lookup has passed: from here on the aggregate changes.
@@ -162,7 +185,7 @@ public sealed class Request
     /// Validated before anything changes, so a faulty resolver cannot leave a half-applied decision.
     /// A wrong assignee is a programming error (ArgumentException), not a business-rule violation.
     /// </summary>
-    private static Assignee ResolveAssignee(ProcessStep step, Func<ProcessStep, Assignee> resolveAssignee)
+    private static Assignee ResolveAssignee(WorkflowStep step, Func<WorkflowStep, Assignee> resolveAssignee)
     {
         ArgumentNullException.ThrowIfNull(resolveAssignee);
         var assignee = resolveAssignee(step)
@@ -178,9 +201,8 @@ public sealed class Request
     /// a role queue needs nothing here. The Application layer checks I12 first (manager exists and is active); this guards
     /// the part the domain can know: a requester is never their own approver (I2).
     /// </summary>
-    private void Start(Func<ProcessStep, Assignee> resolveAssignee, DateTimeOffset now)
+    private void Start(WorkflowStep first, Func<WorkflowStep, Assignee> resolveAssignee, DateTimeOffset now)
     {
-        var first = FixedProcesses.First(Type);
         var assignee = ResolveAssignee(first, resolveAssignee);
         if (assignee.UserId == RequesterId)
         {
@@ -191,7 +213,7 @@ public sealed class Request
         AdvanceTo(first, assignee, now);
     }
 
-    private WorkTask AdvanceTo(ProcessStep step, Assignee assignee, DateTimeOffset now)
+    private WorkTask AdvanceTo(WorkflowStep step, Assignee assignee, DateTimeOffset now)
     {
         if (_tasks.Any(t => t.IsOpen))
         {

@@ -37,4 +37,10 @@ public static class DomainErrors
 
     public static DomainException RoleChangeNotProposer() =>
         new(ErrorCodes.RoleChangeNotProposer, "Only the administrator who asked for this role change can cancel it.");
+
+    public static DomainException WorkflowVersionNotDraft() =>
+        new(ErrorCodes.WorkflowVersionNotDraft, "Only a draft can change. Published and retired versions are kept as they are.");
+
+    public static DomainException WorkflowInvalid() =>
+        new(ErrorCodes.WorkflowInvalid, "The workflow needs at least one step, and only its last step can be a fulfilment step.");
 }

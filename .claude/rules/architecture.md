@@ -27,4 +27,4 @@ Full rationale: `docs/ARCHITECTURE.md`, ADRs in `docs/decisions/`.
 - New shared abstraction requires ≥ 2 current callers and a one-line justification in your report.
 
 ## Extension point
-New request type = `RequestType` value + details type + `FixedProcesses` entry + submit endpoint + form. If you must change decision, access, inbox or notification code to add one, flag it — the design has leaked.
+New request type = `RequestType` value + details type + seeded workflow (v1 migration) + submit endpoint + form. If you must change decision, access, inbox or notification code to add one, flag it — the design has leaked.

@@ -1,6 +1,7 @@
 using FlowOps.Application.Common;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowOps.Application.Requests;
@@ -43,14 +44,14 @@ public static class TaskAssigneeResolver
     /// The resolver the aggregate takes for submission and decisions alike (#83): RequesterManager steps go to the
     /// requester's current manager (I12, checked only when such a step is reached), role steps to the role queue.
     /// </summary>
-    public static Func<ProcessStep, Assignee> ResolverFor(Requester requester)
+    public static Func<WorkflowStep, Assignee> ResolverFor(Requester requester)
     {
         ArgumentNullException.ThrowIfNull(requester);
         return step => Resolve(step, step.Assignee.IsRequesterManager ? RequireManager(requester) : Guid.Empty);
     }
 
     /// <summary>Resolves any step; <paramref name="requesterManagerId"/> is used for RequesterManager steps.</summary>
-    public static Assignee Resolve(ProcessStep step, Guid requesterManagerId)
+    public static Assignee Resolve(WorkflowStep step, Guid requesterManagerId)
     {
         ArgumentNullException.ThrowIfNull(step);
         return step.Assignee.IsRequesterManager ? Assignee.ForUser(requesterManagerId) : Assignee.ForRole(step.Assignee.Role!);

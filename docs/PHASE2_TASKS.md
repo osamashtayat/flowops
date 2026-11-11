@@ -77,7 +77,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 - **Deps:** none (Phase 1 debt).
 - **Tests:** each switch is exhaustive. Notification text matches WORKFLOWS §1.4.
 
-### P2-BE-03 — Persisted workflow definitions; seed v1 · `Todo`
+### P2-BE-03 — Persisted workflow definitions; seed v1 · `Done` (2026-11-11)
 - **Objective:**
   - add `WorkflowDefinition` / `WorkflowVersion` / `WorkflowStep`, with EF configuration and a migration
   - add `IProcessDefinitionSource`
@@ -87,6 +87,12 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 - **Deps:** P2-DOC-01, P2-BE-01, P2-BE-02.
 - **AC:** **no behaviour change**. All Phase 1 integration and E2E tests pass unchanged. Published versions are immutable (domain-enforced). Exactly one Published version per request type (partial unique index).
 - **Tests:** seed equivalence with the old fixed steps; immutability; one-published index; the backfill migration on a database with requests in every state.
+- **As built:**
+  - Domain `Workflows/`: `WorkflowDefinition`, `WorkflowVersion` (Draft → Published → Retired; only a Draft changes, `workflow.version_not_draft` otherwise; publishing checks ≥ 1 step and a single, last Fulfillment step, `workflow.invalid`), `WorkflowStep` (replaces `ProcessStep`). `Condition` and `CanReadRestrictedDetails` are not stored yet (P2-BE-05/06). `AssigneeRuleKind` and `WorkflowVersionStatus` moved from the contract DTOs into Domain (same names and values, so no OpenAPI change).
+  - `Request.WorkflowVersionId`; `SubmitPurchase/SubmitLeave/DecideTask` take the pinned `WorkflowVersion`. `StageKeys` maps Phase 1 stages ↔ v1 keys until P2-BE-04.
+  - Application: `IProcessDefinitionSource` / `ProcessDefinitionSource` (read-only, untracked); submission, decisions, the route and the demo seeder load steps through it. `FixedProcesses` is deleted.
+  - Migration `AddWorkflowDefinitions`: tables, indexes `ux_workflow_versions_published` / `_draft` / `_number`, `ux_workflow_steps_key`, `ux_workflow_definitions_request_type`, check constraints; seeds v1 with fixed ids and no author (#111), backfills every request by type, then makes the column NOT NULL.
+  - Tests: domain lifecycle/immutability/step-key tests; integration seed equivalence, exactly one Published per type, both partial unique indexes, submission pins the version, backfill on a database with requests in every state. The test harness restores the seeded workflow rows after each Respawn reset (Respawn truncates `users` with CASCADE). Phase 1 test helpers that build aggregates directly now pass the version; no assertion changed.
 
 ### P2-BE-04 — Persist step keys; remove `stage` · `Todo`
 - **Objective:**

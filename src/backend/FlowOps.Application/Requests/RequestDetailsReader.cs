@@ -1,5 +1,6 @@
 using FlowOps.Application.Access;
 using FlowOps.Application.Common;
+using FlowOps.Application.Workflows;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ namespace FlowOps.Application.Requests;
 /// Builds <see cref="RequestDetailsDto"/> for the caller: one projection query through <see cref="AccessRules.VisibleTo"/>,
 /// plus the §5 reason check. Shared by submission (BE-10) and <c>GET /api/requests/{id}</c> (BE-11). Never saves.
 /// </summary>
-public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
+public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access, IProcessDefinitionSource workflows)
 {
     /// <summary>The request as <paramref name="me"/> may see it, or <c>null</c> when it doesn't exist or isn't visible.</summary>
     public async Task<RequestDetailsDto?> ReadAsync(Guid requestId, AccessContext me, CancellationToken ct)
@@ -24,6 +25,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
                 RequesterId = r.RequesterId,
                 Requester = db.Users.Where(u => u.Id == r.RequesterId).Select(u => new UserRef(u.Id, u.DisplayName)).Single(),
                 Department = db.Departments.Where(d => d.Id == r.DepartmentId).Select(d => new DepartmentRef(d.Id, d.Name)).Single(),
+                WorkflowVersionId = r.WorkflowVersionId,
                 Status = r.Status,
                 Stage = r.Stage,
                 SubmittedAt = r.SubmittedAt,
@@ -45,6 +47,8 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
 
         var reasonVisible = row.Leave is not null && await access.CanReadLeaveReasonAsync(requestId, me, ct);
         var openTask = row.Tasks.Select(t => t.Task).SingleOrDefault(t => t.IsOpen);
+        // Only an open request has steps still to come; a closed one shows only the steps it went through.
+        var pinnedSteps = openTask is null ? [] : (await workflows.VersionAsync(row.WorkflowVersionId, ct)).Steps;
         return new RequestDetailsDto(
             row.Id,
             row.Number.Value,
@@ -62,7 +66,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
             TaskEligibility.AvailableActions(row.RequesterId, row.Tasks.Select(t => t.Task.DecidedById), openTask, me),
             // Commenting is open to every participant who can see the request (AUTHORIZATION.md §3), closed or not.
             CanComment: true,
-            RequestRoute.For(row.Type, row.Tasks.Select(t => t.Task), row.Status));
+            RequestRoute.For(pinnedSteps, row.Tasks.Select(t => t.Task), row.Status));
     }
 
     private static PurchaseDetailsDto ToDto(PurchaseDetails p) => new(
@@ -88,6 +92,7 @@ public sealed class RequestDetailsReader(IAppDbContext db, AccessRules access)
         public Guid RequesterId { get; init; }
         public required UserRef Requester { get; init; }
         public required DepartmentRef Department { get; init; }
+        public Guid WorkflowVersionId { get; init; }
         public RequestStatus Status { get; init; }
         public RequestStage Stage { get; init; }
         public DateTimeOffset SubmittedAt { get; init; }

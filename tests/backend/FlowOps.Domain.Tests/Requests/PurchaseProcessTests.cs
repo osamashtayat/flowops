@@ -51,7 +51,7 @@ public sealed class PurchaseProcessTests
         // Manager approves → finance step.
         var managerTask = request.OpenTask!;
         var count = request.Activities.Count;
-        var r1 = request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve("Looks fine"), Resolve, T1);
+        var r1 = request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve("Looks fine"), WorkflowFor(request.Type), Resolve, T1);
 
         request.Status.ShouldBe(RequestStatus.InReview);
         request.Stage.ShouldBe(RequestStage.FinanceApproval);
@@ -86,7 +86,7 @@ public sealed class PurchaseProcessTests
 
         // Procurement fulfils → Completed.
         count = request.Activities.Count;
-        var r3 = request.DecideTask(procurementTask.Id, ProcurementOfficer, TaskDecision.Fulfill("Ordered PO-77"), Resolve, T3);
+        var r3 = request.DecideTask(procurementTask.Id, ProcurementOfficer, TaskDecision.Fulfill("Ordered PO-77"), WorkflowFor(request.Type), Resolve, T3);
 
         request.Status.ShouldBe(RequestStatus.Completed);
         request.Stage.ShouldBe(RequestStage.Closed);

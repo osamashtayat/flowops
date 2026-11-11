@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Organization;
+using FlowOps.Application.Workflows;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Requests;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ public sealed class RequestSubmissionService(
     TimeProvider time,
     AccessRules access,
     RequestDetailsReader details,
+    IProcessDefinitionSource workflows,
     PostCommitPublisher realtime)
 {
     public async Task<RequestDetailsDto> SubmitPurchaseAsync(SubmitPurchaseRequest body, CancellationToken ct)
@@ -28,8 +30,10 @@ public sealed class RequestSubmissionService(
         ArgumentNullException.ThrowIfNull(body);
         var (requester, departmentId) = await LoadSubmitterAsync(ct);
         var purchase = PurchaseDetails.Create(body.ItemName, body.Description, body.EstimatedCost!.ToMoney("estimatedCost"), body.Justification);
+        var workflow = await workflows.PublishedAsync(RequestType.EquipmentPurchase, ct);
         var now = time.GetUtcNow();
-        var request = Request.SubmitPurchase(await NextNumberAsync(now, ct), requester.Id, departmentId, purchase, TaskAssigneeResolver.ResolverFor(requester), now);
+        var request = Request.SubmitPurchase(
+            await NextNumberAsync(now, ct), requester.Id, departmentId, purchase, workflow, TaskAssigneeResolver.ResolverFor(requester), now);
         return await SaveAsync(request, requester, now, ct);
     }
 
@@ -39,7 +43,9 @@ public sealed class RequestSubmissionService(
         var (requester, departmentId) = await LoadSubmitterAsync(ct);
         var now = time.GetUtcNow();
         var leave = LeaveDetails.Create(body.StartDate!.Value, body.EndDate!.Value, body.LeaveType!.Value, body.Reason, now, calendar.TimeZone);
-        var request = Request.SubmitLeave(await NextNumberAsync(now, ct), requester.Id, departmentId, leave, TaskAssigneeResolver.ResolverFor(requester), now);
+        var workflow = await workflows.PublishedAsync(RequestType.Leave, ct);
+        var request = Request.SubmitLeave(
+            await NextNumberAsync(now, ct), requester.Id, departmentId, leave, workflow, TaskAssigneeResolver.ResolverFor(requester), now);
         return await SaveAsync(request, requester, now, ct);
     }
 

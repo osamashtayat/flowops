@@ -9,6 +9,7 @@ using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -386,7 +387,8 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var p1 = await db.Requests.Include(r => r.Tasks).SingleAsync(r => r.Id == org.Requests["P1"], Ct);
-            p1.DecideTask(p1.OpenTask!.Id, org.Users["karim"], TaskDecision.Reject("Over budget"), _ => throw new InvalidOperationException(), Factory.Clock.GetUtcNow());
+            p1.DecideTask(p1.OpenTask!.Id, org.Users["karim"], TaskDecision.Reject("Over budget"),
+                await Factory.PublishedWorkflowAsync(RequestType.EquipmentPurchase), _ => throw new InvalidOperationException(), Factory.Clock.GetUtcNow());
             await db.SaveChangesAsync(Ct);
         }
 
@@ -479,12 +481,13 @@ public sealed class RequestQueryTests(FlowOpsApiFactory factory) : DatabaseTest(
     private async Task<Guid> SeedLeaveRejectedByManagerAsync(Guid requesterId, Guid departmentId, Guid managerId)
     {
         var now = Factory.Clock.GetUtcNow();
-        Assignee Resolve(ProcessStep step) =>
+        var workflow = await Factory.PublishedWorkflowAsync(RequestType.Leave);
+        Assignee Resolve(WorkflowStep step) =>
             step.Assignee.IsRequesterManager ? Assignee.ForUser(managerId) : Assignee.ForRole(step.Assignee.Role!);
         var leave = Request.SubmitLeave(RequestNumber.Create(2026, 90), requesterId, departmentId,
             LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Sick, "Surgery", now, TimeZoneInfo.Utc),
-            Resolve, now);
-        leave.DecideTask(leave.OpenTask!.Id, managerId, TaskDecision.Reject("Too busy"), Resolve, now);
+            workflow, Resolve, now);
+        leave.DecideTask(leave.OpenTask!.Id, managerId, TaskDecision.Reject("Too busy"), workflow, Resolve, now);
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Requests.Add(leave);

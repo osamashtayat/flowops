@@ -260,6 +260,10 @@ namespace FlowOps.Infrastructure.Migrations
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
 
+                    b.Property<Guid>("WorkflowVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workflow_version_id");
+
                     b.HasKey("Id")
                         .HasName("pk_requests");
 
@@ -272,6 +276,9 @@ namespace FlowOps.Infrastructure.Migrations
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_requests_status");
+
+                    b.HasIndex("WorkflowVersionId")
+                        .HasDatabaseName("ix_requests_workflow_version_id");
 
                     b.HasIndex("RequesterId", "SubmittedAt")
                         .IsDescending(false, true)
@@ -447,6 +454,118 @@ namespace FlowOps.Infrastructure.Migrations
                             t.HasCheckConstraint("ck_work_tasks_stage", "stage IN ('ManagerApproval', 'FinanceApproval', 'HrConfirmation', 'ProcurementFulfillment', 'Closed')");
 
                             t.HasCheckConstraint("ck_work_tasks_status", "status IN ('Open', 'Done')");
+                        });
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Workflows.WorkflowDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("RequestType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("request_type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_definitions");
+
+                    b.HasIndex("RequestType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_workflow_definitions_request_type");
+
+                    b.ToTable("workflow_definitions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_workflow_definitions_request_type", "request_type IN ('EquipmentPurchase', 'Leave')");
+                        });
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Workflows.WorkflowVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by_id");
+
+                    b.Property<DateTimeOffset?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("workflow_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_workflow_versions");
+
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_workflow_versions_created_by_id");
+
+                    b.HasIndex("PublishedById")
+                        .HasDatabaseName("ix_workflow_versions_published_by_id");
+
+                    b.HasIndex("WorkflowId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ux_workflow_versions_number");
+
+                    b.HasIndex(new[] { "WorkflowId" }, "ux_workflow_versions_draft")
+                        .IsUnique()
+                        .HasDatabaseName("ux_workflow_versions_draft")
+                        .HasFilter("status = 'Draft'");
+
+                    b.HasIndex(new[] { "WorkflowId" }, "ux_workflow_versions_published")
+                        .IsUnique()
+                        .HasDatabaseName("ux_workflow_versions_published")
+                        .HasFilter("status = 'Published'");
+
+                    b.ToTable("workflow_versions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_workflow_versions_number", "number >= 1");
+
+                            t.HasCheckConstraint("ck_workflow_versions_published_iff_not_draft", "(status = 'Draft') = (published_at IS NULL)");
+
+                            t.HasCheckConstraint("ck_workflow_versions_retired_iff_retired", "(status = 'Retired') = (retired_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_workflow_versions_status", "status IN ('Draft', 'Published', 'Retired')");
                         });
                 });
 
@@ -821,6 +940,13 @@ namespace FlowOps.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_requests_users_requester_id");
 
+                    b.HasOne("FlowOps.Domain.Workflows.WorkflowVersion", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_requests_workflow_versions_workflow_version_id");
+
                     b.OwnsOne("FlowOps.Domain.Requests.LeaveDetails", "Leave", b1 =>
                         {
                             b1.Property<Guid>("RequestId")
@@ -975,6 +1101,92 @@ namespace FlowOps.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_work_tasks_requests_request_id");
+                });
+
+            modelBuilder.Entity("FlowOps.Domain.Workflows.WorkflowVersion", b =>
+                {
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workflow_versions_users_created_by_id");
+
+                    b.HasOne("FlowOps.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("PublishedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_workflow_versions_users_published_by_id");
+
+                    b.HasOne("FlowOps.Domain.Workflows.WorkflowDefinition", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_workflow_versions_workflow_definitions_workflow_id");
+
+                    b.OwnsMany("FlowOps.Domain.Workflows.WorkflowStep", "Steps", b1 =>
+                        {
+                            b1.Property<Guid>("WorkflowVersionId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("workflow_version_id");
+
+                            b1.Property<int>("Order")
+                                .HasColumnType("integer")
+                                .HasColumnName("order");
+
+                            b1.Property<string>("AssigneeKind")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("assignee_kind");
+
+                            b1.Property<string>("AssigneeRole")
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("assignee_role");
+
+                            b1.Property<string>("Key")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)")
+                                .HasColumnName("key");
+
+                            b1.Property<string>("Kind")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("kind");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(80)
+                                .HasColumnType("character varying(80)")
+                                .HasColumnName("name");
+
+                            b1.HasKey("WorkflowVersionId", "Order")
+                                .HasName("pk_workflow_steps");
+
+                            b1.HasIndex("WorkflowVersionId", "Key")
+                                .IsUnique()
+                                .HasDatabaseName("ux_workflow_steps_key");
+
+                            b1.ToTable("workflow_steps", null, t =>
+                                {
+                                    t.HasCheckConstraint("ck_workflow_steps_assignee_kind", "assignee_kind IN ('RequesterManager', 'Role', 'DepartmentRole', 'SpecificUser', 'ManagerOfManager')");
+
+                                    t.HasCheckConstraint("ck_workflow_steps_assignee_role", "(assignee_kind = 'Role') = (assignee_role IS NOT NULL) AND assignee_role <> 'Administrator'");
+
+                                    t.HasCheckConstraint("ck_workflow_steps_kind", "kind IN ('Approval', 'Fulfillment')");
+
+                                    t.HasCheckConstraint("ck_workflow_steps_order", "\"order\" >= 0");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("WorkflowVersionId")
+                                .HasConstraintName("fk_workflow_steps_workflow_versions_workflow_version_id");
+                        });
+
+                    b.Navigation("Steps");
                 });
 
             modelBuilder.Entity("FlowOps.Infrastructure.Identity.ApplicationUser", b =>

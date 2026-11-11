@@ -86,7 +86,8 @@ DRY means every piece of business knowledge has **one** authoritative representa
 
 | Knowledge | Single home |
 |---|---|
-| Process steps and order | `Domain/Requests/FixedProcesses.cs` |
+| Process steps and order | the pinned `WorkflowVersion` (`Domain/Workflows/`), loaded only through `Application/Workflows/IProcessDefinitionSource` |
+| Phase 1 stage ↔ v1 step key (until P2-BE-04) | `Domain/Workflows/StageKeys.cs` |
 | A step's key and name on the wire (until P2-BE-04 stores them) | `Application/Requests/StepRef.cs` |
 | A request's route (done / current / planned steps) | `Application/Requests/RequestRoute.cs` |
 | A request's title and type label | `Application/Requests/RequestTitle.cs` |
@@ -123,7 +124,7 @@ Separate `PurchaseApprovalService` and `LeaveApprovalService` would be wrong: ap
 ## 3. SOLID, pragmatically
 
 - **S** — One reason to change per class. A service that both submits requests and renders dashboards has two. A 600-line service is a signal, not automatically a violation; a service mixing unrelated features is.
-- **O** — New request types plug in via `FixedProcesses` + details + submit endpoint (ARCHITECTURE.md §5). We do **not** build plugin discovery, reflection registries or strategy hierarchies for two types.
+- **O** — New request types plug in via a seeded workflow + details + submit endpoint (ARCHITECTURE.md §5). We do **not** build plugin discovery, reflection registries or strategy hierarchies for two types.
 - **L** — Avoid inheritance for behaviour. Prefer composition; `sealed` classes by default.
 - **I** — Ports are small and named for their use: `IRealtimePublisher`, `ICurrentUser`, `IIdentityAdmin`. No `IService<T>` mega-interfaces.
 - **D** — Application depends on abstractions it owns (ports). Interfaces exist **only** at real boundaries (I/O, identity, time, realtime) or where a test needs a seam. Services themselves are concrete classes registered directly — no `IRequestSubmissionService` with one implementation.

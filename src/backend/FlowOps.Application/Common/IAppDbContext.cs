@@ -1,6 +1,7 @@
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlowOps.Application.Common;
@@ -18,6 +19,12 @@ public interface IAppDbContext
     DbSet<Request> Requests { get; }
 
     DbSet<Notification> Notifications { get; }
+
+    /// <summary>One workflow per request type (DOMAIN_MODEL.md §7.1).</summary>
+    DbSet<WorkflowDefinition> WorkflowDefinitions { get; }
+
+    /// <summary>Workflow versions with their steps. Requests read them through <c>IProcessDefinitionSource</c>.</summary>
+    DbSet<WorkflowVersion> WorkflowVersions { get; }
 
     /// <summary>Administrators' own role changes waiting for, or decided by, another administrator (ADR-0012).</summary>
     DbSet<RoleChange> RoleChanges { get; }

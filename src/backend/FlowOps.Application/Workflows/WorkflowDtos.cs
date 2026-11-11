@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using FlowOps.Application.Common;
 using FlowOps.Application.Requests;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Application.Workflows;
 
@@ -43,13 +44,6 @@ public sealed record WorkflowVersionDto(
     DateTimeOffset? RetiredAt,
     string Version);
 
-public enum WorkflowVersionStatus
-{
-    Draft,
-    Published,
-    Retired,
-}
-
 /// <summary>A step as stored and shown. Steps run in list order; the first never has a condition.</summary>
 public sealed record WorkflowStepDto(
     string Key,
@@ -65,15 +59,6 @@ public sealed record WorkflowStepDto(
 /// <c>Administrator</c> is never a valid role here.
 /// </summary>
 public sealed record AssigneeRuleDto(AssigneeRuleKind Kind, Role? Role, Guid? DepartmentId, Guid? UserId);
-
-public enum AssigneeRuleKind
-{
-    RequesterManager,
-    Role,
-    DepartmentRole,
-    SpecificUser,
-    ManagerOfManager,
-}
 
 /// <summary>
 /// One typed comparison: the step runs only when <see cref="Fact"/> <see cref="Operator"/> <see cref="Values"/> holds.
