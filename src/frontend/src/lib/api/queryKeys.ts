@@ -13,6 +13,7 @@ export const queryKeys = {
     list: (params: Params) => ['requests', 'list', params] as const,
     detail: (id: string) => ['requests', 'detail', id] as const,
     activity: (id: string) => ['requests', 'activity', id] as const,
+    routePreview: (type: string, facts: Params) => ['requests', 'route-preview', type, facts] as const,
   },
   tasks: {
     all: ['tasks'] as const,

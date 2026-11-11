@@ -147,7 +147,7 @@ All recommended defaults were accepted except Q1: **one administrator edits and 
 - **Deps:** P2-DOC-01.
 - **AC:** no hardcoded step names remain in the frontend.
 
-### P2-FE-02 — Planned route and skipped steps · `Todo`
+### P2-FE-02 — Planned route and skipped steps · `Done against mocks` (2026-11-11; real-API verification waits for P2-BE-05)
 - **Objective:** request details show the planned route as a step list with the current step highlighted. The timeline renders `StepSkipped` with its reason. The new-request flow shows the route before submit, if the contract provides a preview.
 - **Deps:** P2-BE-05.
 - **Tests:** route for both branches; skipped entry text; accessible labels.

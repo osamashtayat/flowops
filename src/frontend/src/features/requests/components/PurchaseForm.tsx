@@ -1,4 +1,4 @@
-import { Controller } from 'react-hook-form'
+import { Controller, useWatch } from 'react-hook-form'
 import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
 import { MoneyInput } from '@/components/ui/MoneyInput'
@@ -6,9 +6,11 @@ import { Textarea } from '@/components/ui/Textarea'
 import { fieldError, useZodForm } from '@/lib/forms/useZodForm'
 import { useSubmitPurchase } from '../api'
 import { REQUEST_LIMITS, upToCharacters } from '@/lib/api/limits'
+import { purchaseFacts } from '../routeFacts'
 import { purchaseSchema, type PurchaseValues } from '../schemas'
 import { useSubmitOutcome } from '../useSubmitOutcome'
 import { RequestFormFrame } from './RequestFormFrame'
+import { RoutePreview } from './RoutePreview'
 
 const FIELDS = ['itemName', 'description', 'estimatedCost', 'justification'] as const
 
@@ -24,6 +26,7 @@ export function PurchaseForm() {
     defaultValues: { itemName: '', description: '', estimatedCost: '', justification: '' },
   })
   const outcome = useSubmitOutcome(setError, FIELDS)
+  const estimatedCost = useWatch({ control, name: 'estimatedCost' })
 
   return (
     <RequestFormFrame
@@ -49,6 +52,7 @@ export function PurchaseForm() {
       <FormField label="Business justification" required helperText={upToCharacters(REQUEST_LIMITS.justificationMax)} error={fieldError(errors, 'justification')}>
         {(c) => <Textarea {...c} {...register('justification')} />}
       </FormField>
+      <RoutePreview type="EquipmentPurchase" facts={purchaseFacts(estimatedCost)} />
     </RequestFormFrame>
   )
 }

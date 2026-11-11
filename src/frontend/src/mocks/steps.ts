@@ -1,4 +1,4 @@
-import type { RequestDetailsDto, RequestStage, RequestType, StepRef } from '@/lib/api/types'
+import type { RequestDetailsDto, RequestStage, RequestType, RouteStepDto, StepRef } from '@/lib/api/types'
 
 /**
  * The mock's stand-in for the server's steps and route (docs/API_CONTRACT.md §4, ADR-0014 Q2/Q5).
@@ -21,6 +21,10 @@ const ORDER: Record<RequestType, StepRef[]> = {
   EquipmentPurchase: [MOCK_STEPS.manager, MOCK_STEPS.finance, MOCK_STEPS.procurement],
   Leave: [MOCK_STEPS.manager, MOCK_STEPS.hr],
 }
+
+/** The planned route for a new request of `type`, every step `Planned` (the shape of `POST /api/requests/route-preview`). */
+export const mockPreviewRoute = (type: RequestType): RouteStepDto[] =>
+  ORDER[type].map((step) => ({ step, kind: mockStepKind(step), state: 'Planned' }))
 
 export const mockStepKind = (step: StepRef): 'Fulfillment' | 'Approval' => (step.key === MOCK_STEPS.procurement.key ? 'Fulfillment' : 'Approval')
 

@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { requireData } from '@/lib/api/apiError'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/api/queryKeys'
-import type { RequestDetailsDto, RequestScope, RequestStatus, RequestType } from '@/lib/api/types'
+import type { RequestDetailsDto, RequestScope, RequestStatus, RequestType, RouteFactsInput } from '@/lib/api/types'
 import type { LeaveValues, PurchaseValues } from './schemas'
 
 /** A submitted request changes the lists, the dashboard counts and (for the manager) their inbox. */
@@ -106,6 +106,23 @@ export function useRequestActivity(id: string) {
     queryFn: async () => {
       const { data } = await api.GET('/api/requests/{id}/activity', { params: { path: { id } } })
       return data ?? []
+    },
+  })
+}
+
+/**
+ * `POST /api/requests/route-preview`: the route these facts would take. Nothing is saved, so it is a
+ * query keyed by the facts; `facts: null` (form not valid yet) means no request.
+ */
+export function useRoutePreview(type: RequestType, facts: RouteFactsInput | null) {
+  return useQuery({
+    queryKey: queryKeys.requests.routePreview(type, facts ?? {}),
+    enabled: facts !== null,
+    retry: false,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data } = await api.POST('/api/requests/route-preview', { body: { type, facts: facts ?? {} } })
+      return requireData(data)
     },
   })
 }
