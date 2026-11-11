@@ -19,7 +19,7 @@ This file is model-agnostic and is the shared source of truth for every agent. D
 
 | Path | What |
 |---|---|
-| `docs/` | PRD, ARCHITECTURE, DOMAIN_MODEL, WORKFLOWS, AUTHORIZATION, API_CONTRACT, UI_SPEC, DESIGN_SYSTEM, CODE_STANDARDS, TESTING, PHASE1_TASKS, ROADMAP, AGENT_HANDOFF, `decisions/` (ADRs) |
+| `docs/` | PRD, ARCHITECTURE, DOMAIN_MODEL, WORKFLOWS, AUTHORIZATION, API_CONTRACT, UI_SPEC, DESIGN_SYSTEM, CODE_STANDARDS, TESTING, PHASE1_TASKS, PHASE2_TASKS, ROADMAP, AGENT_HANDOFF, `decisions/` (ADRs) |
 | `src/backend/FlowOps.{Domain,Application,Infrastructure,Api}` | Backend layers (created by BE-01) |
 | `tests/backend/` | `FlowOps.Domain.Tests` (fast), `FlowOps.Api.IntegrationTests` (Docker) |
 | `src/frontend/` | React app; tokens in `src/styles/theme.css` |
