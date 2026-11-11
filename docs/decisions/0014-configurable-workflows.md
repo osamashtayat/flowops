@@ -1,8 +1,8 @@
 # ADR-0014: Configurable workflows as versioned step lists with typed conditions (Phase 2)
 
-- **Status:** Proposed. The open questions in §5 need owner answers (#98) before it can be Accepted.
+- **Status:** Accepted. The owner answered §5 on 2026-11-11 (#98): Q1 changed to single-admin publish, Q2–Q7 as recommended.
 - **Date:** 2026-11-11
-- **Supersedes (when Accepted):** ADR-0004 (fixed processes in code)
+- **Supersedes:** ADR-0004 (fixed processes in code)
 
 ## Context
 Phase 2 (ROADMAP.md) lets administrators change how requests are routed without a deploy. A typical rule from the owner:
@@ -66,12 +66,12 @@ WorkflowDefinition        Id, RequestType, Name
   `Administrator` is never assignable (AUTHORIZATION §2). `TaskAssigneeResolver` stays the one home that turns a rule into an `Assignee`.
 - Adding a fact, an operator or a rule is a code change with tests. Admins combine them; they don't invent them.
 
-### 5. Open questions (owner to answer before Accepted)
-Each has a recommended default. Answers go into this ADR and the Phase 2 specs.
+### 5. Owner decisions (#98, 2026-11-11)
+These were open questions with recommended defaults. The owner accepted every default except Q1.
 
-| # | Question | Recommended default |
+| # | Question | Decision |
 |---|---|---|
-| Q1 | **Who can edit and publish workflows?** Administrators have no process authority today, but a workflow decides who approves money and leave. | A new `WorkflowAdministrator` capability, held by Administrators. **Publishing needs a second administrator to approve**, reusing the ADR-0012/0013 two-person pattern (pending → approve/reject/cancel/expire). Drafts can be edited by one admin. |
+| Q1 | **Who can edit and publish workflows?** Administrators have no process authority today, but a workflow decides who approves money and leave. | **Decided (differs from the proposal):** a single Administrator edits drafts **and publishes** them, with **no second-admin approval**. A `workflows.manage` capability is derived from the Administrator role. Every publish is audit-logged (actor id, definition, version) and recorded on the version (`PublishedBy`, `PublishedAt`). Unlike ADR-0012 role changes, this is not a two-person control; see Consequences. |
 | Q2 | **Steps become admin-named**, so `RequestStage` (an API enum used by DB, contract and frontend) can't stay a fixed enum. | Replace `stage: RequestStage` with `step: { key, name }` on requests, tasks, inbox items, activities and stalled tasks. Keep `Closed` as a request **status** concern, not a step. Migrate existing rows by mapping each enum value to a key of the same name in the seeded v1 workflows. One coordinated contract change (AGENT_HANDOFF §3). |
 | Q3 | **Leave-reason visibility** is hardcoded as "HrOfficer through the HR task" (AUTHORIZATION §4–5). | Add a per-step flag `canReadRestrictedDetails`. The leave reason is readable by R1, R2, and the assignee(s) of a step with the flag. The seeded HR step has it set; the editor shows a warning when an admin sets it. |
 | Q4 | **Can admins create new request types (with their own fields), or only re-route purchase and leave?** | Phase 2a: re-route existing types only. Phase 2b: the form builder (`FormSubmission` jsonb beside typed details, ROADMAP Phase 2 §2), which also adds facts from form fields. Ship 2a first. |
@@ -84,7 +84,7 @@ Each has a recommended default. Answers go into this ADR and the Phase 2 specs.
 2. Persist definitions and seed purchase/leave as v1, with no behaviour change (contract change from Q2 lands here).
 3. Conditions, skipping, `StepSkipped` and route preview in the aggregate.
 4. New assignee rules.
-5. Admin API (drafts, validation, publish per Q1) and the React step-list editor.
+5. Admin API (drafts, validation, single-admin publish per Q1) and the React step-list editor.
 6. Phase 2b form builder (Q4), only after 2a ships.
 
 The tasks are in `docs/PHASE2_TASKS.md`.
@@ -97,6 +97,13 @@ The tasks are in `docs/PHASE2_TASKS.md`.
 - Real branching (different multi-step paths), parallel approvals and loops are not expressible. Parallel is Phase 3 (ROADMAP). Multi-step branches can be added later as "condition groups" if a real need appears.
 - `stage` → `step` is a breaking contract change touching backend, `openapi.json`, generated types and every screen that shows a stage.
 - Each new fact, operator or assignee rule needs a code change. This is intentional: it keeps conditions typed and safe.
+- **One administrator can re-route approvals alone (Q1).** For example, they could send purchases to a `SpecificUser` or skip Finance below an amount. The owner accepted this risk. It is limited by the following:
+  - Administrator is never an assignee.
+  - Self-decision (I2) and separation of duties (T3) still apply to whoever is assigned.
+  - In-flight requests keep their pinned version.
+  - Every publish is audit-logged and visible in the version history.
+
+  If a two-person control is wanted later, the ADR-0012 pending/approve pattern can be added to publishing without changing the model.
 
 ## Alternatives rejected
 - **Embedding an engine** (Elsa, Workflow Core, Temporal, Dapr Workflow, Camunda): see Context.

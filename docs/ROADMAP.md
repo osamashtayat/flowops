@@ -21,7 +21,7 @@ Two fixed processes, approvals inbox, notifications, admin, tests. See `PRD.md` 
 
 ## Phase 2 — Configurable workflow engine
 
-> **Design in progress:** ADR-0014 (Proposed) refines this section, covering engine evaluation, skip semantics, open questions Q1–Q7. The backlog is in `PHASE2_TASKS.md`. Where they differ, ADR-0014 wins once Accepted.
+> **Decided:** ADR-0014 (Accepted 2026-11-11) refines this section, covering engine evaluation, skip semantics and the owner decisions in #98. The backlog is in `PHASE2_TASKS.md`. Where they differ, ADR-0014 wins.
 
 1. **Workflow definitions** — `WorkflowDefinition` (name, request type, version, status Draft/Published), `WorkflowStepDefinition` (order, kind, assignee rule, optional condition). Published definitions are immutable; requests pin the version they started on.
 2. **Form definitions** — field schema (text, number, money, date, select) stored as jsonb; server-side validation from the schema; frontend renders forms from the same schema.

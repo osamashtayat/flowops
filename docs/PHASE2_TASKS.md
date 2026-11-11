@@ -1,4 +1,4 @@
-# Phase 2 Backlog — FlowOps (draft)
+# Phase 2 Backlog — FlowOps
 
 **Purpose:** the ordered backlog for Phase 2a, configurable routing of the existing request types (ADR-0014). Same rules as `PHASE1_TASKS.md`:
 - each task is one focused session
@@ -6,7 +6,7 @@
 - run `implement-feature` with its ID
 - update its status here in the same PR
 
-**Draft:** ADR-0014 is *Proposed*. Nothing below starts until **P2-00** is Done. The specs in **P2-DOC-01** are the source of truth for field names and endpoints. This file only sketches them.
+ADR-0014 is *Accepted* (owner answers in #98). The specs in **P2-DOC-01** are the source of truth for field names and endpoints. This file only sketches them, and implementation tasks wait for P2-DOC-01.
 
 Status values: `Todo` · `In progress` · `Done` · `Blocked (reason)`. Every task inherits the Definition of Done (`AGENTS.md` §8).
 
@@ -27,7 +27,7 @@ flowchart LR
   BE04 --> BE05[P2-BE-05 conditions + skipping]
   BE05 --> FE02[P2-FE-02 planned route + skipped steps]
   BE05 --> BE06[P2-BE-06 assignee rules + restricted-details flag]
-  BE06 --> BE07[P2-BE-07 workflow admin API + two-person publish]
+  BE06 --> BE07[P2-BE-07 workflow admin API + publish]
   BE07 --> FE03[P2-FE-03 workflow editor]
   FE03 --> QA[P2-QA-01..02 reviews + E2E]
 ```
@@ -40,14 +40,14 @@ flowchart LR
 
 ## Design sign-off
 
-### P2-00 — Owner answers ADR-0014 §5 (Q1–Q7, #98) · `Todo`
-The owner answers on the tracking issue. The answers are recorded in ADR-0014, which moves to *Accepted* and supersedes ADR-0004.
+### P2-00 — Owner answers ADR-0014 §5 (Q1–Q7, #98) · `Done` (2026-11-11)
+All recommended defaults were accepted except Q1: **one administrator edits and publishes workflows, with no second-admin approval**. Recorded in ADR-0014 (Accepted, supersedes ADR-0004).
 
 ### P2-DOC-01 — Phase 2a specs and contract · `Todo`
 - **Objective:** write the agreed design into the existing docs:
   - DOMAIN_MODEL: entities, I7 rewording, facts catalogue
   - WORKFLOWS: skip semantics, publish flow
-  - AUTHORIZATION: workflow admin capability, two-person publish, restricted-details flag
+  - AUTHORIZATION: `workflows.manage` capability (Administrator), single-admin publish, audit log, restricted-details flag
   - API_CONTRACT and `openapi.json`: workflow endpoints, `step` replacing `stage`, `StepSkipped`, planned route
   - UI_SPEC: editor, route display
   - TESTING: new required tests
@@ -127,10 +127,10 @@ The owner answers on the tracking issue. The answers are recorded in ADR-0014, w
     - errors: first step conditional, unknown fact, operator not valid for the fact's type, duplicate key, Administrator assignee
     - warnings: an assignee with no current holder
   - preview a route for sample facts
-  - publish with the two-person rule from Q1 (pending → approve/reject/cancel/expire, reusing the ADR-0012 pattern)
+  - publish by a single administrator (Q1): retires the previous Published version, records `PublishedBy`/`PublishedAt`, and is audit-logged
 - **Deps:** P2-BE-06.
 - **AC:** authorization per AUTHORIZATION (Phase 2 section). Drafts use optimistic concurrency (409 on stale version). Publishing never changes in-flight requests.
-- **Tests:** permission matrix; every validation error; second-admin approval paths, including self-approval refused; in-flight requests keep their pinned version.
+- **Tests:** permission matrix, where non-admins get 403 and admins without the capability are covered; every validation error; publish retires the old version and writes the audit log; in-flight requests keep their pinned version.
 
 ---
 
@@ -152,24 +152,25 @@ The owner answers on the tracking issue. The answers are recorded in ADR-0014, w
   - step-list editor: reorder; name, kind and "who approves" picker; an optional "Only if" row of field / operator / value dropdowns; the restricted-details toggle with a warning
   - validation errors and warnings from the server
   - preview with sample values
-  - "Waiting for another administrator" after publish
+  - a publish confirmation dialog that says new requests will use this version and in-flight ones keep theirs
 - **Deps:** P2-BE-07.
 - **AC:** built only from `components/ui` and `layout`, with theme tokens only. Permissions come from server capabilities. WCAG AA, including keyboard reordering.
-- **Tests:** editing and reordering; server-error display; publish pending and approved paths; 409 on a stale draft.
+- **Tests:** editing and reordering; server-error display; publish confirmation and success; 409 on a stale draft.
 
 ---
 
 ## Quality
 
 ### P2-QA-01 — Security and architecture review of Phase 2a · `Todo`
-`security-reviewer` and `architecture-reviewer` over workflow admin, publish approval, conditions, assignee rules and restricted-details access. **Deps:** P2-BE-07, P2-FE-03.
+`security-reviewer` and `architecture-reviewer` over workflow admin, single-admin publish and its audit log, conditions, assignee rules and restricted-details access. **Deps:** P2-BE-07, P2-FE-03.
 
 ### P2-QA-02 — E2E: configurable routing · `Todo`
-Playwright: an admin adds "Finance only if amount > 1000"; a second admin approves the publish; one purchase of 400 JOD (skips Finance) and one of 1,500 JOD (goes through Finance). In-flight requests keep their old route. **Deps:** P2-FE-03.
+Playwright: an admin adds "Finance only if amount > 1000" and publishes it; one purchase of 400 JOD (skips Finance) and one of 1,500 JOD (goes through Finance). In-flight requests keep their old route. **Deps:** P2-FE-03.
 
 ---
 
 ## Later (not in Phase 2a)
+- **Two-person publish** (declined in Q1; can be added later with the ADR-0012 pattern).
 - **Phase 2b form builder** (ADR-0014 Q4): admin-defined request types and fields (`FormSubmission` jsonb), with form fields usable as facts.
 - **Reassignment and delegation** (Q7): its own ADR.
 - **Email notifications**, for example via Gmail (MailKit + OAuth): needs ADR-0010 revisited for reliable sending.

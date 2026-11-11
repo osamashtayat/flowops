@@ -1,6 +1,6 @@
 # ADR-0004: Fixed processes in code; no workflow engine in Phase 1
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0014 (2026-11-11) for Phase 2; in force until Phase 2 replaces `FixedProcesses`
 - **Date:** 2026-11-05
 
 ## Context
