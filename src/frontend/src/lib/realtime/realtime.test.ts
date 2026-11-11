@@ -129,4 +129,27 @@ describe('startRealtime', () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(hub.starts).toBe(2)
   })
+
+  it('stops retrying while the server is unreachable and reconnects as soon as it is back', async () => {
+    const { client, keys } = spyClient()
+    const hub = new FakeHub()
+    const listeners = new Set<(online: boolean) => void>()
+    let isOnline = false
+    const online = {
+      isOnline: () => isOnline,
+      subscribe: (listener: (online: boolean) => void) => {
+        listeners.add(listener)
+        return () => listeners.delete(listener)
+      },
+    }
+    hub.failStarts = 1
+    startRealtime(client, { createConnection: () => hub, retryDelaysMs: [1000], online })
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(hub.starts).toBe(1) // no retries while offline
+    isOnline = true
+    for (const listener of listeners) listener(true)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(hub.starts).toBe(2)
+    expect(keys()).toContainEqual(queryKeys.tasks.all) // refetches what it missed
+  })
 })

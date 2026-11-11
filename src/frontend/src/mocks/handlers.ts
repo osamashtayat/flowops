@@ -400,4 +400,7 @@ const notificationHandlers = [
   }),
 ]
 
-export const handlers = [...authHandlers, ...adminHandlers, ...requestHandlers, ...decisionHandlers, ...notificationHandlers, ...pendingHandlers]
+/** `GET /api/health` (the connectivity check). Tests only: in the browser it reaches the real API. */
+export const healthHandlers = [http.get('/api/health', () => HttpResponse.json({ status: 'ok' }))]
+
+export const handlers = [...healthHandlers, ...authHandlers, ...adminHandlers, ...requestHandlers, ...decisionHandlers, ...notificationHandlers, ...pendingHandlers]

@@ -20,6 +20,8 @@ describe('query retry rule', () => {
     const defaults = createQueryClient().getDefaultOptions()
     expect(defaults.queries?.retry).toBe(shouldRetryQuery)
     expect(defaults.mutations?.retry).toBe(0)
+    // A mutation must fail at once when offline, never wait and send itself later.
+    expect(defaults.mutations?.networkMode).toBe('always')
     expect(defaults.queries?.staleTime).toBe(30_000)
   })
 })

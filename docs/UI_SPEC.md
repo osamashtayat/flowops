@@ -38,6 +38,14 @@ Filters, search, tab and page live in the **URL query string** so views are shar
 - Any API 403 on a page load → ForbiddenPage; on an action → error toast with the mapped message.
 - Logout → `POST /auth/logout` → clear cache → `/login`.
 
+### 2.1 Connection lost (FE-15)
+- One connectivity state for the whole app (`lib/connectivity`). It counts as lost when the browser fires `offline` (→ *offline*) or any query or mutation fails without reaching the API: a network failure, or a 502/503/504 from the reverse proxy (→ *server unreachable*). Any successful call, or a passing `GET /api/health`, makes it online again.
+- While lost, TanStack Query is told it's offline: queries pause instead of failing (cached data stays on screen, a page with nothing cached keeps its skeleton) and refetch when the connection is back. No stream of failing requests; the realtime hub stops retrying and reconnects once the connection is back.
+- While the server is unreachable, `GET /api/health` is checked after 2 s, 5 s, 15 s, then every 30 s. With the browser offline, nothing is polled; the check runs on the browser's `online` event.
+- `ConnectionBanner` (sticky, top of every page, signed in or not): "You're offline. Changes can't be saved until your connection is back." / "Can't reach FlowOps right now. Changes can't be saved until the connection is back." + **Try again** (checks at once, spinner while checking). Back online → success toast "You're back online."
+- Mutations never wait for the connection (`networkMode: 'always'`): an action taken while lost fails at once with "Can't reach the server. Check your connection and try again." and is never sent later on its own (a decision must not be replayed silently).
+- Dev server only: when the local API is down, Vite's proxy answers 500, which reads as a server error rather than "unreachable". nginx (Docker/production) answers 502 and shows the banner.
+
 ## 3. Navigation by capability
 
 | Item | Shown when |
@@ -117,4 +125,4 @@ notifications.list: ['notifications', 'list', params]
 notifications.unread: ['notifications', 'unread']
 admin.users / admin.user(id) / admin.departments / admin.stalled
 ```
-Defaults: `staleTime` 30 s, refetch on window focus, retry 1 for queries (never for 4xx), 0 for mutations.
+Defaults: `staleTime` 30 s, refetch on window focus, retry 1 for queries (never for 4xx), 0 for mutations; queries pause while the connection is lost and mutations fail at once (`networkMode: 'always'`), see §2.1.
