@@ -225,6 +225,11 @@ Vite + React + TS strict, Tailwind v4 with `theme.css` tokens (default palette d
 - **Objective:** run FE-09…FE-13 against the merged backend (BE-12…BE-15) in the browser with several users and roles; fix frontend mismatches, raise backend/contract ones as issues. **Deps:** BE-12, BE-13, BE-14, BE-15.
 - **Notes:** found and fixed: no success toast after any decision on the real API (realtime refetch unmounted the dialog before `mutate()` callbacks ran); HR confirmation dialog said the leave "moves on to the next step". No contract mismatches found.
 
+### FE-15 — Connection lost banner · `Done` (2026-11-11; checked in the browser against the real API: dev server stopped mid-session → banner, one failed request then paused, page reloads by itself when it's back)
+- **Objective:** tell the user when the browser is offline or the server can't be reached, stop the stream of failing requests, and recover without a reload (`UI_SPEC.md` §2.1). **Deps:** FE-01, FE-11.
+- **Tests:** `lib/connectivity/monitor.test.ts` (failure classification, health-check backoff, browser events, success → online, stop restores TanStack's defaults); `components/layout/connectionBanner.test.tsx` (unreachable at start + Try again, 502, offline mid-session → back online, failed check keeps the banner); realtime pauses while offline; mutations' `networkMode: 'always'`.
+- **Notes:** no contract change (`GET /api/health` already exists). Paused queries with no cached data keep their skeleton under the banner.
+
 ## Operations & quality
 
 ### OPS-01 — Full-stack Docker Compose · `Done`

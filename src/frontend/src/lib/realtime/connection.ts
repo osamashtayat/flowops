@@ -1,5 +1,5 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
-import type { QueryClient } from '@tanstack/react-query'
+import { onlineManager, type QueryClient } from '@tanstack/react-query'
 import { invalidateAllRealtime, invalidateForEvent, NOTIFICATIONS_HUB_PATH, REALTIME_EVENTS } from './invalidation'
 
 /** The slice of SignalR's `HubConnection` this module uses (so tests can supply a fake). */
@@ -15,6 +15,13 @@ export interface RealtimeOptions {
   createConnection?: () => HubLike
   /** Delays before the 1st, 2nd… attempt to (re)start; the last one repeats. */
   retryDelaysMs?: readonly number[]
+  /** Whether the server can be reached (the connectivity monitor drives TanStack's `onlineManager`). */
+  online?: OnlineSource
+}
+
+export interface OnlineSource {
+  isOnline(): boolean
+  subscribe(listener: (online: boolean) => void): () => void
 }
 
 const DEFAULT_RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000, 60_000] as const
@@ -37,12 +44,15 @@ function createHubConnection(): HubLike {
  * Connects to the notifications hub and turns server events into query invalidations
  * (API_CONTRACT §9). Failing to connect is never an error for the user: the app works without
  * realtime (pages still refetch on focus), so a failed start is retried quietly with a growing
- * delay. Returns a function that stops it.
+ * delay. While the server can't be reached at all it stops trying, and tries again as soon as the
+ * connection is back. Returns a function that stops it.
  */
 export function startRealtime(queryClient: QueryClient, options: RealtimeOptions = {}): () => void {
   const connection = (options.createConnection ?? createHubConnection)()
   const delays = options.retryDelaysMs ?? DEFAULT_RETRY_DELAYS_MS
+  const online = options.online ?? onlineManager
   let stopped = false
+  let waitingForNetwork = false
   let retryTimer: ReturnType<typeof setTimeout> | undefined
   let hasBeenUp = false
   let failedAttempts = 0
@@ -57,6 +67,10 @@ export function startRealtime(queryClient: QueryClient, options: RealtimeOptions
   })
 
   function scheduleRetry() {
+    if (!online.isOnline()) {
+      waitingForNetwork = true
+      return
+    }
     const delay = delays[Math.min(Math.max(failedAttempts - 1, 0), delays.length - 1)] ?? 0
     retryTimer = setTimeout(() => void connect(), delay)
   }
@@ -77,9 +91,17 @@ export function startRealtime(queryClient: QueryClient, options: RealtimeOptions
     failedAttempts = 0
   }
 
+  const stopListening = online.subscribe((isOnline) => {
+    if (!isOnline || !waitingForNetwork || stopped) return
+    waitingForNetwork = false
+    clearTimeout(retryTimer)
+    void connect()
+  })
+
   void connect()
   return () => {
     stopped = true
+    stopListening()
     clearTimeout(retryTimer)
     void connection.stop().catch(() => undefined)
   }

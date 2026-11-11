@@ -9,7 +9,7 @@ paths:
 Read with: `docs/UI_SPEC.md`, `docs/DESIGN_SYSTEM.md`, ADR-0008. Visual rules: `ui-design.md`.
 
 ## Structure
-- `app/` setup & routing · `components/ui` design-system primitives · `components/layout` shell · `features/<feature>/{api.ts, components/, pages/, schemas.ts}` · `lib/{api,realtime,format}`.
+- `app/` setup & routing · `components/ui` design-system primitives · `components/layout` shell · `features/<feature>/{api.ts, components/, pages/, schemas.ts}` · `lib/{api,realtime,connectivity,format}`.
 - Features may import from `components/*` and `lib/*`; avoid importing another feature's internals — promote shared pieces to `components/` or `lib/`.
 - Named exports; one component per file; `@/` alias for `src/`.
 

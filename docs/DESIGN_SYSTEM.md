@@ -158,6 +158,9 @@ Native-like modal: focus trapped, `Esc` closes, focus returns to trigger, `aria-
 ### Toast
 Bottom-right stack, auto-dismiss 5 s (errors persist until dismissed), `role="status"` (success) / `role="alert"` (error).
 
+### ConnectionBanner
+Sticky strip above the whole app while the server can't be reached (UI_SPEC §2.1): `bg-warning-soft text-warning text-sm`, `WifiOff` icon (`aria-hidden`), one sentence saying what happened and what it means, and a secondary `sm` **Try again** button (spinner while checking). Centred, wraps on small screens. Its container is an always-mounted `aria-live="polite"` region so the message is announced when it appears. Never a toast: one persistent message instead of one per failed request.
+
 ### EmptyState / ErrorState / Skeleton
 Empty: short sentence + optional action ("You have no requests yet. — New request"). Error: message from `problem.ts` + Retry. Skeleton: `bg-surface-muted animate-pulse rounded-sm` blocks matching final layout; respect `prefers-reduced-motion`.
 

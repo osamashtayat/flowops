@@ -198,6 +198,7 @@ src/frontend/src/
 ├── features/<name>/  api.ts (query keys + hooks), components/, pages/, schemas.ts
 ├── lib/api/          client.ts (openapi-fetch + XSRF), schema.d.ts (generated), problem.ts
 ├── lib/realtime/     SignalR connection → query invalidation
+├── lib/connectivity/ connection lost/back (drives TanStack's onlineManager; ConnectionBanner reads it)
 ├── lib/format/       dates, money, status labels
 └── styles/theme.css  Tailwind v4 @theme tokens — the ONLY place colours are defined
 ```

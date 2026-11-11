@@ -105,8 +105,9 @@ describe('sign in', () => {
     expect(await heading('Dashboard')).toBeInTheDocument()
   })
 
-  it('shows a retryable error when the session cannot be read (server down)', async () => {
-    server.use(http.get('/api/auth/me', () => new HttpResponse(null, { status: 503 })))
+  // Server unreachable (network failure, 502/503/504) is the connection banner's job: connectionBanner.test.tsx.
+  it('shows a retryable error when the session cannot be read (server error)', async () => {
+    server.use(http.get('/api/auth/me', () => new HttpResponse(null, { status: 500 })))
     renderRoutes(routes, '/')
     const message = await screen.findByText(/Something went wrong on our side/)
     expect(message.closest('[role="alert"]')).not.toBeNull()
