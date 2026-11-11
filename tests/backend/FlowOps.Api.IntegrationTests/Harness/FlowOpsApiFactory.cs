@@ -1,5 +1,8 @@
 using System.Net.Http.Json;
 using FlowOps.Application.Common;
+using FlowOps.Application.Workflows;
+using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Persistence;
 using FlowOps.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Hosting;
@@ -25,6 +28,14 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 {
     /// <summary>Tables Respawn leaves alone: migration history and data the app seeds at start-up.</summary>
     private static readonly Table[] KeptTables = ["__EFMigrationsHistory", "roles"];
+
+    /// <summary>
+    /// Rows the migrations seed that Respawn can't simply skip: it truncates with CASCADE, and <c>workflow_versions</c>
+    /// references <c>users</c>. Copied once after migrating and put back after every reset, parents first.
+    /// </summary>
+    private static readonly string[] RestoredTables = ["workflow_definitions", "workflow_versions", "workflow_steps"];
+
+    private const string SnapshotSchema = "test_seed_snapshot";
 
     private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:17-alpine").Build();
     private Respawner? _respawner;
@@ -57,6 +68,8 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
 
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
+        await ExecuteAsync(connection, $"CREATE SCHEMA {SnapshotSchema};" + string.Concat(
+            RestoredTables.Select(t => $"CREATE TABLE {SnapshotSchema}.{t} AS TABLE public.{t};")));
         _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             DbAdapter = DbAdapter.Postgres,
@@ -71,6 +84,8 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
         await _respawner!.ResetAsync(connection);
+        await ExecuteAsync(connection, string.Concat(
+            RestoredTables.Select(t => $"INSERT INTO public.{t} SELECT * FROM {SnapshotSchema}.{t};")));
         // Respawn empties tables but not sequences; restart it so request numbers are deterministic per test.
         await using (var restart = new NpgsqlCommand($"ALTER SEQUENCE {AppDbContext.RequestNumberSequence} RESTART", connection))
         {
@@ -82,6 +97,19 @@ public sealed class FlowOpsApiFactory : WebApplicationFactory<Program>, IAsyncLi
         Realtime.Reset();
         SaveFailures.Reset();
         Sql.Stop();
+    }
+
+    private static async Task ExecuteAsync(NpgsqlConnection connection, string sql)
+    {
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>The seeded Published workflow version of <paramref name="type"/>, for tests that build requests directly.</summary>
+    public async Task<WorkflowVersion> PublishedWorkflowAsync(RequestType type)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<IProcessDefinitionSource>().PublishedAsync(type, TestContext.Current.CancellationToken);
     }
 
     /// <summary>An HTTPS client (the auth cookie is <c>__Host-</c>/Secure) that never follows redirects.</summary>

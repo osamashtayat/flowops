@@ -2,6 +2,7 @@ using FlowOps.Application.Common;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Identity;
 using FlowOps.Infrastructure.Persistence.Configurations;
 using Microsoft.AspNetCore.Identity;
@@ -26,6 +27,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<RoleChange> RoleChanges => Set<RoleChange>();
+
+    public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
+
+    public DbSet<WorkflowVersion> WorkflowVersions => Set<WorkflowVersion>();
 
     IQueryable<UserReadModel> IAppDbContext.Users => Users.Select(u => new UserReadModel
     {

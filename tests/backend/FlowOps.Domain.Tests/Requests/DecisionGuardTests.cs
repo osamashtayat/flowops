@@ -15,7 +15,7 @@ public sealed class DecisionGuardTests
 
         AssertRejectedWithoutChange(
             request,
-            () => request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve(null), Resolve, T0),
+            () => request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), Resolve, T0),
             ErrorCodes.TaskAlreadyDecided);
     }
 
@@ -28,7 +28,7 @@ public sealed class DecisionGuardTests
 
         AssertRejectedWithoutChange(
             request,
-            () => request.DecideTask(task.Id, Manager, TaskDecision.Approve(null), Resolve, T0),
+            () => request.DecideTask(task.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), Resolve, T0),
             ErrorCodes.RequestClosed);
     }
 
@@ -42,7 +42,7 @@ public sealed class DecisionGuardTests
 
         AssertRejectedWithoutChange(
             request,
-            () => request.DecideTask(hrTask.Id, HrOfficer, TaskDecision.Reject("Changed my mind"), Resolve, T0),
+            () => request.DecideTask(hrTask.Id, HrOfficer, TaskDecision.Reject("Changed my mind"), WorkflowFor(request.Type), Resolve, T0),
             ErrorCodes.RequestClosed);
     }
 
@@ -57,7 +57,7 @@ public sealed class DecisionGuardTests
 
         AssertRejectedWithoutChange(
             request,
-            () => request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve(null), Resolve, T0),
+            () => request.DecideTask(managerTask.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), Resolve, T0),
             ErrorCodes.TaskNotCurrent);
     }
 
@@ -122,7 +122,7 @@ public sealed class DecisionGuardTests
 
         AssertRejectedWithoutChange(
             request,
-            () => request.DecideTask(otherTask.Id, Manager, TaskDecision.Approve(null), Resolve, T0),
+            () => request.DecideTask(otherTask.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), Resolve, T0),
             ErrorCodes.NotFound);
     }
 
@@ -133,7 +133,7 @@ public sealed class DecisionGuardTests
         var before = Snapshot(request);
 
         Should.Throw<InvalidOperationException>(() => request.DecideTask(
-            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), _ => throw new InvalidOperationException("resolver failed"), T0));
+            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), _ => throw new InvalidOperationException("resolver failed"), T0));
 
         Snapshot(request).ShouldBe(before);
     }
@@ -146,7 +146,7 @@ public sealed class DecisionGuardTests
         var before = Snapshot(request);
 
         Should.Throw<ArgumentException>(() => request.DecideTask(
-            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), _ => Assignee.ForUser(FinanceOfficer), T0));
+            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), _ => Assignee.ForUser(FinanceOfficer), T0));
 
         Snapshot(request).ShouldBe(before);
     }
@@ -158,7 +158,7 @@ public sealed class DecisionGuardTests
         var before = Snapshot(request);
 
         Should.Throw<ArgumentNullException>(() => request.DecideTask(
-            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), _ => null!, T0));
+            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), WorkflowFor(request.Type), _ => null!, T0));
 
         Snapshot(request).ShouldBe(before);
     }
@@ -170,7 +170,19 @@ public sealed class DecisionGuardTests
         var before = Snapshot(request);
 
         Should.Throw<ArgumentException>(() => request.DecideTask(
-            request.OpenTask!.Id, Guid.Empty, TaskDecision.Approve(null), Resolve, T0));
+            request.OpenTask!.Id, Guid.Empty, TaskDecision.Approve(null), WorkflowFor(request.Type), Resolve, T0));
+
+        Snapshot(request).ShouldBe(before);
+    }
+
+    [Fact]
+    public void Decide_WithAVersionTheRequestIsNotPinnedTo_LeavesRequestUnchanged()
+    {
+        var request = SubmitPurchase();
+        var before = Snapshot(request);
+
+        Should.Throw<ArgumentException>(() => request.DecideTask(
+            request.OpenTask!.Id, Manager, TaskDecision.Approve(null), LeaveWorkflow, Resolve, T0));
 
         Snapshot(request).ShouldBe(before);
     }

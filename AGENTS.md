@@ -30,13 +30,13 @@ This file is model-agnostic and is the shared source of truth for every agent. D
 
 **Architecture**
 - Controllers are thin: bind → authorize (attribute) → call **one** application service → map to HTTP. No business rules, no `DbContext`, no `try/catch`.
-- Business invariants and state transitions live in the **Domain** (`Request` aggregate, `FixedProcesses`). Use-case orchestration lives in **Application** services. Technical adapters live in **Infrastructure**.
+- Business invariants and state transitions live in the **Domain** (`Request` aggregate, `WorkflowVersion`). Use-case orchestration lives in **Application** services. Technical adapters live in **Infrastructure**.
 - Dependency direction: Domain ← Application ← Infrastructure; Api composes. Never reference Api/Infrastructure from Application/Domain.
 - Database access only through `IAppDbContext` inside Application services; one `SaveChangesAsync` per use case; real-time publishing only after commit.
 - No generic repositories, no MediatR, no AutoMapper, no new abstraction without ≥ 2 real callers.
 
 **DRY (knowledge, not syntax)**
-- Visibility → `AccessRules`; decide-eligibility → `TaskEligibility`; step order → `FixedProcesses`; assignee → `TaskAssigneeResolver`; notifications → `NotificationFactory`; errors → `ErrorCodes` + global handler. Never copy these rules elsewhere — including the frontend.
+- Visibility → `AccessRules`; decide-eligibility → `TaskEligibility`; step order → the pinned `WorkflowVersion` via `IProcessDefinitionSource`; assignee → `TaskAssigneeResolver`; notifications → `NotificationFactory`; errors → `ErrorCodes` + global handler. Never copy these rules elsewhere — including the frontend.
 - Don't merge things that only *look* alike (CODE_STANDARDS §2.2).
 
 **Security**

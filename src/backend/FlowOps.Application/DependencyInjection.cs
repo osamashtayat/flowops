@@ -5,6 +5,7 @@ using FlowOps.Application.Requests;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Organization;
 using FlowOps.Application.Tasks;
+using FlowOps.Application.Workflows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<AccessRules>();
         services.AddScoped<PostCommitPublisher>();
         services.AddSingleton<CompanyCalendar>();
+        services.AddScoped<IProcessDefinitionSource, ProcessDefinitionSource>();
         services.AddScoped<RequestDetailsReader>();
         services.AddScoped<RequestSubmissionService>();
         services.AddScoped<RequestQueryService>();

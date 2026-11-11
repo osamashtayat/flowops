@@ -2,6 +2,7 @@ using FlowOps.Application.Requests;
 using FlowOps.Domain.Common;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Api.IntegrationTests.Requests;
 
@@ -14,6 +15,16 @@ public sealed class RequestRouteTests
     private static readonly Guid Requester = Guid.CreateVersion7();
     private static readonly Guid Manager = Guid.CreateVersion7();
     private static readonly DateTimeOffset Now = new(2026, 11, 5, 8, 0, 0, TimeSpan.Zero);
+
+    // The seeded v1 (DOMAIN_MODEL.md §7.4), built in memory; WorkflowSeedTests checks the database holds the same steps.
+    private static readonly WorkflowVersion PurchaseV1 = Published(
+        WorkflowStep.Create("manager-approval", "Manager approval", WorkTaskKind.Approval, AssigneeRule.RequesterManager),
+        WorkflowStep.Create("finance-approval", "Finance approval", WorkTaskKind.Approval, AssigneeRule.ForRole(Roles.FinanceOfficer)),
+        WorkflowStep.Create("procurement-fulfillment", "Procurement fulfilment", WorkTaskKind.Fulfillment, AssigneeRule.ForRole(Roles.ProcurementOfficer)));
+
+    private static readonly WorkflowVersion LeaveV1 = Published(
+        WorkflowStep.Create("manager-approval", "Manager approval", WorkTaskKind.Approval, AssigneeRule.RequesterManager),
+        WorkflowStep.Create("hr-confirmation", "HR confirmation", WorkTaskKind.Approval, AssigneeRule.ForRole(Roles.HrOfficer)));
 
     [Fact]
     public void StepRef_CoversEveryStage_AndClosedIsNotAStep()
@@ -53,7 +64,7 @@ public sealed class RequestRouteTests
     public void Rejected_ShowsOnlyTheStepsItWentThrough()
     {
         var request = Purchase();
-        request.DecideTask(request.OpenTask!.Id, Manager, TaskDecision.Reject("No budget"), Resolve, Now);
+        request.DecideTask(request.OpenTask!.Id, Manager, TaskDecision.Reject("No budget"), PurchaseV1, Resolve, Now);
 
         Route(request).ShouldBe([("manager-approval", RouteStepState.Done)]);
     }
@@ -63,7 +74,7 @@ public sealed class RequestRouteTests
     {
         var request = Request.SubmitLeave(RequestNumber.Create(2026, 2), Requester, Guid.CreateVersion7(),
             LeaveDetails.Create(new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 12), LeaveType.Annual, null, Now, TimeZoneInfo.Utc),
-            Resolve, Now);
+            LeaveV1, Resolve, Now);
         Approve(request, Manager);
         Approve(request, Guid.CreateVersion7());
 
@@ -72,18 +83,27 @@ public sealed class RequestRouteTests
 
     private static Request Purchase() =>
         Request.SubmitPurchase(RequestNumber.Create(2026, 1), Requester, Guid.CreateVersion7(),
-            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), Resolve, Now);
+            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), PurchaseV1, Resolve, Now);
 
-    private static Assignee Resolve(ProcessStep step) =>
+    private static Assignee Resolve(WorkflowStep step) =>
         step.Assignee.IsRequesterManager ? Assignee.ForUser(Manager) : Assignee.ForRole(step.Assignee.Role!);
 
     private static void Approve(Request request, Guid actor)
     {
         var task = request.OpenTask!;
         var decision = task.Kind == WorkTaskKind.Fulfillment ? TaskDecision.Fulfill(null) : TaskDecision.Approve(null);
-        request.DecideTask(task.Id, actor, decision, Resolve, Now);
+        request.DecideTask(task.Id, actor, decision, V1(request), Resolve, Now);
     }
 
     private static (string Key, RouteStepState State)[] Route(Request request) =>
-        [.. RequestRoute.For(request.Type, request.Tasks, request.Status).Select(r => (r.Step.Key, r.State))];
+        [.. RequestRoute.For(V1(request).Steps, request.Tasks, request.Status).Select(r => (r.Step.Key, r.State))];
+
+    private static WorkflowVersion V1(Request request) => request.Type == RequestType.Leave ? LeaveV1 : PurchaseV1;
+
+    private static WorkflowVersion Published(params WorkflowStep[] steps)
+    {
+        var version = WorkflowVersion.CreateDraft(Guid.CreateVersion7(), 1, steps, Guid.CreateVersion7(), Now);
+        version.Publish(Guid.CreateVersion7(), Now);
+        return version;
+    }
 }

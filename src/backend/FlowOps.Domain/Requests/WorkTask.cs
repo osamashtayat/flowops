@@ -2,6 +2,7 @@ using FlowOps.Domain.Common;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using FlowOps.Domain.Errors;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Domain.Requests;
 
@@ -16,7 +17,7 @@ public sealed class WorkTask
     {
     }
 
-    private WorkTask(Guid requestId, ProcessStep step, Assignee assignee, DateTimeOffset now)
+    private WorkTask(Guid requestId, WorkflowStep step, Assignee assignee, DateTimeOffset now)
     {
         Id = SequentialGuid.NewV7(now);
         RequestId = requestId;
@@ -57,7 +58,7 @@ public sealed class WorkTask
 
     public bool IsOpen => Status == WorkTaskStatus.Open;
 
-    internal static WorkTask Open(Guid requestId, ProcessStep step, Assignee assignee, DateTimeOffset now)
+    internal static WorkTask Open(Guid requestId, WorkflowStep step, Assignee assignee, DateTimeOffset now)
     {
         if (!step.Assignee.Accepts(assignee))
         {

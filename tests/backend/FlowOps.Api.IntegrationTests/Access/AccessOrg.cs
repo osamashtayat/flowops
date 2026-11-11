@@ -2,6 +2,7 @@ using FlowOps.Api.IntegrationTests.Harness;
 using FlowOps.Domain.Common;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,12 +42,15 @@ internal sealed record AccessOrg(IReadOnlyDictionary<string, Guid> Users, IReadO
         };
 
         var now = factory.Clock.GetUtcNow();
-        Assignee Resolve(ProcessStep step) =>
+        var purchaseWorkflow = await factory.PublishedWorkflowAsync(RequestType.EquipmentPurchase);
+        var leaveWorkflow = await factory.PublishedWorkflowAsync(RequestType.Leave);
+        Assignee Resolve(WorkflowStep step) =>
             step.Assignee.IsRequesterManager ? Assignee.ForUser(karim.Id) : Assignee.ForRole(step.Assignee.Role!);
         Request Purchase(long seq, string requester) => Request.SubmitPurchase(RequestNumber.Create(2026, seq), users[requester], sales.Id,
-            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), Resolve, now);
+            PurchaseDetails.Create("Laptop", "14 inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken"), purchaseWorkflow, Resolve, now);
         void Approve(Request request, string actor) =>
-            request.DecideTask(request.OpenTask!.Id, users[actor], TaskDecision.Approve(null), Resolve, now);
+            request.DecideTask(request.OpenTask!.Id, users[actor], TaskDecision.Approve(null),
+                request.Type == RequestType.Leave ? leaveWorkflow : purchaseWorkflow, Resolve, now);
 
         var p1 = Purchase(1, "lina");
         var p2 = Purchase(2, "lina");
@@ -56,7 +60,7 @@ internal sealed record AccessOrg(IReadOnlyDictionary<string, Guid> Users, IReadO
         Approve(p3, "fiona");
         var l1 = Request.SubmitLeave(RequestNumber.Create(2026, 4), users["lina"], sales.Id,
             LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Annual, "Family", now, TimeZoneInfo.Utc),
-            Resolve, now);
+            leaveWorkflow, Resolve, now);
         Approve(l1, "karim");
         var pf = Purchase(5, "finny");
         Approve(pf, "karim");

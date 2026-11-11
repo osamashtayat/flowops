@@ -3,6 +3,7 @@ using FlowOps.Domain.Common;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,8 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
     {
         var org = await SeedOrgAsync();
         var leave = LeaveDetails.Create(new DateOnly(2026, 3, 10), new DateOnly(2026, 3, 12), LeaveType.Sick, "Surgery", TestClock.Start, Amman);
-        var submitted = await SaveAsync(Request.SubmitLeave(await NextNumberAsync(), org.Requester, org.Department, leave, _ => Assignee.ForUser(org.Manager), TestClock.Start));
+        var submitted = await SaveAsync(Request.SubmitLeave(await NextNumberAsync(), org.Requester, org.Department, leave,
+            await Factory.PublishedWorkflowAsync(RequestType.Leave), _ => Assignee.ForUser(org.Manager), TestClock.Start));
 
         var loaded = await LoadAsync(submitted.Id);
 
@@ -64,7 +66,8 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var request = await db.Requests.Include(r => r.Tasks).Include(r => r.Activities).SingleAsync(r => r.Id == submitted.Id, Ct);
-            request.DecideTask(request.OpenTask!.Id, org.Manager, TaskDecision.Approve("ok"), _ => Assignee.ForRole(Roles.FinanceOfficer), TestClock.Start.AddHours(1));
+            request.DecideTask(request.OpenTask!.Id, org.Manager, TaskDecision.Approve("ok"),
+                await Factory.PublishedWorkflowAsync(RequestType.EquipmentPurchase), _ => Assignee.ForRole(Roles.FinanceOfficer), TestClock.Start.AddHours(1));
             await db.SaveChangesAsync(Ct);
         }
 
@@ -110,9 +113,9 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
         var a = await LoadTrackedAsync(scopeA, submitted.Id);
         var b = await LoadTrackedAsync(scopeB, submitted.Id);
 
-        Decide(a.Request, org, TaskDecision.Approve(null));
+        await DecideAsync(a.Request, org, TaskDecision.Approve(null));
         await a.Db.SaveChangesAsync(Ct);
-        Decide(b.Request, org, TaskDecision.Reject("No budget"));
+        await DecideAsync(b.Request, org, TaskDecision.Reject("No budget"));
 
         await Should.ThrowAsync<DbUpdateConcurrencyException>(() => b.Db.SaveChangesAsync(Ct));
     }
@@ -215,14 +218,15 @@ public sealed class DomainMappingTests(FlowOpsApiFactory factory) : DatabaseTest
     private async Task<Request> NewPurchaseAsync(Org org)
     {
         var details = PurchaseDetails.Create("Laptop", "14-inch", Money.Create(1250.500m, SupportedCurrencies.Jod), "Broken screen");
-        return Request.SubmitPurchase(await NextNumberAsync(), org.Requester, org.Department, details, _ => Assignee.ForUser(org.Manager), TestClock.Start);
+        return Request.SubmitPurchase(await NextNumberAsync(), org.Requester, org.Department, details,
+            await Factory.PublishedWorkflowAsync(RequestType.EquipmentPurchase), _ => Assignee.ForUser(org.Manager), TestClock.Start);
     }
 
     private async Task<RequestNumber> NextNumberAsync() =>
         RequestNumber.Create(2026, await ScalarAsync<long>($"SELECT nextval('{AppDbContext.RequestNumberSequence}')"));
 
-    private static void Decide(Request request, Org org, TaskDecision decision) =>
-        request.DecideTask(request.OpenTask!.Id, org.Manager, decision, _ => Assignee.ForRole(Roles.FinanceOfficer), TestClock.Start.AddHours(1));
+    private async Task DecideAsync(Request request, Org org, TaskDecision decision) =>
+        _ = request.DecideTask(request.OpenTask!.Id, org.Manager, decision, await Factory.PublishedWorkflowAsync(request.Type), _ => Assignee.ForRole(Roles.FinanceOfficer), TestClock.Start.AddHours(1));
 
     private async Task<Request> SaveAsync(Request request)
     {

@@ -99,7 +99,7 @@ Required for the P2 tasks named. They are part of each task's Definition of Done
 - `RequestRoute`: Done/Current/Planned for open requests, only Done/Skipped for closed ones; Planned leaves out steps whose condition doesn't hold. (P2-DOC-01 for the Phase 1 form, P2-BE-05 for skips)
 
 **Integration**
-- Seed equivalence: Published v1 for purchase and leave has the same steps, kinds and assignees as `FixedProcesses`. All Phase 1 integration and E2E tests pass unchanged. The backfill migration on a database with requests in every state. Exactly one Published version per type (index). (P2-BE-03)
+- Seed equivalence: Published v1 for purchase and leave has the same steps, kinds and assignees as Phase 1's `FixedProcesses`. All Phase 1 integration and E2E tests pass unchanged. The backfill migration on a database with requests in every state. Exactly one Published version per type (index). (P2-BE-03)
 - `stage` → `step` migration keeps history readable; the OpenAPI drift check is green. (P2-BE-04)
 - Owner's rule end to end: purchases of 400.000, 1000.000 and 1500.000 JOD under "Finance only if amount > 1000"; I5, I11 and T3 unchanged. (P2-BE-05)
 - **Version pinning:** a request submitted under v1 finishes on v1's steps after v2 is published. (P2-BE-05, P2-BE-07)

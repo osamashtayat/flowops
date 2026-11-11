@@ -131,7 +131,7 @@ FlowOps.Application/
 
 ### 4.3 Domain (business rules)
 
-**Contains:** `Request` aggregate (+ `WorkTask`, `RequestActivity`, details), `Money`, enums, `FixedProcesses`, `ProcessStep`, `DomainException` with stable `Code`s.
+**Contains:** `Request` aggregate (+ `WorkTask`, `RequestActivity`, details), `Money`, enums, `WorkflowDefinition`/`WorkflowVersion`/`WorkflowStep`, `DomainException` with stable `Code`s.
 
 - State changes only through aggregate methods; setters private.
 - No I/O, no async, no DI, no `DateTime.Now` (time passed in).
@@ -168,7 +168,7 @@ sequenceDiagram
   S->>H: publish (after commit)
 ```
 
-**Extending with a new request type (Open/Closed in practice):** add a `RequestType` value, a details class + EF config, an entry in `FixedProcesses`, a submit method on `RequestSubmissionService` + endpoint, and a frontend form. `TaskDecisionService`, `AccessRules`, inbox, notifications and activity need **no changes**. If adding a type forces edits to those, the design has leaked — flag it.
+**Extending with a new request type (Open/Closed in practice):** add a `RequestType` value, a details class + EF config, its workflow seeded as a Published v1 (a migration), a submit method on `RequestSubmissionService` + endpoint, and a frontend form. `TaskDecisionService`, `AccessRules`, inbox, notifications and activity need **no changes**. If adding a type forces edits to those, the design has leaked — flag it.
 
 ---
 

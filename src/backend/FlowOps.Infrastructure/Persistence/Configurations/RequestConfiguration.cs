@@ -1,6 +1,7 @@
 using FlowOps.Domain.Common;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 using FlowOps.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -34,9 +35,11 @@ internal sealed class RequestConfiguration : IEntityTypeConfiguration<Request>
 
         builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(r => r.RequesterId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Department>().WithMany().HasForeignKey(r => r.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<WorkflowVersion>().WithMany().HasForeignKey(r => r.WorkflowVersionId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(r => new { r.RequesterId, r.SubmittedAt }).IsDescending(false, true);
         builder.HasIndex(r => r.Status);
         builder.HasIndex(r => r.DepartmentId);
+        builder.HasIndex(r => r.WorkflowVersionId);
 
         builder.OwnsOne(r => r.Purchase, ConfigurePurchase);
         builder.OwnsOne(r => r.Leave, ConfigureLeave);

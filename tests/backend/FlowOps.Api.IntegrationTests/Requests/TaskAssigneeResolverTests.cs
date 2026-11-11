@@ -3,6 +3,7 @@ using FlowOps.Application.Requests;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Organization;
 using FlowOps.Domain.Requests;
+using FlowOps.Domain.Workflows;
 
 namespace FlowOps.Api.IntegrationTests.Requests;
 
@@ -21,7 +22,7 @@ public sealed class TaskAssigneeResolverTests
     [Fact]
     public void RequesterManagerStep_GoesToTheActiveManager()
     {
-        var step = new ProcessStep(RequestStage.ManagerApproval, WorkTaskKind.Approval, AssigneeRule.RequesterManager);
+        var step = WorkflowStep.Create("manager-approval", "Manager approval", WorkTaskKind.Approval, AssigneeRule.RequesterManager);
 
         TaskAssigneeResolver.ResolverFor(Requester(ManagerId))(step).ShouldBe(Assignee.ForUser(ManagerId));
     }
@@ -29,7 +30,7 @@ public sealed class TaskAssigneeResolverTests
     [Fact]
     public void RoleQueueStep_GoesToTheRole_WithoutNeedingAManager()
     {
-        var step = new ProcessStep(RequestStage.HrConfirmation, WorkTaskKind.Approval, AssigneeRule.ForRole(Roles.HrOfficer));
+        var step = WorkflowStep.Create("hr-confirmation", "HR confirmation", WorkTaskKind.Approval, AssigneeRule.ForRole(Roles.HrOfficer));
 
         TaskAssigneeResolver.ResolverFor(Requester(managerId: null))(step).ShouldBe(Assignee.ForRole(Roles.HrOfficer));
     }
@@ -39,7 +40,7 @@ public sealed class TaskAssigneeResolverTests
     [InlineData(true, false)]
     public void RequesterManagerStep_WithoutAnActiveManager_Is422ManagerNotAssigned(bool hasManager, bool managerIsActive)
     {
-        var step = new ProcessStep(RequestStage.ManagerApproval, WorkTaskKind.Approval, AssigneeRule.RequesterManager);
+        var step = WorkflowStep.Create("manager-approval", "Manager approval", WorkTaskKind.Approval, AssigneeRule.RequesterManager);
         var resolve = TaskAssigneeResolver.ResolverFor(Requester(hasManager ? ManagerId : null, managerIsActive));
 
         Should.Throw<BusinessRuleException>(() => resolve(step)).Code.ShouldBe(ErrorCodes.RequestManagerNotAssigned);

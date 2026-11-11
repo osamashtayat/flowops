@@ -2,6 +2,7 @@ using FlowOps.Application.Access;
 using FlowOps.Application.Common;
 using FlowOps.Application.Notifications;
 using FlowOps.Application.Requests;
+using FlowOps.Application.Workflows;
 using FlowOps.Domain.Errors;
 using FlowOps.Domain.Notifications;
 using FlowOps.Domain.Requests;
@@ -16,7 +17,12 @@ namespace FlowOps.Application.Tasks;
 /// one save. A lost race surfaces as 409 <c>concurrency.conflict</c> from <c>xmin</c>; it is never retried.
 /// </summary>
 public sealed partial class TaskDecisionService(
-    IAppDbContext db, AccessRules access, TimeProvider time, PostCommitPublisher realtime, ILogger<TaskDecisionService> logger)
+    IAppDbContext db,
+    AccessRules access,
+    IProcessDefinitionSource workflows,
+    TimeProvider time,
+    PostCommitPublisher realtime,
+    ILogger<TaskDecisionService> logger)
 {
     public Task ApproveAsync(Guid taskId, ApproveTaskRequest body, CancellationToken ct)
     {
@@ -51,8 +57,9 @@ public sealed partial class TaskDecisionService(
 
         var requester = await TaskAssigneeResolver.LoadRequesterAsync(db, request.RequesterId, ct)
             ?? throw new InvalidOperationException("A request's requester always exists: users are never deleted.");
+        var workflow = await workflows.VersionAsync(request.WorkflowVersionId, ct);
         var now = time.GetUtcNow();
-        var result = request.DecideTask(taskId, me.UserId, decision, TaskAssigneeResolver.ResolverFor(requester), now);
+        var result = request.DecideTask(taskId, me.UserId, decision, workflow, TaskAssigneeResolver.ResolverFor(requester), now);
 
         var notifications = await AddNotificationsAsync(request, result, requester, me.UserId, now, ct);
         await SaveAsync(ct);

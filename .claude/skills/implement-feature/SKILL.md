@@ -13,7 +13,7 @@ Implement backlog task **$task** for FlowOps.
 - Restate the objective and acceptance criteria in 3–6 bullets. If anything is ambiguous or conflicts with a doc or ADR, list it now; resolve from the docs, or flag it — do not guess silently.
 
 ## 2. Survey before you build
-- Search for existing code that already owns the knowledge you need (`docs/CODE_STANDARDS.md` §2.3). Example searches: `AccessRules`, `TaskEligibility`, `FixedProcesses`, `NotificationFactory`, `ErrorCodes`, `queryKeys`, `components/ui/`.
+- Search for existing code that already owns the knowledge you need (`docs/CODE_STANDARDS.md` §2.3). Example searches: `AccessRules`, `TaskEligibility`, `IProcessDefinitionSource`, `NotificationFactory`, `ErrorCodes`, `queryKeys`, `components/ui/`.
 - Note what you'll **reuse**, what you'll **extend**, and what is genuinely **new**. A new shared abstraction needs ≥ 2 real callers.
 - Check `docs/API_CONTRACT.md` and `contracts/openapi.json` for every endpoint/field you'll touch. Missing contract → follow `docs/AGENT_HANDOFF.md` §3; frontend sessions stop and report.
 

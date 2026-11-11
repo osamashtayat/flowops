@@ -13,7 +13,7 @@ Related: `WORKFLOWS.md` (process behaviour), `AUTHORIZATION.md` (who may see/do 
 |---|---|
 | **Request** | A business request submitted by an employee (equipment purchase or leave). The aggregate root. |
 | **Requester** | The user who submitted the request. Always the authenticated user at submission time. |
-| **Process** | The fixed, ordered list of steps a request type goes through. Phase 1 has two, defined in code (`FixedProcesses`). |
+| **Process** | The ordered list of steps a request type goes through. Phase 1 defined two in code (`FixedProcesses`); since P2-BE-03 they are the Published versions of persisted workflows (§7). |
 | **Step / Stage** | One position in a process (e.g. `FinanceApproval`). `Request.Stage` is the *current* step. |
 | **WorkTask** | A unit of work someone must act on: an approval decision or a fulfillment action. One per step. |
 | **Assignee** | Who may act on a task: a *specific user* (manager step) or a *role queue* (officer steps). |
@@ -204,7 +204,7 @@ Three separate state dimensions, as required:
 
 ### 3.3 Fixed processes
 
-Defined once, in `FlowOps.Domain.Requests.FixedProcesses`:
+Phase 1 defined these in `FlowOps.Domain.Requests.FixedProcesses`. Since P2-BE-03 they are the seeded **v1** workflow versions (§7.4), with the same steps, kinds and assignees; `FixedProcesses` is gone:
 
 ```
 EquipmentPurchase:
@@ -217,7 +217,7 @@ Leave:
   2. HrConfirmation         Kind=Approval     Assignee=Role(HrOfficer)
 ```
 
-A `ProcessStep` is `record ProcessStep(RequestStage Stage, WorkTaskKind Kind, AssigneeRule Assignee)`. This is plain C# data, not a configurable engine. It is the seam Phase 2 replaces with persisted workflow definitions (ADR-0004).
+The aggregate advances through the `WorkflowStep`s of the version the request is pinned to, which the Application layer loads through `IProcessDefinitionSource` (ADR-0014 §1). Still not an engine: an ordered list of steps.
 
 ### 3.4 Request transitions
 
@@ -314,7 +314,7 @@ The domain does **not** decide *who* is eligible for a role queue (that needs th
 
 ## 7. Phase 2a: configurable workflows (ADR-0014)
 
-Status: **designed** (P2-DOC-01). The API already serves `step` and `route` and has the workflow types (API_CONTRACT §10). The entities below are built in P2-BE-03 to P2-BE-07. Until then, `FixedProcesses` is the source of the steps.
+Status: **designed** (P2-DOC-01). The API already serves `step` and `route` and has the workflow types (API_CONTRACT §10). The entities below are built in P2-BE-03 to P2-BE-07. **Since P2-BE-03** the entities, the seeded v1 and `Request.WorkflowVersionId` exist and are the only source of steps (`IProcessDefinitionSource`); `Condition` (P2-BE-05) and `CanReadRestrictedDetails` (P2-BE-06) are not stored yet.
 
 ### 7.1 Entities
 
@@ -406,7 +406,7 @@ Adding a fact or an operator is a code change with tests. Admins combine them; t
 ### 7.4 Version pinning and the seeded v1
 
 - `Request.WorkflowVersionId` (Guid) is set at submission to the type's Published version. **Every later step of that request comes from that version.** Publishing a new version affects new requests only; in-flight requests keep their route.
-- P2-BE-03 seeds purchase and leave as Published **v1**, identical to `FixedProcesses`, and backfills existing requests with it. Phase 1 stage values map to v1 keys one to one:
+- P2-BE-03 seeds purchase and leave as Published **v1**, identical to Phase 1's `FixedProcesses`, and backfills existing requests with it (migration `AddWorkflowDefinitions`). The seed has no author: its `CreatedById` and `PublishedById` are null. Phase 1 stage values map to v1 keys one to one:
 
 | `RequestStage` (Phase 1) | v1 step key | Name |
 |---|---|---|
@@ -416,7 +416,7 @@ Adding a fact or an operator is a code change with tests. Admins combine them; t
 | `ProcurementFulfillment` | `procurement-fulfillment` | Procurement fulfilment |
 | `Closed` | — | not a step: a closed request has `Status` `Completed` or `Rejected` and no current step |
 
-  Until P2-BE-04 stores keys, this mapping lives in `Application/Requests/StepRef.For` and nowhere else.
+  Until P2-BE-04 stores keys, this mapping lives in `Domain/Workflows/StageKeys` (key ↔ stage) and `Application/Requests/StepRef.For` (names) and nowhere else.
 - From P2-BE-04, `Request`, `WorkTask` and `RequestActivity` store a **step key plus a name snapshot** in place of `RequestStage`. Renaming a step in a later version doesn't rewrite history.
 
 ### 7.5 Runtime semantics and `StepSkipped`
